@@ -21,12 +21,10 @@ export default function AbrirNcPage() {
   const navigate = useNavigate();
 
   const [chamado, setChamado] = useState("");
-  const [setor, setSetor] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
   const [criticidade, setCriticidade] = useState("Baixa");
   const [descricao, setDescricao] = useState("");
   const [causas, setCausas] = useState([]);
-  const [setorResponsavel, setSetorResponsavel] = useState("");
 
   const [usuarios, setUsuarios] = useState([]);
   const [causasConhecidas, setCausasConhecidas] = useState([]);
@@ -53,6 +51,8 @@ export default function AbrirNcPage() {
     carregarDadosDeApoio();
   }, []);
 
+  const colaboradorSelecionado = usuarios.find((u) => u.id === colaboradorId);
+
   async function aoEnviar(evento) {
     evento.preventDefault();
     setErro("");
@@ -68,17 +68,12 @@ export default function AbrirNcPage() {
 
     setEnviando(true);
     try {
-      const usuarioSelecionado = usuarios.find((u) => u.id === colaboradorId);
-
       const nc = await abrirNc({
         chamado: chamado || null,
-        setor: setor || null,
-        colaborador: usuarioSelecionado?.nome ?? null,
         colaborador_id: colaboradorId,
         criticidade,
         descricao,
         causas,
-        setor_responsavel: setorResponsavel || null,
       });
 
       navigate(`/nc/${nc.id}`);
@@ -105,73 +100,61 @@ export default function AbrirNcPage() {
           <Card className="shadow-sm">
             <Card.Body className="p-4">
               <Form onSubmit={aoEnviar}>
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3" controlId="chamado">
-                      <Form.Label>Chamado</Form.Label>
-                      <Form.Control
-                        type="text"
-                        value={chamado}
-                        onChange={(e) => setChamado(e.target.value)}
-                        placeholder="Número ou referência do chamado"
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3" controlId="setor">
-                      <Form.Label>Setor</Form.Label>
-                      <Form.Control
-                        type="text"
-                        value={setor}
-                        onChange={(e) => setSetor(e.target.value)}
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-
-                <Form.Group className="mb-3" controlId="colaborador">
-                  <Form.Label>Colaborador analisado *</Form.Label>
-                  <Form.Select
-                    value={colaboradorId}
-                    onChange={(e) => setColaboradorId(e.target.value)}
-                    required
-                  >
-                    <option value="">Selecione...</option>
-                    {usuarios.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nome} ({u.email})
-                      </option>
-                    ))}
-                  </Form.Select>
+                <Form.Group className="mb-3" controlId="chamado">
+                  <Form.Label>Chamado</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={chamado}
+                    onChange={(e) => setChamado(e.target.value)}
+                    placeholder="Número ou referência do chamado"
+                  />
                 </Form.Group>
 
                 <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3" controlId="criticidade">
-                      <Form.Label>Criticidade</Form.Label>
+                  <Col md={8}>
+                    <Form.Group className="mb-3" controlId="colaborador">
+                      <Form.Label>Colaborador analisado *</Form.Label>
                       <Form.Select
-                        value={criticidade}
-                        onChange={(e) => setCriticidade(e.target.value)}
+                        value={colaboradorId}
+                        onChange={(e) => setColaboradorId(e.target.value)}
+                        required
                       >
-                        {OPCOES_CRITICIDADE.map((opcao) => (
-                          <option key={opcao} value={opcao}>
-                            {opcao}
+                        <option value="">Selecione...</option>
+                        {usuarios.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.nome} ({u.email})
                           </option>
                         ))}
                       </Form.Select>
                     </Form.Group>
                   </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3" controlId="setorResponsavel">
-                      <Form.Label>Setor responsável</Form.Label>
+                  <Col md={4}>
+                    <Form.Group className="mb-3" controlId="setor">
+                      <Form.Label>Setor</Form.Label>
                       <Form.Control
                         type="text"
-                        value={setorResponsavel}
-                        onChange={(e) => setSetorResponsavel(e.target.value)}
+                        value={colaboradorSelecionado?.setor || ""}
+                        readOnly
+                        disabled
+                        placeholder="Definido pelo cadastro"
                       />
                     </Form.Group>
                   </Col>
                 </Row>
+
+                <Form.Group className="mb-3" controlId="criticidade">
+                  <Form.Label>Criticidade</Form.Label>
+                  <Form.Select
+                    value={criticidade}
+                    onChange={(e) => setCriticidade(e.target.value)}
+                  >
+                    {OPCOES_CRITICIDADE.map((opcao) => (
+                      <option key={opcao} value={opcao}>
+                        {opcao}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
 
                 <Form.Group className="mb-3" controlId="descricao">
                   <Form.Label>Descrição *</Form.Label>

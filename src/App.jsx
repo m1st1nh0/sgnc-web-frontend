@@ -7,6 +7,7 @@ import TrocarSenhaPage from "./pages/TrocarSenhaPage";
 import HomePage from "./pages/HomePage";
 import AbrirNcPage from "./pages/AbrirNcPage";
 import DetalhesNcPage from "./pages/DetalhesNcPage";
+import UsuariosPage from "./pages/UsuariosPage";
 
 export default function App() {
   return (
@@ -36,6 +37,14 @@ export default function App() {
             element={
               <RotaProtegida>
                 <DetalhesNcPage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/usuarios"
+            element={
+              <RotaProtegida>
+                <UsuariosPage />
               </RotaProtegida>
             }
           />
