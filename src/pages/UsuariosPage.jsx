@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Container from "react-bootstrap/Container";
 import Table from "react-bootstrap/Table";
 import Badge from "react-bootstrap/Badge";
@@ -20,8 +21,18 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { ErroApi } from "../services/api";
 
-const NOME_PAPEL = { adm: "Administrador", supervisor: "Supervisor", funcionario: "Funcionário" };
-const COR_PAPEL = { adm: "dark", supervisor: "primary", funcionario: "secondary" };
+const NOME_PAPEL = {
+  adm: "Administrador",
+  supervisor: "Supervisor",
+  funcionario: "Funcionário",
+};
+
+const COR_PAPEL = {
+  adm: "dark",
+  supervisor: "primary",
+  funcionario: "secondary",
+};
+
 const PAPEIS_OPCOES = [
   { value: "funcionario", label: "Funcionário" },
   { value: "supervisor", label: "Supervisor" },
@@ -42,7 +53,9 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
   const [erro, setErro] = useState("");
 
   const supervisoresDisponiveis = usuarios.filter(
-    (u) => (u.papel === "supervisor" || u.papel === "adm") && u.id !== usuario?.id
+    (u) =>
+      (u.papel === "supervisor" || u.papel === "adm") &&
+      u.id !== usuario?.id
   );
 
   async function aoEnviar(evento) {
@@ -53,12 +66,14 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
       setErro("Selecione o supervisor.");
       return;
     }
+
     if (!editando && senhaInicial.length < 6) {
       setErro("Senha inicial deve ter ao menos 6 caracteres.");
       return;
     }
 
     setEnviando(true);
+
     try {
       if (editando) {
         await editarUsuario(usuario.id, {
@@ -77,6 +92,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
           senha_inicial: senhaInicial,
         });
       }
+
       aoSalvar();
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível salvar.");
@@ -91,7 +107,12 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
 
       <Form.Group className="mb-3">
         <Form.Label>Nome *</Form.Label>
-        <Form.Control value={nome} onChange={(e) => setNome(e.target.value)} required autoFocus />
+        <Form.Control
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          required
+          autoFocus
+        />
       </Form.Group>
 
       {!editando && (
@@ -108,14 +129,22 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
 
       <Form.Group className="mb-3">
         <Form.Label>Setor</Form.Label>
-        <Form.Control value={setor} onChange={(e) => setSetor(e.target.value)} />
+        <Form.Control
+          value={setor}
+          onChange={(e) => setSetor(e.target.value)}
+        />
       </Form.Group>
 
       <Form.Group className="mb-3">
         <Form.Label>Papel *</Form.Label>
-        <Form.Select value={papel} onChange={(e) => setPapel(e.target.value)}>
+        <Form.Select
+          value={papel}
+          onChange={(e) => setPapel(e.target.value)}
+        >
           {PAPEIS_OPCOES.map((p) => (
-            <option key={p.value} value={p.value}>{p.label}</option>
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
           ))}
         </Form.Select>
       </Form.Group>
@@ -130,7 +159,9 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
           >
             <option value="">Selecione...</option>
             {supervisoresDisponiveis.map((s) => (
-              <option key={s.id} value={s.id}>{s.nome}</option>
+              <option key={s.id} value={s.id}>
+                {s.nome}
+              </option>
             ))}
           </Form.Select>
         </Form.Group>
@@ -154,9 +185,17 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
 
       <div className="d-flex gap-2">
         <Button type="submit" variant="primary" disabled={enviando}>
-          {enviando ? "Salvando..." : editando ? "Salvar alterações" : "Cadastrar"}
+          {enviando
+            ? "Salvando..."
+            : editando
+              ? "Salvar alterações"
+              : "Cadastrar"}
         </Button>
-        <Button variant="outline-secondary" onClick={aoFechar} disabled={enviando}>
+        <Button
+          variant="outline-secondary"
+          onClick={aoFechar}
+          disabled={enviando}
+        >
           Cancelar
         </Button>
       </div>
@@ -167,25 +206,34 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function UsuariosPage() {
   const { usuario: usuarioLogado } = useAuth();
+  const navigate = useNavigate();
+
   const [usuarios, setUsuarios] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
-  // Modal: "novo" | {usuario} para editar | null
+  // Modal: "novo" | { usuario } para editar | null
   const [modal, setModal] = useState(null);
 
   async function carregar() {
     setCarregando(true);
+
     try {
       setUsuarios(await listarUsuarios());
     } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Não foi possível carregar os usuários.");
+      setErro(
+        e instanceof ErroApi
+          ? e.message
+          : "Não foi possível carregar os usuários."
+      );
     } finally {
       setCarregando(false);
     }
   }
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    carregar();
+  }, []);
 
   async function toggleAtivo(usuario) {
     try {
@@ -194,9 +242,14 @@ export default function UsuariosPage() {
       } else {
         await reativarUsuario(usuario.id);
       }
+
       carregar();
     } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Não foi possível alterar o status do usuário.");
+      setErro(
+        e instanceof ErroApi
+          ? e.message
+          : "Não foi possível alterar o status do usuário."
+      );
     }
   }
 
@@ -205,23 +258,47 @@ export default function UsuariosPage() {
     carregar();
   }
 
-  const tituloModal = modal === "novo"
-    ? "Novo usuário"
-    : modal ? "Editar usuário" : "";
+  function podeVerEstatisticasDoUsuario(usuario) {
+    if (!usuarioLogado) return false;
+
+    const ehAdm = usuarioLogado.papel === "adm";
+    const ehProprioUsuario = usuarioLogado.id === usuario.id;
+    const ehSupervisorDireto =
+      usuarioLogado.papel === "supervisor" &&
+      usuario.supervisor_id === usuarioLogado.id;
+
+    return ehAdm || ehProprioUsuario || ehSupervisorDireto;
+  }
+
+  const tituloModal =
+    modal === "novo"
+      ? "Novo usuário"
+      : modal
+        ? "Editar usuário"
+        : "";
 
   return (
     <div>
       <BarraNavegacao />
+
       <Container>
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h1 className="h4 mb-0">Usuários</h1>
-          <Button variant="primary" onClick={() => setModal("novo")}>+ Novo usuário</Button>
+          <Button variant="primary" onClick={() => setModal("novo")}>
+            + Novo usuário
+          </Button>
         </div>
 
-        {erro && <Alert variant="danger" dismissible onClose={() => setErro("")}>{erro}</Alert>}
+        {erro && (
+          <Alert variant="danger" dismissible onClose={() => setErro("")}>
+            {erro}
+          </Alert>
+        )}
 
         {carregando ? (
-          <div className="text-center py-5"><Spinner animation="border" /></div>
+          <div className="text-center py-5">
+            <Spinner animation="border" />
+          </div>
         ) : (
           <Table hover responsive className="bg-white shadow-sm align-middle">
             <thead>
@@ -232,12 +309,16 @@ export default function UsuariosPage() {
                 <th>Papel</th>
                 <th>Senha</th>
                 <th>Status</th>
-                <th></th>
+                <th>Ações</th>
               </tr>
             </thead>
+
             <tbody>
               {usuarios.map((u) => (
-                <tr key={u.id} className={u.ativo ? "" : "table-secondary text-muted"}>
+                <tr
+                  key={u.id}
+                  className={u.ativo ? "" : "table-secondary text-muted"}
+                >
                   <td>{u.nome}</td>
                   <td>{u.email}</td>
                   <td>{u.setor || "-"}</td>
@@ -247,7 +328,10 @@ export default function UsuariosPage() {
                     </Badge>
                   </td>
                   <td>
-                    <Badge bg={u.senha_provisoria ? "warning" : "success"} text={u.senha_provisoria ? "dark" : undefined}>
+                    <Badge
+                      bg={u.senha_provisoria ? "warning" : "success"}
+                      text={u.senha_provisoria ? "dark" : undefined}
+                    >
                       {u.senha_provisoria ? "Provisória" : "Definitiva"}
                     </Badge>
                   </td>
@@ -257,22 +341,41 @@ export default function UsuariosPage() {
                     </Badge>
                   </td>
                   <td>
-                    <ButtonGroup size="sm">
-                      <Button
-                        variant="outline-secondary"
-                        onClick={() => setModal(u)}
-                      >
-                        Editar
-                      </Button>
-                      {u.id !== usuarioLogado?.id && (
+                    <div className="d-flex gap-2">
+                      {podeVerEstatisticasDoUsuario(u) && (
                         <Button
-                          variant={u.ativo ? "outline-danger" : "outline-success"}
-                          onClick={() => toggleAtivo(u)}
+                          variant="outline-primary"
+                          size="sm"
+                          onClick={() =>
+                            navigate(`/usuarios/${u.id}/estatisticas`)
+                          }
                         >
-                          {u.ativo ? "Desativar" : "Reativar"}
+                          Estatísticas
                         </Button>
                       )}
-                    </ButtonGroup>
+
+                      <ButtonGroup size="sm">
+                        <Button
+                          variant="outline-secondary"
+                          onClick={() => setModal(u)}
+                        >
+                          Editar
+                        </Button>
+
+                        {u.id !== usuarioLogado?.id && (
+                          <Button
+                            variant={
+                              u.ativo
+                                ? "outline-danger"
+                                : "outline-success"
+                            }
+                            onClick={() => toggleAtivo(u)}
+                          >
+                            {u.ativo ? "Desativar" : "Reativar"}
+                          </Button>
+                        )}
+                      </ButtonGroup>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -281,10 +384,15 @@ export default function UsuariosPage() {
         )}
       </Container>
 
-      <Modal show={modal !== null} onHide={() => setModal(null)} centered>
+      <Modal
+        show={modal !== null}
+        onHide={() => setModal(null)}
+        centered
+      >
         <Modal.Header closeButton>
           <Modal.Title className="h5">{tituloModal}</Modal.Title>
         </Modal.Header>
+
         <Modal.Body>
           {modal !== null && (
             <FormularioUsuario

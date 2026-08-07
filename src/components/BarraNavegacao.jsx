@@ -28,7 +28,14 @@ export default function BarraNavegacao() {
         <Nav className="me-auto">
           <Nav.Link href="/">Não Conformidades</Nav.Link>
           <Nav.Link href="/abrir-nc">Abrir NC</Nav.Link>
-          {usuario?.papel === "adm" && <Nav.Link href="/usuarios">Usuários</Nav.Link>}
+          {usuario && (
+            <Nav.Link href={`/usuarios/${usuario.id}/estatisticas`}>
+              Minhas estatísticas
+            </Nav.Link>
+          )}
+          {usuario?.papel === "adm" && (
+            <Nav.Link href="/usuarios">Usuários</Nav.Link>
+          )}
         </Nav>
         {usuario && (
           <div className="d-flex align-items-center gap-3">

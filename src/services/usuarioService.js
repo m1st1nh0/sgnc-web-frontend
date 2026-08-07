@@ -19,3 +19,6 @@ export function desativarUsuario(id) {
 export function reativarUsuario(id) {
   return chamarApi(`/usuarios/${id}/reativar`, { method: "PATCH" });
 }
+export function buscarEstatisticasUsuario(usuarioId) {
+  return chamarApi(`/usuarios/${usuarioId}/estatisticas`);
+}

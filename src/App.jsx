@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
+import EstatisticasUsuarioPage from "./pages/EstatisticasUsuarioPage";
 import { AuthProvider } from "./context/AuthContext";
 import RotaProtegida from "./components/RotaProtegida";
 import LoginPage from "./pages/LoginPage";
@@ -22,6 +22,14 @@ export default function App() {
           <Route path="/nc/:id" element={<RotaProtegida><DetalhesNcPage /></RotaProtegida>} />
           <Route path="/nc/:id/editar" element={<RotaProtegida><EditarNcPage /></RotaProtegida>} />
           <Route path="/usuarios" element={<RotaProtegida><UsuariosPage /></RotaProtegida>} />
+          <Route
+  path="/usuarios/:usuarioId/estatisticas"
+  element={
+    <RotaProtegida>
+      <EstatisticasUsuarioPage />
+    </RotaProtegida>
+  }
+/>
         </Routes>
       </BrowserRouter>
     </AuthProvider>
