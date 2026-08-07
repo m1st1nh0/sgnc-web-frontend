@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Container from "react-bootstrap/Container";
 import Table from "react-bootstrap/Table";
 import Badge from "react-bootstrap/Badge";
@@ -12,6 +12,7 @@ import BarraNavegacao from "../components/BarraNavegacao";
 import { listarNcs } from "../services/ncService";
 import { infoDoStatus } from "../services/statusNc";
 import { ErroApi } from "../services/api";
+import { listarUsuarios } from "../services/usuarioService";
 
 const ABAS_FILTRO = [
   { chave: "todas", rotulo: "Todas", status: null },
@@ -32,7 +33,10 @@ function formatarData(dataIso) {
 }
 
 export default function HomePage() {
+  const navigate = useNavigate();
+
   const [ncs, setNcs] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [abaAtiva, setAbaAtiva] = useState("todas");
@@ -40,9 +44,18 @@ export default function HomePage() {
   useEffect(() => {
     async function carregar() {
       try {
-        setNcs(await listarNcs());
+        const [listaNcs, listaUsuarios] = await Promise.all([
+          listarNcs(),
+          listarUsuarios(),
+        ]);
+        setNcs(listaNcs);
+        setUsuarios(listaUsuarios);
       } catch (e) {
-        setErro(e instanceof ErroApi ? e.message : "Não foi possível carregar as Não Conformidades.");
+        setErro(
+          e instanceof ErroApi
+            ? e.message
+            : "Não foi possível carregar as Não Conformidades."
+        );
       } finally {
         setCarregando(false);
       }
@@ -54,9 +67,17 @@ export default function HomePage() {
     const filtro = ABAS_FILTRO.find((a) => a.chave === abaAtiva);
     if (!filtro || !filtro.status) return ncs;
 
-    const statusAlvo = Array.isArray(filtro.status) ? filtro.status : [filtro.status];
+    const statusAlvo = Array.isArray(filtro.status)
+      ? filtro.status
+      : [filtro.status];
     return ncs.filter((nc) => statusAlvo.includes(nc.status));
   }, [ncs, abaAtiva]);
+
+  function obterNomeAbertoPor(nc) {
+    if (!nc.aberto_por) return "-";
+    const usuario = usuarios.find((u) => u.id === nc.aberto_por);
+    return usuario?.nome || nc.aberto_por || "-";
+  }
 
   return (
     <div>
@@ -69,7 +90,12 @@ export default function HomePage() {
           </Button>
         </div>
 
-        <Nav variant="tabs" activeKey={abaAtiva} onSelect={setAbaAtiva} className="mb-3">
+        <Nav
+          variant="tabs"
+          activeKey={abaAtiva}
+          onSelect={setAbaAtiva}
+          className="mb-3"
+        >
           {ABAS_FILTRO.map((aba) => (
             <Nav.Item key={aba.chave}>
               <Nav.Link eventKey={aba.chave}>{aba.rotulo}</Nav.Link>
@@ -84,16 +110,19 @@ export default function HomePage() {
             <Spinner animation="border" />
           </div>
         ) : ncsFiltradas.length === 0 ? (
-          <Alert variant="light" className="border text-center text-muted">
+          <Alert
+            variant="light"
+            className="border text-center text-muted"
+          >
             Nenhuma Não Conformidade encontrada.
           </Alert>
         ) : (
           <Table hover responsive className="bg-white shadow-sm">
             <thead>
               <tr>
-                <th>#</th>
                 <th>Data</th>
-                <th>Colaborador</th>
+                <th>Colaborador analisado</th>
+                <th>Aberto por</th>
                 <th>Criticidade</th>
                 <th>Status</th>
               </tr>
@@ -101,15 +130,17 @@ export default function HomePage() {
             <tbody>
               {ncsFiltradas.map((nc) => {
                 const { rotulo, cor } = infoDoStatus(nc.status);
+                const abertoPorNome = obterNomeAbertoPor(nc);
+
                 return (
-                  <tr key={nc.id} style={{ cursor: "pointer" }}>
-                    <td>
-                      <Link to={`/nc/${nc.id}`} className="text-decoration-none">
-                        {nc.id}
-                      </Link>
-                    </td>
+                  <tr
+                    key={nc.id}
+                    style={{ cursor: "pointer" }}
+                    onDoubleClick={() => navigate(`/nc/${nc.id}`)}
+                  >
                     <td>{formatarData(nc.data)}</td>
                     <td>{nc.colaborador || "-"}</td>
+                    <td>{abertoPorNome}</td>
                     <td>{nc.criticidade}</td>
                     <td>
                       <Badge bg={cor}>{rotulo}</Badge>

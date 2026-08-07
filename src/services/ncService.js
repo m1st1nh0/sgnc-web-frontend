@@ -28,7 +28,10 @@ export function enviarNc(id) {
 }
 
 export function aplicarFeedback(id, feedback) {
-  return chamarApi(`/nc/${id}/feedback`, { method: "POST", body: { feedback } });
+  return chamarApi(`/nc/${id}/feedback`, {
+    method: "POST",
+    body: { feedback },
+  });
 }
 
 export function aceitarNc(id, textoAceite) {
@@ -49,5 +52,13 @@ export function listarEvidencias(ncId) {
 export function anexarEvidencia(ncId, arquivo) {
   const formData = new FormData();
   formData.append("arquivo", arquivo);
-  return chamarApi(`/nc/${ncId}/evidencias`, { method: "POST", body: formData });
+  return chamarApi(`/nc/${ncId}/evidencias`, {
+    method: "POST",
+    body: formData,
+  });
+}
+export function excluirEvidencia(ncId, evidenciaId) {
+  return chamarApi(`/nc/${ncId}/evidencias/${evidenciaId}`, {
+    method: "DELETE",
+  });
 }

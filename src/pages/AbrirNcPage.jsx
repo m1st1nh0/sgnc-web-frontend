@@ -11,9 +11,13 @@ import Spinner from "react-bootstrap/Spinner";
 
 import BarraNavegacao from "../components/BarraNavegacao";
 import CampoCausas from "../components/CampoCausas";
-import { abrirNc, listarCausasConhecidas } from "../services/ncService";
 import { listarUsuarios } from "../services/usuarioService";
 import { ErroApi } from "../services/api";
+import {
+  abrirNc,
+  listarCausasConhecidas,
+  anexarEvidencia,
+} from "../services/ncService";
 
 const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
 
@@ -33,6 +37,9 @@ export default function AbrirNcPage() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
+  // evidências selecionadas antes de abrir a NC
+  const [arquivosEvidencias, setArquivosEvidencias] = useState([]);
+
   useEffect(() => {
     async function carregarDadosDeApoio() {
       try {
@@ -43,7 +50,11 @@ export default function AbrirNcPage() {
         setUsuarios(listaUsuarios);
         setCausasConhecidas(listaCausas);
       } catch (e) {
-        setErro(e instanceof ErroApi ? e.message : "Não foi possível carregar os dados do formulário.");
+        setErro(
+          e instanceof ErroApi
+            ? e.message
+            : "Não foi possível carregar os dados do formulário."
+        );
       } finally {
         setCarregandoDados(false);
       }
@@ -68,6 +79,7 @@ export default function AbrirNcPage() {
 
     setEnviando(true);
     try {
+      // 1) Abre a NC no backend
       const nc = await abrirNc({
         chamado: chamado || null,
         colaborador_id: colaboradorId,
@@ -76,12 +88,35 @@ export default function AbrirNcPage() {
         causas,
       });
 
+      // 2) Dispara os uploads em paralelo em background (sem bloquear a navegação)
+      if (arquivosEvidencias.length > 0) {
+        Promise.all(
+          arquivosEvidencias.map((arquivo) =>
+            anexarEvidencia(nc.id, arquivo)
+          )
+        ).catch((e) => {
+          console.error("Erro ao anexar evidências:", e);
+          // Se der erro em algum upload, você ainda consegue ver a NC;
+          // logs/observabilidade podem tratar isso depois.
+        });
+      }
+
+      // 3) Navega imediatamente para detalhes da NC
       navigate(`/nc/${nc.id}`);
     } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Não foi possível abrir a Não Conformidade.");
+      setErro(
+        e instanceof ErroApi
+          ? e.message
+          : "Não foi possível abrir a Não Conformidade."
+      );
     } finally {
       setEnviando(false);
     }
+  }
+
+  function aoSelecionarEvidencias(evento) {
+    const files = Array.from(evento.target.files || []);
+    setArquivosEvidencias(files);
   }
 
   return (
@@ -175,13 +210,42 @@ export default function AbrirNcPage() {
                     sugestoes={causasConhecidas}
                   />
                   <Form.Text className="text-muted">
-                    Digite e pressione Enter. Causas novas são adicionadas à lista
-                    automaticamente.
+                    Digite e pressione Enter. Causas novas são adicionadas à
+                    lista automaticamente.
                   </Form.Text>
                 </Form.Group>
 
+                <Form.Group className="mb-4" controlId="evidencias">
+                  <Form.Label>Evidências (opcional)</Form.Label>
+                  <Form.Control
+                    type="file"
+                    multiple
+                    onChange={aoSelecionarEvidencias}
+                  />
+                  <Form.Text className="text-muted">
+                    Você pode selecionar uma ou mais evidências antes de abrir
+                    a NC. Elas serão anexadas em segundo plano logo após a
+                    criação.
+                  </Form.Text>
+                  {arquivosEvidencias.length > 0 && (
+                    <Alert
+                      variant="info"
+                      className="mt-2 mb-0 py-2 px-3 small"
+                    >
+                      {arquivosEvidencias.length} arquivo(s) serão enviados como
+                      evidência assim que a NC for criada. Dependendo do tamanho
+                      dos arquivos e da conexão, eles podem levar alguns
+                      segundos para aparecer na tela de detalhes.
+                    </Alert>
+                  )}
+                </Form.Group>
+
                 <Button type="submit" variant="primary" disabled={enviando}>
-                  {enviando ? "Salvando..." : "Abrir Não Conformidade"}
+                  {enviando
+                    ? arquivosEvidencias.length > 0
+                      ? "Abrindo NC e iniciando anexos..."
+                      : "Abrindo NC..."
+                    : "Abrir Não Conformidade"}
                 </Button>
               </Form>
             </Card.Body>
