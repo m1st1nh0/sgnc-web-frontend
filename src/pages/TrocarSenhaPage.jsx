@@ -13,7 +13,7 @@ import { trocarSenha } from "../services/authService";
 import { ErroApi } from "../services/api";
 
 export default function TrocarSenhaPage() {
-  const { marcarSenhaDefinitiva } = useAuth();
+  const { sair } = useAuth();
   const navigate = useNavigate();
 
   const [senhaAtual, setSenhaAtual] = useState("");
@@ -38,8 +38,13 @@ export default function TrocarSenhaPage() {
     setCarregando(true);
     try {
       await trocarSenha(senhaAtual, senhaNova);
-      marcarSenhaDefinitiva();
-      navigate("/");
+      sair();
+      navigate("/login", {
+        replace: true,
+        state: {
+          mensagem: "Senha alterada com sucesso. Faça login novamente.",
+        },
+      });
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível trocar a senha.");
     } finally {
