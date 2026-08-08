@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import Form from "react-bootstrap/Form";
-import Badge from "react-bootstrap/Badge";
 
 /**
  * Campo de "tags": mostra as causas já escolhidas como badges
@@ -66,22 +64,23 @@ export default function CampoCausas({ valor, aoMudar, sugestoes = [] }) {
 
   return (
     <div ref={referenciaCaixa} style={{ position: "relative" }}>
-      <div className="d-flex flex-wrap gap-2 border rounded p-2">
+      <div className="sg-tags">
         {valor.map((causa) => (
-          <Badge key={causa} bg="secondary" className="d-flex align-items-center gap-1">
+          <span key={causa} className="sg-tag">
             {causa}
-            <span
-              role="button"
+            <button
+              type="button"
+              className="sg-tag__remover"
               aria-label={`Remover ${causa}`}
               onClick={() => removerCausa(causa)}
-              style={{ cursor: "pointer" }}
             >
               &times;
-            </span>
-          </Badge>
+            </button>
+          </span>
         ))}
-        <Form.Control
+        <input
           type="text"
+          className="sg-tag__input"
           value={textoDigitado}
           onChange={(e) => {
             setTextoDigitado(e.target.value);
@@ -90,21 +89,17 @@ export default function CampoCausas({ valor, aoMudar, sugestoes = [] }) {
           onFocus={() => setMostrarSugestoes(true)}
           onKeyDown={aoPressionarTecla}
           placeholder={valor.length === 0 ? "Digite uma causa e pressione Enter" : ""}
-          className="border-0 shadow-none flex-grow-1"
-          style={{ minWidth: "160px", width: "auto" }}
+          aria-label="Causas"
         />
       </div>
 
       {mostrarSugestoes && sugestoesFiltradas.length > 0 && (
-        <div
-          className="list-group position-absolute w-100 shadow-sm"
-          style={{ zIndex: 10, maxHeight: "180px", overflowY: "auto" }}
-        >
+        <div className="sg-tag-sugestoes">
           {sugestoesFiltradas.slice(0, 8).map((sugestao) => (
             <button
               key={sugestao}
               type="button"
-              className="list-group-item list-group-item-action"
+              className="sg-tag-sugestao"
               onClick={() => adicionarCausa(sugestao)}
             >
               {sugestao}

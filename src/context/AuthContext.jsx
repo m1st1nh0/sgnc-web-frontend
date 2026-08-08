@@ -66,6 +66,7 @@ export function AuthProvider({ children }) {
 
 /** Hook para qualquer componente acessar o usuário logado e as ações
  * de autenticação: const { usuario, entrar, sair } = useAuth(); */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const contexto = useContext(AuthContext);
   if (!contexto) {

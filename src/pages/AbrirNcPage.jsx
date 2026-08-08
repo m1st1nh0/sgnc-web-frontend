@@ -1,23 +1,23 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "react-bootstrap/Container";
-import Card from "react-bootstrap/Card";
 import Form from "react-bootstrap/Form";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
-import Button from "react-bootstrap/Button";
 import Alert from "react-bootstrap/Alert";
-import Spinner from "react-bootstrap/Spinner";
 
 import BarraNavegacao from "../components/BarraNavegacao";
 import CampoCausas from "../components/CampoCausas";
 import { listarUsuarios } from "../services/usuarioService";
 import { ErroApi } from "../services/api";
-import {
-  abrirNc,
-  listarCausasConhecidas,
-  anexarEvidencia,
-} from "../services/ncService";
+import { abrirNc, listarCausasConhecidas, anexarEvidencia } from "../services/ncService";
+import CabecalhoPagina from "../components/ui/CabecalhoPagina";
+import Botao from "../components/ui/Botao";
+import CampoTexto from "../components/ui/CampoTexto";
+import CampoSelecao from "../components/ui/CampoSelecao";
+import CampoTextoArea from "../components/ui/CampoTextoArea";
+import EstadoCarregamento from "../components/ui/EstadoCarregamento";
+import MensagemErro from "../components/ui/MensagemErro";
 
 const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
 
@@ -36,6 +36,7 @@ export default function AbrirNcPage() {
 
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+  const [errosCampo, setErrosCampo] = useState({});
 
   // evidências selecionadas antes de abrir a NC
   const [arquivosEvidencias, setArquivosEvidencias] = useState([]);
@@ -67,13 +68,18 @@ export default function AbrirNcPage() {
   async function aoEnviar(evento) {
     evento.preventDefault();
     setErro("");
+    setErrosCampo({});
 
+    const novosErros = {};
     if (!colaboradorId) {
-      setErro("Selecione o colaborador sobre quem é a Não Conformidade.");
-      return;
+      novosErros.colaborador = "Selecione o colaborador sobre quem é a Não Conformidade.";
     }
     if (!descricao.trim()) {
-      setErro("Descreva o que aconteceu.");
+      novosErros.descricao = "Descreva o que aconteceu.";
+    }
+
+    if (Object.keys(novosErros).length > 0) {
+      setErrosCampo(novosErros);
       return;
     }
 
@@ -91,13 +97,9 @@ export default function AbrirNcPage() {
       // 2) Dispara os uploads em paralelo em background (sem bloquear a navegação)
       if (arquivosEvidencias.length > 0) {
         Promise.all(
-          arquivosEvidencias.map((arquivo) =>
-            anexarEvidencia(nc.id, arquivo)
-          )
+          arquivosEvidencias.map((arquivo) => anexarEvidencia(nc.id, arquivo))
         ).catch((e) => {
           console.error("Erro ao anexar evidências:", e);
-          // Se der erro em algum upload, você ainda consegue ver a NC;
-          // logs/observabilidade podem tratar isso depois.
         });
       }
 
@@ -122,52 +124,57 @@ export default function AbrirNcPage() {
   return (
     <div>
       <BarraNavegacao />
-      <Container style={{ maxWidth: "720px" }}>
-        <h1 className="h4 mb-4">Abrir Não Conformidade</h1>
+      <Container className="sg-container" style={{ maxWidth: "820px" }}>
+        <CabecalhoPagina
+          titulo="Abrir Não Conformidade"
+          subtitulo="Registre uma nova não conformidade no sistema"
+        />
 
-        {erro && <Alert variant="danger">{erro}</Alert>}
+        {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
 
         {carregandoDados ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" />
-          </div>
+          <EstadoCarregamento mensagem="Carregando dados do formulário..." />
         ) : (
-          <Card className="shadow-sm">
-            <Card.Body className="p-4">
-              <Form onSubmit={aoEnviar}>
-                <Form.Group className="mb-3" controlId="chamado">
-                  <Form.Label>Chamado</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={chamado}
-                    onChange={(e) => setChamado(e.target.value)}
-                    placeholder="Número ou referência do chamado"
-                  />
-                </Form.Group>
+          <div className="sg-card">
+            <Form onSubmit={aoEnviar}>
+              {/* Seção 1: Informações básicas */}
+              <div className="sg-secao-form">
+                <h2 className="sg-secao-form__titulo">Informações da ocorrência</h2>
+                <p className="sg-secao-form__descricao">
+                  Identifique o chamado e o colaborador relacionado.
+                </p>
+
+                <CampoTexto
+                  rotulo="Chamado"
+                  value={chamado}
+                  onChange={(e) => setChamado(e.target.value)}
+                  placeholder="Número ou referência do chamado"
+                  helper="Campo opcional. Use para relacionar a NC a um chamado do helpdesk."
+                />
 
                 <Row>
                   <Col md={8}>
-                    <Form.Group className="mb-3" controlId="colaborador">
-                      <Form.Label>Colaborador analisado *</Form.Label>
-                      <Form.Select
-                        value={colaboradorId}
-                        onChange={(e) => setColaboradorId(e.target.value)}
-                        required
-                      >
-                        <option value="">Selecione...</option>
-                        {usuarios.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.nome} ({u.email})
-                          </option>
-                        ))}
-                      </Form.Select>
-                    </Form.Group>
+                    <CampoSelecao
+                      rotulo="Colaborador analisado"
+                      obrigatorio
+                      value={colaboradorId}
+                      onChange={(e) => setColaboradorId(e.target.value)}
+                      erro={errosCampo.colaborador}
+                    >
+                      <option value="">Selecione...</option>
+                      {usuarios.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.nome} ({u.email})
+                        </option>
+                      ))}
+                    </CampoSelecao>
                   </Col>
                   <Col md={4}>
-                    <Form.Group className="mb-3" controlId="setor">
-                      <Form.Label>Setor</Form.Label>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="sg-label">Setor</Form.Label>
                       <Form.Control
                         type="text"
+                        className="sg-input"
                         value={colaboradorSelecionado?.setor || ""}
                         readOnly
                         disabled
@@ -177,79 +184,100 @@ export default function AbrirNcPage() {
                   </Col>
                 </Row>
 
-                <Form.Group className="mb-3" controlId="criticidade">
-                  <Form.Label>Criticidade</Form.Label>
-                  <Form.Select
-                    value={criticidade}
-                    onChange={(e) => setCriticidade(e.target.value)}
-                  >
-                    {OPCOES_CRITICIDADE.map((opcao) => (
-                      <option key={opcao} value={opcao}>
-                        {opcao}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
+                <CampoSelecao
+                  rotulo="Criticidade"
+                  value={criticidade}
+                  onChange={(e) => setCriticidade(e.target.value)}
+                >
+                  {OPCOES_CRITICIDADE.map((opcao) => (
+                    <option key={opcao} value={opcao}>
+                      {opcao}
+                    </option>
+                  ))}
+                </CampoSelecao>
+              </div>
 
-                <Form.Group className="mb-3" controlId="descricao">
-                  <Form.Label>Descrição *</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={4}
-                    value={descricao}
-                    onChange={(e) => setDescricao(e.target.value)}
-                    required
-                  />
-                </Form.Group>
+              {/* Seção 2: Descrição e causas */}
+              <div className="sg-secao-form">
+                <h2 className="sg-secao-form__titulo">Detalhes da não conformidade</h2>
+                <p className="sg-secao-form__descricao">
+                  Descreva o que aconteceu e identifique possíveis causas.
+                </p>
 
-                <Form.Group className="mb-4" controlId="causas">
-                  <Form.Label>Causas</Form.Label>
+                <CampoTextoArea
+                  rotulo="Descrição"
+                  obrigatorio
+                  rows={4}
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  erro={errosCampo.descricao}
+                  placeholder="Descreva o que aconteceu..."
+                />
+
+                <Form.Group className="mb-4">
+                  <Form.Label className="sg-label">Causas</Form.Label>
                   <CampoCausas
                     valor={causas}
                     aoMudar={setCausas}
                     sugestoes={causasConhecidas}
                   />
-                  <Form.Text className="text-muted">
+                  <Form.Text className="sg-helper">
                     Digite e pressione Enter. Causas novas são adicionadas à
                     lista automaticamente.
                   </Form.Text>
                 </Form.Group>
+              </div>
 
-                <Form.Group className="mb-4" controlId="evidencias">
-                  <Form.Label>Evidências (opcional)</Form.Label>
+              {/* Seção 3: Evidências */}
+              <div className="sg-secao-form">
+                <h2 className="sg-secao-form__titulo">Evidências (opcional)</h2>
+                <p className="sg-secao-form__descricao">
+                  Anexe arquivos para comprovar a não conformidade.
+                </p>
+
+                <Form.Group className="mb-1">
                   <Form.Control
                     type="file"
                     multiple
+                    className="sg-input"
                     onChange={aoSelecionarEvidencias}
                   />
-                  <Form.Text className="text-muted">
+                  <Form.Text className="sg-helper">
                     Você pode selecionar uma ou mais evidências antes de abrir
                     a NC. Elas serão anexadas em segundo plano logo após a
                     criação.
                   </Form.Text>
-                  {arquivosEvidencias.length > 0 && (
-                    <Alert
-                      variant="info"
-                      className="mt-2 mb-0 py-2 px-3 small"
-                    >
-                      {arquivosEvidencias.length} arquivo(s) serão enviados como
-                      evidência assim que a NC for criada. Dependendo do tamanho
-                      dos arquivos e da conexão, eles podem levar alguns
-                      segundos para aparecer na tela de detalhes.
-                    </Alert>
-                  )}
                 </Form.Group>
+                {arquivosEvidencias.length > 0 && (
+                  <Alert variant="info" className="mt-2 mb-0 py-2 px-3 small">
+                    {arquivosEvidencias.length} arquivo(s) serão enviados como
+                    evidência assim que a NC for criada.
+                  </Alert>
+                )}
+              </div>
 
-                <Button type="submit" variant="primary" disabled={enviando}>
-                  {enviando
-                    ? arquivosEvidencias.length > 0
-                      ? "Abrindo NC e iniciando anexos..."
-                      : "Abrindo NC..."
+              <div className="sg-secao-form d-flex gap-2">
+                <Botao
+                  type="submit"
+                  variante="primario"
+                  carregando={enviando}
+                  tamanho="lg"
+                >
+                  {arquivosEvidencias.length > 0
+                    ? "Abrir NC e iniciar anexos..."
                     : "Abrir Não Conformidade"}
-                </Button>
-              </Form>
-            </Card.Body>
-          </Card>
+                </Botao>
+                <Botao
+                  variante="secundario"
+                  tamanho="lg"
+                  onClick={() => navigate("/")}
+                  disabled={enviando}
+                >
+                  Cancelar
+                </Botao>
+              </div>
+            </Form>
+          </div>
         )}
       </Container>
     </div>

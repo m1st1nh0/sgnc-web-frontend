@@ -1,11 +1,10 @@
 import { useState } from "react";
-import Card from "react-bootstrap/Card";
-import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
-import Alert from "react-bootstrap/Alert";
 
 import { aceitarNc } from "../services/ncService";
 import { ErroApi } from "../services/api";
+import Botao from "./ui/Botao";
+import MensagemErro from "./ui/MensagemErro";
 
 const FRASE_ESPERADA = "Li e concordo com a não conformidade e com o feedback aplicado";
 
@@ -33,32 +32,36 @@ export default function PainelAceite({ nc, aoConcluir }) {
   }
 
   return (
-    <Card className="shadow-sm border-primary">
-      <Card.Body>
-        <Card.Title className="h6">Aceite do feedback</Card.Title>
-        <Card.Text className="text-muted small">
+    <div className="sg-painel">
+      <div className="sg-painel__cabecalho">
+        <h2 className="sg-painel__titulo">Aceite do feedback</h2>
+      </div>
+      <div className="sg-painel__corpo">
+        <p className="texto-secundario texto-sm mb-3">
           Para confirmar que você leu e está de acordo, digite exatamente a
           frase abaixo:
-        </Card.Text>
-        <p className="fw-semibold small border rounded p-2 bg-light">
+        </p>
+        <p className="fw-semibold small border rounded p-2 sg-badge--claro mb-3">
           {FRASE_ESPERADA}
         </p>
 
-        {erro && <Alert variant="danger">{erro}</Alert>}
+        {erro && <MensagemErro mensagem={erro} />}
 
         <Form.Group className="mb-3">
+          <Form.Label className="sg-label">Frase de confirmação</Form.Label>
           <Form.Control
             type="text"
+            className="sg-input"
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             placeholder="Digite a frase de confirmação"
           />
         </Form.Group>
 
-        <Button variant="success" disabled={enviando} onClick={confirmar}>
-          {enviando ? "Enviando..." : "Confirmar aceite"}
-        </Button>
-      </Card.Body>
-    </Card>
+        <Botao variante="sucesso" carregando={enviando} onClick={confirmar}>
+          Confirmar aceite
+        </Botao>
+      </div>
+    </div>
   );
 }

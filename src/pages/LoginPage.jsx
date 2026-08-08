@@ -1,29 +1,29 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Container from "react-bootstrap/Container";
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
-import Card from "react-bootstrap/Card";
+import { useLocation, useNavigate } from "react-router-dom";
 import Form from "react-bootstrap/Form";
-import Button from "react-bootstrap/Button";
-import Alert from "react-bootstrap/Alert";
-import Spinner from "react-bootstrap/Spinner";
 
 import { useAuth } from "../context/AuthContext";
 import { ErroApi } from "../services/api";
+import AuthLayout from "../components/ui/AuthLayout";
+import Botao from "../components/ui/Botao";
+import CampoTexto from "../components/ui/CampoTexto";
+import MensagemErro from "../components/ui/MensagemErro";
 
 export default function LoginPage() {
   const { entrar } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
+  const [sucesso, setSucesso] = useState(location.state?.mensagem || "");
 
   async function aoEnviar(evento) {
     evento.preventDefault();
     setErro("");
+    setSucesso("");
     setCarregando(true);
 
     try {
@@ -46,55 +46,48 @@ export default function LoginPage() {
   }
 
   return (
-    <Container className="d-flex align-items-center justify-content-center min-vh-100">
-      <Row className="w-100">
-        <Col xs={12} sm={8} md={5} lg={4} className="mx-auto">
-          <Card className="shadow-sm">
-            <Card.Body className="p-4">
-              <h1 className="h4 mb-1 text-center">SGNC</h1>
-              <p className="text-muted text-center mb-4">
-                Sistema de Gestão de Não Conformidades
-              </p>
+    <AuthLayout>
+      <h1 className="h4 mb-1 text-center">SGNC</h1>
+      <p className="texto-secundario text-center mb-4">
+        Sistema de Gestão de Não Conformidades
+      </p>
 
-              {erro && <Alert variant="danger">{erro}</Alert>}
+      {sucesso && (
+        <div className="sg-alerta sg-alerta--sucesso mb-3" role="status">
+          {sucesso}
+        </div>
+      )}
 
-              <Form onSubmit={aoEnviar}>
-                <Form.Group className="mb-3" controlId="email">
-                  <Form.Label>Email</Form.Label>
-                  <Form.Control
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoFocus
-                  />
-                </Form.Group>
+      {erro && <MensagemErro mensagem={erro} />}
 
-                <Form.Group className="mb-4" controlId="senha">
-                  <Form.Label>Senha</Form.Label>
-                  <Form.Control
-                    type="password"
-                    value={senha}
-                    onChange={(e) => setSenha(e.target.value)}
-                    required
-                  />
-                </Form.Group>
+      <Form onSubmit={aoEnviar}>
+        <CampoTexto
+          rotulo="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoFocus
+        />
 
-                <Button type="submit" variant="primary" className="w-100" disabled={carregando}>
-                  {carregando ? (
-                    <>
-                      <Spinner animation="border" size="sm" className="me-2" />
-                      Entrando...
-                    </>
-                  ) : (
-                    "Entrar"
-                  )}
-                </Button>
-              </Form>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+        <CampoTexto
+          rotulo="Senha"
+          type="password"
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          required
+        />
+
+        <Botao
+          type="submit"
+          className="w-100"
+          variante="primario"
+          carregando={carregando}
+          tamanho="lg"
+        >
+          Entrar
+        </Botao>
+      </Form>
+    </AuthLayout>
   );
 }

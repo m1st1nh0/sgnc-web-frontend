@@ -1,11 +1,10 @@
 import { useState } from "react";
-import Card from "react-bootstrap/Card";
-import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
-import Alert from "react-bootstrap/Alert";
 
 import { aplicarFeedback } from "../services/ncService";
 import { ErroApi } from "../services/api";
+import Botao from "./ui/Botao";
+import MensagemErro from "./ui/MensagemErro";
 
 /**
  * Exibido só para o ADM, quando a NC está 'aguardando_analise'.
@@ -35,31 +34,35 @@ export default function PainelFeedback({ nc, aoConcluir }) {
   }
 
   return (
-    <Card className="shadow-sm border-primary">
-      <Card.Body>
-        <Card.Title className="h6">Aplicar feedback</Card.Title>
-        <Card.Text className="text-muted small">
+    <div className="sg-painel">
+      <div className="sg-painel__cabecalho">
+        <h2 className="sg-painel__titulo">Aplicar feedback</h2>
+      </div>
+      <div className="sg-painel__corpo">
+        <p className="texto-secundario texto-sm mb-3">
           Descreva o que ficou combinado com o colaborador. Este texto
           ficará visível a ele e ao supervisor, e será necessário o
           aceite formal do colaborador para concluir a NC.
-        </Card.Text>
+        </p>
 
-        {erro && <Alert variant="danger">{erro}</Alert>}
+        {erro && <MensagemErro mensagem={erro} />}
 
         <Form.Group className="mb-3">
+          <Form.Label className="sg-label">Feedback</Form.Label>
           <Form.Control
             as="textarea"
             rows={4}
+            className="sg-textarea"
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             autoFocus
           />
         </Form.Group>
 
-        <Button variant="primary" disabled={enviando} onClick={confirmar}>
-          {enviando ? "Enviando..." : "Aplicar feedback"}
-        </Button>
-      </Card.Body>
-    </Card>
+        <Botao variante="primario" carregando={enviando} onClick={confirmar}>
+          Aplicar feedback
+        </Botao>
+      </div>
+    </div>
   );
 }

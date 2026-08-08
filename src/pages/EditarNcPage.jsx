@@ -1,13 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Container from "react-bootstrap/Container";
-import Card from "react-bootstrap/Card";
 import Form from "react-bootstrap/Form";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
-import Button from "react-bootstrap/Button";
 import Alert from "react-bootstrap/Alert";
-import Spinner from "react-bootstrap/Spinner";
 
 import BarraNavegacao from "../components/BarraNavegacao";
 import CampoCausas from "../components/CampoCausas";
@@ -15,6 +12,13 @@ import { buscarNc, editarNc, listarCausasConhecidas } from "../services/ncServic
 import { listarUsuarios } from "../services/usuarioService";
 import { useAuth } from "../context/AuthContext";
 import { ErroApi } from "../services/api";
+import CabecalhoPagina from "../components/ui/CabecalhoPagina";
+import Botao from "../components/ui/Botao";
+import CampoTexto from "../components/ui/CampoTexto";
+import CampoSelecao from "../components/ui/CampoSelecao";
+import CampoTextoArea from "../components/ui/CampoTextoArea";
+import EstadoCarregamento from "../components/ui/EstadoCarregamento";
+import MensagemErro from "../components/ui/MensagemErro";
 
 const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
 
@@ -36,6 +40,7 @@ export default function EditarNcPage() {
 
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+  const [errosCampo, setErrosCampo] = useState({});
 
   useEffect(() => {
     async function carregar() {
@@ -78,13 +83,18 @@ export default function EditarNcPage() {
   async function aoEnviar(evento) {
     evento.preventDefault();
     setErro("");
+    setErrosCampo({});
 
+    const novosErros = {};
     if (!colaboradorId) {
-      setErro("Selecione o colaborador.");
-      return;
+      novosErros.colaborador = "Selecione o colaborador.";
     }
     if (!descricao.trim()) {
-      setErro("Preencha a descrição.");
+      novosErros.descricao = "Preencha a descrição.";
+    }
+
+    if (Object.keys(novosErros).length > 0) {
+      setErrosCampo(novosErros);
       return;
     }
 
@@ -108,56 +118,62 @@ export default function EditarNcPage() {
   return (
     <div>
       <BarraNavegacao />
-      <Container style={{ maxWidth: "720px" }}>
-        <h1 className="h4 mb-4">Editar NC #{id}</h1>
+      <Container className="sg-container" style={{ maxWidth: "820px" }}>
+        <CabecalhoPagina
+          titulo={`Editar NC #${id}`}
+          subtitulo="Atualize as informações desta não conformidade"
+        />
 
         {!acesso && (
-          <Alert variant="warning">
+          <Alert variant="warning" className="sg-alerta sg-alerta--atencao">
             Você não tem permissão para editar esta NC (só é possível enquanto ela está
             em "aberta" e você for o autor, ou se for ADM).
           </Alert>
         )}
 
-        {erro && <Alert variant="danger">{erro}</Alert>}
+        {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
 
         {carregandoDados ? (
-          <div className="text-center py-5"><Spinner animation="border" /></div>
+          <EstadoCarregamento mensagem="Carregando não conformidade..." />
         ) : acesso ? (
-          <Card className="shadow-sm">
-            <Card.Body className="p-4">
-              <Form onSubmit={aoEnviar}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Chamado</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={chamado}
-                    onChange={(e) => setChamado(e.target.value)}
-                  />
-                </Form.Group>
+          <div className="sg-card">
+            <Form onSubmit={aoEnviar}>
+              <div className="sg-secao-form">
+                <h2 className="sg-secao-form__titulo">Informações da ocorrência</h2>
+                <p className="sg-secao-form__descricao">
+                  Atualize os dados do chamado e do colaborador.
+                </p>
+
+                <CampoTexto
+                  rotulo="Chamado"
+                  value={chamado}
+                  onChange={(e) => setChamado(e.target.value)}
+                  placeholder="Número ou referência do chamado"
+                />
 
                 <Row>
                   <Col md={8}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Colaborador analisado *</Form.Label>
-                      <Form.Select
-                        value={colaboradorId}
-                        onChange={(e) => setColaboradorId(e.target.value)}
-                        required
-                      >
-                        <option value="">Selecione...</option>
-                        {usuarios.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.nome} ({u.email})
-                          </option>
-                        ))}
-                      </Form.Select>
-                    </Form.Group>
+                    <CampoSelecao
+                      rotulo="Colaborador analisado"
+                      obrigatorio
+                      value={colaboradorId}
+                      onChange={(e) => setColaboradorId(e.target.value)}
+                      erro={errosCampo.colaborador}
+                    >
+                      <option value="">Selecione...</option>
+                      {usuarios.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.nome} ({u.email})
+                        </option>
+                      ))}
+                    </CampoSelecao>
                   </Col>
                   <Col md={4}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Setor</Form.Label>
+                      <Form.Label className="sg-label">Setor</Form.Label>
                       <Form.Control
                         type="text"
+                        className="sg-input"
                         value={colaboradorSelecionado?.setor || ""}
                         readOnly
                         disabled
@@ -167,56 +183,63 @@ export default function EditarNcPage() {
                   </Col>
                 </Row>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Criticidade</Form.Label>
-                  <Form.Select
-                    value={criticidade}
-                    onChange={(e) => setCriticidade(e.target.value)}
-                  >
-                    {OPCOES_CRITICIDADE.map((opcao) => (
-                      <option key={opcao} value={opcao}>{opcao}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
+                <CampoSelecao
+                  rotulo="Criticidade"
+                  value={criticidade}
+                  onChange={(e) => setCriticidade(e.target.value)}
+                >
+                  {OPCOES_CRITICIDADE.map((opcao) => (
+                    <option key={opcao} value={opcao}>
+                      {opcao}
+                    </option>
+                  ))}
+                </CampoSelecao>
+              </div>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Descrição *</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={4}
-                    value={descricao}
-                    onChange={(e) => setDescricao(e.target.value)}
-                    required
-                  />
-                </Form.Group>
+              <div className="sg-secao-form">
+                <h2 className="sg-secao-form__titulo">Detalhes</h2>
+                <p className="sg-secao-form__descricao">
+                  Descreva a situação e atualize as causas.
+                </p>
+
+                <CampoTextoArea
+                  rotulo="Descrição"
+                  obrigatorio
+                  rows={4}
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  erro={errosCampo.descricao}
+                  placeholder="Descreva o que aconteceu..."
+                />
 
                 <Form.Group className="mb-4">
-                  <Form.Label>Causas</Form.Label>
+                  <Form.Label className="sg-label">Causas</Form.Label>
                   <CampoCausas
                     valor={causas}
                     aoMudar={setCausas}
                     sugestoes={causasConhecidas}
                   />
-                  <Form.Text className="text-muted">
+                  <Form.Text className="sg-helper">
                     Digite e pressione Enter.
                   </Form.Text>
                 </Form.Group>
+              </div>
 
-                <div className="d-flex gap-2">
-                  <Button type="submit" variant="primary" disabled={enviando}>
-                    {enviando ? "Salvando..." : "Salvar alterações"}
-                  </Button>
-                  <Button
-                    variant="outline-secondary"
-                    onClick={() => navigate(`/nc/${id}`)}
-                    disabled={enviando}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              </Form>
-            </Card.Body>
-          </Card>
+              <div className="sg-secao-form d-flex gap-2">
+                <Botao type="submit" variante="primario" carregando={enviando} tamanho="lg">
+                  Salvar alterações
+                </Botao>
+                <Botao
+                  variante="secundario"
+                  tamanho="lg"
+                  onClick={() => navigate(`/nc/${id}`)}
+                  disabled={enviando}
+                >
+                  Cancelar
+                </Botao>
+              </div>
+            </Form>
+          </div>
         ) : null}
       </Container>
     </div>

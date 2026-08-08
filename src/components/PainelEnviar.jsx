@@ -1,10 +1,9 @@
 import { useState } from "react";
-import Card from "react-bootstrap/Card";
-import Button from "react-bootstrap/Button";
-import Alert from "react-bootstrap/Alert";
 
 import { enviarNc } from "../services/ncService";
 import { ErroApi } from "../services/api";
+import Botao from "./ui/Botao";
+import MensagemErro from "./ui/MensagemErro";
 
 /**
  * Exibido só para o ADM, quando a NC está 'validada'.
@@ -28,20 +27,22 @@ export default function PainelEnviar({ nc, aoConcluir }) {
   }
 
   return (
-    <Card className="shadow-sm border-primary">
-      <Card.Body>
-        <Card.Title className="h6">Enviar ao colaborador</Card.Title>
-        <Card.Text className="text-muted small">
+    <div className="sg-painel">
+      <div className="sg-painel__cabecalho">
+        <h2 className="sg-painel__titulo">Enviar ao colaborador</h2>
+      </div>
+      <div className="sg-painel__corpo">
+        <p className="texto-secundario texto-sm mb-3">
           Esta NC foi validada. Ao enviar, o colaborador analisado e seu
           supervisor passam a ter acesso a ela.
-        </Card.Text>
+        </p>
 
-        {erro && <Alert variant="danger">{erro}</Alert>}
+        {erro && <MensagemErro mensagem={erro} />}
 
-        <Button variant="primary" disabled={enviando} onClick={confirmar}>
-          {enviando ? "Enviando..." : "Enviar"}
-        </Button>
-      </Card.Body>
-    </Card>
+        <Botao variante="primario" carregando={enviando} onClick={confirmar}>
+          Enviar
+        </Botao>
+      </div>
+    </div>
   );
 }

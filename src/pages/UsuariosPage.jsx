@@ -1,14 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "react-bootstrap/Container";
 import Table from "react-bootstrap/Table";
 import Badge from "react-bootstrap/Badge";
-import Button from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
-import Alert from "react-bootstrap/Alert";
-import Spinner from "react-bootstrap/Spinner";
+import Button from "react-bootstrap/Button";
 
 import BarraNavegacao from "../components/BarraNavegacao";
 import {
@@ -20,6 +18,13 @@ import {
 } from "../services/usuarioService";
 import { useAuth } from "../context/AuthContext";
 import { ErroApi } from "../services/api";
+import CabecalhoPagina from "../components/ui/CabecalhoPagina";
+import Botao from "../components/ui/Botao";
+import EstadoCarregamento from "../components/ui/EstadoCarregamento";
+import EstadoVazio from "../components/ui/EstadoVazio";
+import MensagemErro from "../components/ui/MensagemErro";
+import CampoTexto from "../components/ui/CampoTexto";
+import CampoSelecao from "../components/ui/CampoSelecao";
 
 const NOME_PAPEL = {
   adm: "Administrador",
@@ -28,9 +33,9 @@ const NOME_PAPEL = {
 };
 
 const COR_PAPEL = {
-  adm: "dark",
-  supervisor: "primary",
-  funcionario: "secondary",
+  adm: "sg-badge--escuro",
+  supervisor: "sg-badge--azul",
+  funcionario: "sg-badge--cinza",
 };
 
 const PAPEIS_OPCOES = [
@@ -39,7 +44,6 @@ const PAPEIS_OPCOES = [
   { value: "adm", label: "Administrador (Qualidade)" },
 ];
 
-// ─── Formulário reutilizado para cadastro e edição ───────────────────────────
 function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
   const editando = !!usuario;
 
@@ -103,107 +107,84 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
 
   return (
     <Form onSubmit={aoEnviar}>
-      {erro && <Alert variant="danger">{erro}</Alert>}
+      {erro && <MensagemErro mensagem={erro} />}
 
-      <Form.Group className="mb-3">
-        <Form.Label>Nome *</Form.Label>
-        <Form.Control
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          required
-          autoFocus
-        />
-      </Form.Group>
+      <CampoTexto
+        rotulo="Nome"
+        obrigatorio
+        value={nome}
+        onChange={(e) => setNome(e.target.value)}
+        autoFocus
+      />
 
       {!editando && (
-        <Form.Group className="mb-3">
-          <Form.Label>Email *</Form.Label>
-          <Form.Control
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </Form.Group>
+        <CampoTexto
+          rotulo="Email"
+          obrigatorio
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
       )}
 
-      <Form.Group className="mb-3">
-        <Form.Label>Setor</Form.Label>
-        <Form.Control
-          value={setor}
-          onChange={(e) => setSetor(e.target.value)}
-        />
-      </Form.Group>
+      <CampoTexto
+        rotulo="Setor"
+        value={setor}
+        onChange={(e) => setSetor(e.target.value)}
+      />
 
-      <Form.Group className="mb-3">
-        <Form.Label>Papel *</Form.Label>
-        <Form.Select
-          value={papel}
-          onChange={(e) => setPapel(e.target.value)}
-        >
-          {PAPEIS_OPCOES.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </Form.Select>
-      </Form.Group>
+      <CampoSelecao
+        rotulo="Papel"
+        obrigatorio
+        value={papel}
+        onChange={(e) => setPapel(e.target.value)}
+      >
+        {PAPEIS_OPCOES.map((p) => (
+          <option key={p.value} value={p.value}>
+            {p.label}
+          </option>
+        ))}
+      </CampoSelecao>
 
       {papel !== "adm" && (
-        <Form.Group className="mb-3">
-          <Form.Label>Supervisor *</Form.Label>
-          <Form.Select
-            value={supervisorId}
-            onChange={(e) => setSupervisorId(e.target.value)}
-            required
-          >
-            <option value="">Selecione...</option>
-            {supervisoresDisponiveis.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nome}
-              </option>
-            ))}
-          </Form.Select>
-        </Form.Group>
+        <CampoSelecao
+          rotulo="Supervisor"
+          obrigatorio
+          value={supervisorId}
+          onChange={(e) => setSupervisorId(e.target.value)}
+        >
+          <option value="">Selecione...</option>
+          {supervisoresDisponiveis.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nome}
+            </option>
+          ))}
+        </CampoSelecao>
       )}
 
       {!editando && (
-        <Form.Group className="mb-4">
-          <Form.Label>Senha inicial (provisória) *</Form.Label>
-          <Form.Control
-            type="text"
-            value={senhaInicial}
-            onChange={(e) => setSenhaInicial(e.target.value)}
-            placeholder="Ao menos 6 caracteres"
-            required
-          />
-          <Form.Text className="text-muted">
-            O usuário será obrigado a trocar no primeiro acesso.
-          </Form.Text>
-        </Form.Group>
+        <CampoTexto
+          rotulo="Senha inicial (provisória)"
+          obrigatorio
+          value={senhaInicial}
+          onChange={(e) => setSenhaInicial(e.target.value)}
+          placeholder="Ao menos 6 caracteres"
+          helper="O usuário será obrigado a trocar no primeiro acesso."
+        />
       )}
 
       <div className="d-flex gap-2">
-        <Button type="submit" variant="primary" disabled={enviando}>
-          {enviando
-            ? "Salvando..."
-            : editando
-              ? "Salvar alterações"
-              : "Cadastrar"}
-        </Button>
-        <Button
-          variant="outline-secondary"
-          onClick={aoFechar}
-          disabled={enviando}
-        >
+        <Botao type="submit" variante="primario" carregando={enviando}>
+          {editando ? "Salvar alterações" : "Cadastrar"}
+        </Botao>
+        <Botao variante="secundario" onClick={aoFechar} disabled={enviando}>
           Cancelar
-        </Button>
+        </Botao>
       </div>
     </Form>
   );
 }
 
-// ─── Página principal ─────────────────────────────────────────────────────────
 export default function UsuariosPage() {
   const { usuario: usuarioLogado } = useAuth();
   const navigate = useNavigate();
@@ -212,10 +193,9 @@ export default function UsuariosPage() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
-  // Modal: "novo" | { usuario } para editar | null
   const [modal, setModal] = useState(null);
 
-  async function carregar() {
+  const carregar = useCallback(async () => {
     setCarregando(true);
 
     try {
@@ -229,10 +209,13 @@ export default function UsuariosPage() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    carregar();
+    (async () => {
+      await carregar();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function toggleAtivo(usuario) {
@@ -243,7 +226,7 @@ export default function UsuariosPage() {
         await reativarUsuario(usuario.id);
       }
 
-      carregar();
+      await carregar();
     } catch (e) {
       setErro(
         e instanceof ErroApi
@@ -280,119 +263,120 @@ export default function UsuariosPage() {
   return (
     <div>
       <BarraNavegacao />
+      <Container className="sg-container">
+        <CabecalhoPagina
+          titulo="Usuários"
+          subtitulo="Gerencie os usuários e permissões do sistema"
+          acoes={
+            <Botao variante="primario" onClick={() => setModal("novo")}>
+              + Novo usuário
+            </Botao>
+          }
+        />
 
-      <Container>
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h1 className="h4 mb-0">Usuários</h1>
-          <Button variant="primary" onClick={() => setModal("novo")}>
-            + Novo usuário
-          </Button>
-        </div>
-
-        {erro && (
-          <Alert variant="danger" dismissible onClose={() => setErro("")}>
-            {erro}
-          </Alert>
-        )}
+        {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
 
         {carregando ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" />
-          </div>
+          <EstadoCarregamento mensagem="Carregando usuários..." />
+        ) : usuarios.length === 0 ? (
+          <EstadoVazio
+            titulo="Nenhum usuário cadastrado"
+            descricao="Cadastre o primeiro usuário para começar."
+          />
         ) : (
-          <Table hover responsive className="bg-white shadow-sm align-middle">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Email</th>
-                <th>Setor</th>
-                <th>Papel</th>
-                <th>Senha</th>
-                <th>Status</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {usuarios.map((u) => (
-                <tr
-                  key={u.id}
-                  className={u.ativo ? "" : "table-secondary text-muted"}
-                >
-                  <td>{u.nome}</td>
-                  <td>{u.email}</td>
-                  <td>{u.setor || "-"}</td>
-                  <td>
-                    <Badge bg={COR_PAPEL[u.papel] ?? "secondary"}>
-                      {NOME_PAPEL[u.papel] ?? u.papel}
-                    </Badge>
-                  </td>
-                  <td>
-                    <Badge
-                      bg={u.senha_provisoria ? "warning" : "success"}
-                      text={u.senha_provisoria ? "dark" : undefined}
-                    >
-                      {u.senha_provisoria ? "Provisória" : "Definitiva"}
-                    </Badge>
-                  </td>
-                  <td>
-                    <Badge bg={u.ativo ? "success" : "danger"}>
-                      {u.ativo ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </td>
-                  <td>
-                    <div className="d-flex gap-2">
-                      {podeVerEstatisticasDoUsuario(u) && (
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          onClick={() =>
-                            navigate(`/usuarios/${u.id}/estatisticas`)
-                          }
-                        >
-                          Estatísticas
-                        </Button>
-                      )}
-
-                      <ButtonGroup size="sm">
-                        <Button
-                          variant="outline-secondary"
-                          onClick={() => setModal(u)}
-                        >
-                          Editar
-                        </Button>
-
-                        {u.id !== usuarioLogado?.id && (
-                          <Button
-                            variant={
-                              u.ativo
-                                ? "outline-danger"
-                                : "outline-success"
-                            }
-                            onClick={() => toggleAtivo(u)}
-                          >
-                            {u.ativo ? "Desativar" : "Reativar"}
-                          </Button>
-                        )}
-                      </ButtonGroup>
-                    </div>
-                  </td>
+          <div className="sg-tabela-wrap">
+            <Table hover responsive className="align-middle">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Email</th>
+                  <th>Setor</th>
+                  <th>Papel</th>
+                  <th>Senha</th>
+                  <th>Status</th>
+                  <th>Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {usuarios.map((u) => (
+                  <tr
+                    key={u.id}
+                    className={u.ativo ? "" : "table-secondary text-muted"}
+                  >
+                    <td>{u.nome}</td>
+                    <td>{u.email}</td>
+                    <td>{u.setor || "-"}</td>
+                    <td>
+                      <Badge className={COR_PAPEL[u.papel] ?? "sg-badge--cinza"}>
+                        {NOME_PAPEL[u.papel] ?? u.papel}
+                      </Badge>
+                    </td>
+                    <td>
+                      <span
+                        className={`sg-badge ${u.senha_provisoria ? "sg-badge--amarelo" : "sg-badge--verde"
+                          }`}
+                      >
+                        {u.senha_provisoria ? "Provisória" : "Definitiva"}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`sg-badge ${u.ativo ? "sg-badge--verde" : "sg-badge--vermelho"
+                          }`}
+                      >
+                        {u.ativo ? "Ativo" : "Inativo"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="d-flex gap-2">
+                        {podeVerEstatisticasDoUsuario(u) && (
+                          <Botao
+                            variante="secundario"
+                            tamanho="sm"
+                            onClick={() =>
+                              navigate(`/usuarios/${u.id}/estatisticas`)
+                            }
+                          >
+                            Estatísticas
+                          </Botao>
+                        )}
+
+                        <ButtonGroup size="sm">
+                          <Button
+                            variant="outline-secondary"
+                            className="sg-btn sg-btn--subtle sg-btn--sm"
+                            onClick={() => setModal(u)}
+                          >
+                            Editar
+                          </Button>
+
+                          {u.id !== usuarioLogado?.id && (
+                            <Button
+                              variant={
+                                u.ativo ? "outline-danger" : "outline-success"
+                              }
+                              className={`sg-btn sg-btn--sm ${u.ativo ? "sg-btn--perigo" : "sg-btn--sucesso"
+                                }`}
+                              onClick={() => toggleAtivo(u)}
+                            >
+                              {u.ativo ? "Desativar" : "Reativar"}
+                            </Button>
+                          )}
+                        </ButtonGroup>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
         )}
       </Container>
 
-      <Modal
-        show={modal !== null}
-        onHide={() => setModal(null)}
-        centered
-      >
+      <Modal show={modal !== null} onHide={() => setModal(null)} centered>
         <Modal.Header closeButton>
           <Modal.Title className="h5">{tituloModal}</Modal.Title>
         </Modal.Header>
-
         <Modal.Body>
           {modal !== null && (
             <FormularioUsuario

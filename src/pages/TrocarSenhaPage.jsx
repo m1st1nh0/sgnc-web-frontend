@@ -1,16 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Container from "react-bootstrap/Container";
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
-import Card from "react-bootstrap/Card";
 import Form from "react-bootstrap/Form";
-import Button from "react-bootstrap/Button";
-import Alert from "react-bootstrap/Alert";
 
 import { useAuth } from "../context/AuthContext";
 import { trocarSenha } from "../services/authService";
 import { ErroApi } from "../services/api";
+import AuthLayout from "../components/ui/AuthLayout";
+import Botao from "../components/ui/Botao";
+import CampoTexto from "../components/ui/CampoTexto";
+import MensagemErro from "../components/ui/MensagemErro";
 
 export default function TrocarSenhaPage() {
   const { sair } = useAuth();
@@ -38,6 +36,9 @@ export default function TrocarSenhaPage() {
     setCarregando(true);
     try {
       await trocarSenha(senhaAtual, senhaNova);
+      // Logout intencional: após trocar a senha, o token antigo fica
+      // inválido. Sair força o usuário a entrar de novo e obter um token
+      // novo, evitando chamadas à API com token velho.
       sair();
       navigate("/login", {
         replace: true,
@@ -53,59 +54,51 @@ export default function TrocarSenhaPage() {
   }
 
   return (
-    <Container className="d-flex align-items-center justify-content-center min-vh-100">
-      <Row className="w-100">
-        <Col xs={12} sm={8} md={5} lg={4} className="mx-auto">
-          <Card className="shadow-sm">
-            <Card.Body className="p-4">
-              <h1 className="h4 mb-1">Defina sua senha</h1>
-              <p className="text-muted mb-4">
-                Esta é sua primeira vez acessando o sistema. Por segurança, defina
-                uma senha só sua antes de continuar.
-              </p>
+    <AuthLayout>
+      <h1 className="h4 mb-1">Defina sua senha</h1>
+      <p className="texto-secundario mb-4">
+        Esta é sua primeira vez acessando o sistema. Por segurança, defina
+        uma senha só sua antes de continuar.
+      </p>
 
-              {erro && <Alert variant="danger">{erro}</Alert>}
+      {erro && <MensagemErro mensagem={erro} />}
 
-              <Form onSubmit={aoEnviar}>
-                <Form.Group className="mb-3" controlId="senhaAtual">
-                  <Form.Label>Senha provisória (recebida do administrador)</Form.Label>
-                  <Form.Control
-                    type="password"
-                    value={senhaAtual}
-                    onChange={(e) => setSenhaAtual(e.target.value)}
-                    required
-                    autoFocus
-                  />
-                </Form.Group>
+      <Form onSubmit={aoEnviar}>
+        <CampoTexto
+          rotulo="Senha provisória (recebida do administrador)"
+          type="password"
+          value={senhaAtual}
+          onChange={(e) => setSenhaAtual(e.target.value)}
+          required
+          autoFocus
+        />
 
-                <Form.Group className="mb-3" controlId="senhaNova">
-                  <Form.Label>Nova senha</Form.Label>
-                  <Form.Control
-                    type="password"
-                    value={senhaNova}
-                    onChange={(e) => setSenhaNova(e.target.value)}
-                    required
-                  />
-                </Form.Group>
+        <CampoTexto
+          rotulo="Nova senha"
+          type="password"
+          value={senhaNova}
+          onChange={(e) => setSenhaNova(e.target.value)}
+          required
+        />
 
-                <Form.Group className="mb-4" controlId="confirmacao">
-                  <Form.Label>Confirme a nova senha</Form.Label>
-                  <Form.Control
-                    type="password"
-                    value={confirmacao}
-                    onChange={(e) => setConfirmacao(e.target.value)}
-                    required
-                  />
-                </Form.Group>
+        <CampoTexto
+          rotulo="Confirme a nova senha"
+          type="password"
+          value={confirmacao}
+          onChange={(e) => setConfirmacao(e.target.value)}
+          required
+        />
 
-                <Button type="submit" variant="primary" className="w-100" disabled={carregando}>
-                  {carregando ? "Salvando..." : "Definir senha e continuar"}
-                </Button>
-              </Form>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+        <Botao
+          type="submit"
+          className="w-100"
+          variante="primario"
+          carregando={carregando}
+          tamanho="lg"
+        >
+          Definir senha e continuar
+        </Botao>
+      </Form>
+    </AuthLayout>
   );
 }

@@ -1,31 +1,26 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import Container from "react-bootstrap/Container";
-import Card from "react-bootstrap/Card";
-import Badge from "react-bootstrap/Badge";
-import Spinner from "react-bootstrap/Spinner";
-import Alert from "react-bootstrap/Alert";
-import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
 
 import BarraNavegacao from "../components/BarraNavegacao";
 import PainelAvaliar from "../components/PainelAvaliar";
 import PainelEnviar from "../components/PainelEnviar";
 import PainelFeedback from "../components/PainelFeedback";
 import PainelAceite from "../components/PainelAceite";
-import {
-  buscarNc,
-  listarEvidencias,
-  anexarEvidencia,
-  excluirEvidencia,
-} from "../services/ncService";
-import { infoDoStatus } from "../services/statusNc";
+import { buscarNc, listarEvidencias, anexarEvidencia, excluirEvidencia } from "../services/ncService";
 import { useAuth } from "../context/AuthContext";
 import { ErroApi } from "../services/api";
 import { chamarApi } from "../services/api";
+import { formatarData, formatarDataHora } from "../utils/formato";
+import CabecalhoPagina from "../components/ui/CabecalhoPagina";
+import Botao from "../components/ui/Botao";
+import EstadoCarregamento from "../components/ui/EstadoCarregamento";
+import EstadoVazio from "../components/ui/EstadoVazio";
+import MensagemErro from "../components/ui/MensagemErro";
+import BadgeStatus from "../components/ui/BadgeStatus";
+import BadgePrioridade from "../components/ui/BadgePrioridade";
 
 export default function DetalhesNcPage() {
   const { id } = useParams();
@@ -38,16 +33,13 @@ export default function DetalhesNcPage() {
   const [confirmarExclusaoNc, setConfirmarExclusaoNc] = useState(false);
   const [excluindoNc, setExcluindoNc] = useState(false);
 
-  // evidências
   const [evidencias, setEvidencias] = useState([]);
   const [carregandoEvidencias, setCarregandoEvidencias] = useState(false);
   const [erroEvidencias, setErroEvidencias] = useState("");
   const [arquivoNovo, setArquivoNovo] = useState(null);
   const [enviandoArquivo, setEnviandoArquivo] = useState(false);
 
-  // confirmação de exclusão de evidência
-  const [confirmarExclusaoEvidencia, setConfirmarExclusaoEvidencia] =
-    useState(false);
+  const [confirmarExclusaoEvidencia, setConfirmarExclusaoEvidencia] = useState(false);
   const [evidenciaSelecionada, setEvidenciaSelecionada] = useState(null);
   const [excluindoEvidencia, setExcluindoEvidencia] = useState(false);
 
@@ -56,9 +48,7 @@ export default function DetalhesNcPage() {
       setErro("");
       setNc(await buscarNc(id));
     } catch (e) {
-      setErro(
-        e instanceof ErroApi ? e.message : "Não foi possível carregar a NC."
-      );
+      setErro(e instanceof ErroApi ? e.message : "Não foi possível carregar a NC.");
     } finally {
       setCarregando(false);
     }
@@ -73,9 +63,7 @@ export default function DetalhesNcPage() {
       setEvidencias(lista);
     } catch (e) {
       setErroEvidencias(
-        e instanceof ErroApi
-          ? e.message
-          : "Não foi possível carregar as evidências."
+        e instanceof ErroApi ? e.message : "Não foi possível carregar as evidências."
       );
     } finally {
       setCarregandoEvidencias(false);
@@ -83,8 +71,11 @@ export default function DetalhesNcPage() {
   }
 
   useEffect(() => {
-    carregarNc();
-    carregarEvidencias();
+    (async () => {
+      await carregarNc();
+      await carregarEvidencias();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function excluirNc() {
@@ -93,9 +84,7 @@ export default function DetalhesNcPage() {
       await chamarApi(`/nc/${id}`, { method: "DELETE" });
       navigate("/");
     } catch (e) {
-      setErro(
-        e instanceof ErroApi ? e.message : "Não foi possível excluir a NC."
-      );
+      setErro(e instanceof ErroApi ? e.message : "Não foi possível excluir a NC.");
       setConfirmarExclusaoNc(false);
     } finally {
       setExcluindoNc(false);
@@ -112,9 +101,7 @@ export default function DetalhesNcPage() {
       await carregarEvidencias();
     } catch (e) {
       setErroEvidencias(
-        e instanceof ErroApi
-          ? e.message
-          : "Não foi possível anexar a evidência."
+        e instanceof ErroApi ? e.message : "Não foi possível anexar a evidência."
       );
     } finally {
       setEnviandoArquivo(false);
@@ -137,9 +124,7 @@ export default function DetalhesNcPage() {
       await carregarEvidencias();
     } catch (e) {
       setErroEvidencias(
-        e instanceof ErroApi
-          ? e.message
-          : "Não foi possível excluir a evidência."
+        e instanceof ErroApi ? e.message : "Não foi possível excluir a evidência."
       );
     } finally {
       setExcluindoEvidencia(false);
@@ -160,250 +145,255 @@ export default function DetalhesNcPage() {
   return (
     <div>
       <BarraNavegacao />
-      <Container style={{ maxWidth: "720px" }}>
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <Link to="/">&larr; Voltar para a lista</Link>
-          {nc && (
-            <div className="d-flex gap-2">
-              {podeEditar && (
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  onClick={() => navigate(`/nc/${id}/editar`)}
-                >
-                  Editar
-                </Button>
-              )}
-              {podeExcluirNc && (
-                <Button
-                  variant="outline-danger"
-                  size="sm"
-                  onClick={() => setConfirmarExclusaoNc(true)}
-                >
-                  Excluir
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
+      <Container className="sg-container" style={{ maxWidth: "900px" }}>
+        <CabecalhoPagina
+          titulo={`NC #${id}`}
+          subtitulo={nc ? (nc.descricao?.slice(0, 80) || "Detalhes da não conformidade") : ""}
+          acoes={
+            nc && (
+              <>
+                {podeEditar && (
+                  <Botao variante="secundario" tamanho="sm" onClick={() => navigate(`/nc/${id}/editar`)}>
+                    Editar
+                  </Botao>
+                )}
+                {podeExcluirNc && (
+                  <Botao variante="perigo" tamanho="sm" onClick={() => setConfirmarExclusaoNc(true)}>
+                    Excluir
+                  </Botao>
+                )}
+              </>
+            )
+          }
+        />
 
-        {carregando && (
-          <div className="text-center py-5">
-            <Spinner animation="border" />
-          </div>
-        )}
+        <Link to="/" className="sg-voltar mb-3 d-inline-flex">
+          &larr; Voltar para a lista
+        </Link>
 
-        {erro && <Alert variant="danger">{erro}</Alert>}
+        {carregando && <EstadoCarregamento mensagem="Carregando não conformidade..." />}
+
+        {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
 
         {nc && (
           <div className="d-flex flex-column gap-3">
-            {/* Card principal sempre visível */}
-            <Card className="shadow-sm">
-              <Card.Body className="p-4">
-                <div className="d-flex justify-content-between align-items-start mb-3">
+            {/* Card principal */}
+            <div className="sg-card">
+              <div className="sg-card-body p-4">
+                <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
                   <h1 className="h5 mb-0">NC #{nc.id}</h1>
-                  <Badge bg={infoDoStatus(nc.status).cor}>
-                    {infoDoStatus(nc.status).rotulo}
-                  </Badge>
+                  <div className="d-flex gap-2 flex-wrap">
+                    <BadgePrioridade criticidade={nc.criticidade} />
+                    <BadgeStatus status={nc.status} />
+                  </div>
                 </div>
-                <dl className="row mb-0">
-                  <dt className="col-sm-4">Colaborador analisado</dt>
-                  <dd className="col-sm-8">{nc.colaborador || "-"}</dd>
 
-                  <dt className="col-sm-4">Setor</dt>
-                  <dd className="col-sm-8">{nc.setor || "-"}</dd>
+                <dl className="mb-0">
+                  <div className="sg-detalhe">
+                    <dt className="sg-detalhe__rotulo">Ocorrência</dt>
+                    <dd className="sg-detalhe__valor">{formatarData(nc.data)}</dd>
+                  </div>
+                  <div className="sg-detalhe">
+                    <dt className="sg-detalhe__rotulo">Colaborador analisado</dt>
+                    <dd className="sg-detalhe__valor">{nc.colaborador || "-"}</dd>
+                  </div>
+                  <div className="sg-detalhe">
+                    <dt className="sg-detalhe__rotulo">Setor</dt>
+                    <dd className="sg-detalhe__valor">{nc.setor || "-"}</dd>
+                  </div>
+                  <div className="sg-detalhe">
+                    <dt className="sg-detalhe__rotulo">Chamado</dt>
+                    <dd className="sg-detalhe__valor">{nc.chamado || "-"}</dd>
+                  </div>
+                  <div className="sg-detalhe">
+                    <dt className="sg-detalhe__rotulo">Reincidência</dt>
+                    <dd className="sg-detalhe__valor">{nc.reincidencia ?? "-"}</dd>
+                  </div>
+                  <div className="sg-detalhe">
+                    <dt className="sg-detalhe__rotulo">Descrição</dt>
+                    <dd className="sg-detalhe__valor">{nc.descricao || "-"}</dd>
+                  </div>
+                  <div className="sg-detalhe">
+                    <dt className="sg-detalhe__rotulo">Causas</dt>
+                    <dd className="sg-detalhe__valor">
+                      {nc.causas?.length > 0 ? nc.causas.join(", ") : "-"}
+                    </dd>
+                  </div>
 
-                  <dt className="col-sm-4">Chamado</dt>
-                  <dd className="col-sm-8">{nc.chamado || "-"}</dd>
-
-                  <dt className="col-sm-4">Criticidade</dt>
-                  <dd className="col-sm-8">{nc.criticidade}</dd>
-
-                  <dt className="col-sm-4">Reincidência</dt>
-                  <dd className="col-sm-8">{nc.reincidencia}</dd>
-
-                  <dt className="col-sm-4">Descrição</dt>
-                  <dd className="col-sm-8">{nc.descricao}</dd>
-
-                  <dt className="col-sm-4">Causas</dt>
-                  <dd className="col-sm-8">
-                    {nc.causas?.length > 0 ? nc.causas.join(", ") : "-"}
-                  </dd>
-
-                  {/* Esses campos só fazem sentido para quem vê tudo;
-                      para o autor, o backend já pode estar zerando eles */}
                   {podeVerDetalhesCompletos && nc.motivo_invalidacao && (
-                    <>
-                      <dt className="col-sm-4 text-danger">
+                    <div className="sg-detalhe">
+                      <dt className="sg-detalhe__rotulo" style={{ color: "var(--erro)" }}>
                         Motivo da invalidação
                       </dt>
-                      <dd className="col-sm-8 text-danger">
+                      <dd className="sg-detalhe__valor" style={{ color: "var(--erro)" }}>
                         {nc.motivo_invalidacao}
                       </dd>
-                    </>
+                    </div>
                   )}
 
                   {podeVerDetalhesCompletos && nc.feedback && (
-                    <>
-                      <dt className="col-sm-4">Feedback</dt>
-                      <dd className="col-sm-8">{nc.feedback}</dd>
-                    </>
+                    <div className="sg-detalhe">
+                      <dt className="sg-detalhe__rotulo">Feedback</dt>
+                      <dd className="sg-detalhe__valor">{nc.feedback}</dd>
+                    </div>
                   )}
 
                   {podeVerDetalhesCompletos && nc.texto_aceite && (
+                    <div className="sg-detalhe">
+                      <dt className="sg-detalhe__rotulo">Aceite registrado</dt>
+                      <dd className="sg-detalhe__valor fst-italic">"{nc.texto_aceite}"</dd>
+                    </div>
+                  )}
+
+                  {podeVerDetalhesCompletos && (
                     <>
-                      <dt className="col-sm-4">Aceite registrado</dt>
-                      <dd className="col-sm-8 fst-italic">
-                        "{nc.texto_aceite}"
-                      </dd>
+                      {nc.validado_em && (
+                        <div className="sg-detalhe">
+                          <dt className="sg-detalhe__rotulo">Validado em</dt>
+                          <dd className="sg-detalhe__valor">{formatarDataHora(nc.validado_em)}</dd>
+                        </div>
+                      )}
+                      {nc.feedback_aplicado_em && (
+                        <div className="sg-detalhe">
+                          <dt className="sg-detalhe__rotulo">Feedback aplicado em</dt>
+                          <dd className="sg-detalhe__valor">{formatarDataHora(nc.feedback_aplicado_em)}</dd>
+                        </div>
+                      )}
+                      {nc.aceito_em && (
+                        <div className="sg-detalhe">
+                          <dt className="sg-detalhe__rotulo">Aceito em</dt>
+                          <dd className="sg-detalhe__valor">{formatarDataHora(nc.aceito_em)}</dd>
+                        </div>
+                      )}
+                      <div className="sg-detalhe">
+                        <dt className="sg-detalhe__rotulo">Criado em</dt>
+                        <dd className="sg-detalhe__valor">{formatarDataHora(nc.criado_em)}</dd>
+                      </div>
+                      <div className="sg-detalhe">
+                        <dt className="sg-detalhe__rotulo">Atualizado em</dt>
+                        <dd className="sg-detalhe__valor">{formatarDataHora(nc.atualizado_em)}</dd>
+                      </div>
                     </>
                   )}
                 </dl>
 
                 {podeVerResumo && (
-                  <Alert variant="info" className="mt-3 mb-0 small">
+                  <div className="sg-alerta sg-alerta--info mt-3 mb-0">
                     Você abriu esta NC para {nc.colaborador}. Os detalhes de
                     avaliação, feedback, aceite e evidências são visíveis para
                     o colaborador e o responsável. Aqui você acompanha o status
                     e os dados que registrou.
-                  </Alert>
+                  </div>
                 )}
-              </Card.Body>
-            </Card>
+              </div>
+            </div>
 
-            {/* Painéis de fluxo só para quem vê detalhes completos */}
+            {/* Painéis de fluxo */}
             {podeVerDetalhesCompletos && ehAdm && nc.status === "aberta" && (
               <PainelAvaliar nc={nc} aoConcluir={setNc} />
             )}
             {podeVerDetalhesCompletos && ehAdm && nc.status === "validada" && (
               <PainelEnviar nc={nc} aoConcluir={setNc} />
             )}
-            {podeVerDetalhesCompletos &&
-              ehAdm &&
-              nc.status === "aguardando_analise" && (
-                <PainelFeedback nc={nc} aoConcluir={setNc} />
-              )}
-            {podeVerDetalhesCompletos &&
-              ehColaboradorDaNc &&
-              nc.status === "aguardando_aceite" && (
-                <PainelAceite nc={nc} aoConcluir={setNc} />
-              )}
+            {podeVerDetalhesCompletos && ehAdm && nc.status === "aguardando_analise" && (
+              <PainelFeedback nc={nc} aoConcluir={setNc} />
+            )}
+            {podeVerDetalhesCompletos && ehColaboradorDaNc && nc.status === "aguardando_aceite" && (
+              <PainelAceite nc={nc} aoConcluir={setNc} />
+            )}
 
-            {/* Card de evidências – também só para quem vê detalhes completos */}
+            {/* Card de evidências */}
             {podeVerDetalhesCompletos && (
-              <Card className="shadow-sm">
-                <Card.Body className="p-4">
-                  <div className="d-flex justify-content-between align-items-center mb-3">
+              <div className="sg-card">
+                <div className="sg-card-body p-4">
+                  <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                     <h2 className="h6 mb-0">Evidências</h2>
-                    {nc.status === "aberta" &&
-                      (ehAdm || ehAutor || ehColaboradorDaNc) && (
-                        <Form className="d-flex align-items-center gap-2">
-                          <Form.Control
-                            type="file"
-                            size="sm"
-                            onChange={(e) =>
-                              setArquivoNovo(e.target.files?.[0] || null)
-                            }
-                          />
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            disabled={!arquivoNovo || enviandoArquivo}
-                            onClick={enviarEvidencia}
-                          >
-                            {enviandoArquivo ? "Enviando..." : "Anexar"}
-                          </Button>
-                        </Form>
-                      )}
+                    {nc.status === "aberta" && (ehAdm || ehAutor || ehColaboradorDaNc) && (
+                      <div className="d-flex align-items-center gap-2">
+                        <Form.Control
+                          type="file"
+                          size="sm"
+                          className="sg-input"
+                          onChange={(e) => setArquivoNovo(e.target.files?.[0] || null)}
+                        />
+                        <Botao
+                          variante="primario"
+                          tamanho="sm"
+                          carregando={enviandoArquivo}
+                          disabled={!arquivoNovo}
+                          onClick={enviarEvidencia}
+                        >
+                          Anexar
+                        </Botao>
+                      </div>
+                    )}
                   </div>
 
                   {erroEvidencias && (
-                    <Alert variant="danger" className="mb-3">
-                      {erroEvidencias}
-                    </Alert>
+                    <MensagemErro mensagem={erroEvidencias} onFechar={() => setErroEvidencias("")} />
                   )}
 
                   {carregandoEvidencias && (
-                    <div className="text-center py-3">
-                      <Spinner animation="border" size="sm" />
-                    </div>
+                    <EstadoCarregamento mensagem="Carregando evidências..." compacto />
                   )}
 
                   {!carregandoEvidencias && evidencias.length === 0 && (
-                    <p className="text-muted mb-0">
-                      Nenhuma evidência anexada até o momento.
-                    </p>
+                    <EstadoVazio
+                      titulo="Nenhuma evidência anexada"
+                      descricao="As evidências enviadas aparecerão aqui."
+                    />
                   )}
 
                   {!carregandoEvidencias && evidencias.length > 0 && (
-                    <div className="d-flex flex-column gap-2">
+                    <div className="sg-evidencias-lista">
                       {evidencias.map((ev) => (
-                        <div
-                          key={ev.id}
-                          className="d-flex justify-content-between align-items-center border rounded px-3 py-2"
-                        >
-                          <div className="me-3">
-                            <div className="fw-semibold">
-                              {ev.nome_original}
-                            </div>
+                        <div key={ev.id} className="sg-evidencia-item">
+                          <div className="me-3 min-w-0">
+                            <div className="sg-evidencia-item__nome">{ev.nome_original}</div>
                             {ev.url_temporaria && (
                               <a
                                 href={ev.url_temporaria}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="small"
+                                className="sg-evidencia-item__link"
                               >
                                 Abrir arquivo
                               </a>
                             )}
                           </div>
                           {(ehAdm || (ehAutor && nc.status === "aberta")) && (
-                            <Button
-                              variant="outline-danger"
-                              size="sm"
+                            <Botao
+                              variante="secundario"
+                              tamanho="sm"
                               onClick={() => abrirModalExclusaoEvidencia(ev)}
                             >
                               Remover
-                            </Button>
+                            </Botao>
                           )}
                         </div>
                       ))}
                     </div>
                   )}
-                </Card.Body>
-              </Card>
+                </div>
+              </div>
             )}
           </div>
         )}
       </Container>
 
       {/* Modal de exclusão da NC */}
-      <Modal
-        show={confirmarExclusaoNc}
-        onHide={() => setConfirmarExclusaoNc(false)}
-        centered
-      >
+      <Modal show={confirmarExclusaoNc} onHide={() => setConfirmarExclusaoNc(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title className="h5">Excluir NC #{id}?</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
-          Esta ação é permanente e não pode ser desfeita. Tem certeza?
-        </Modal.Body>
+        <Modal.Body>Esta ação é permanente e não pode ser desfeita. Tem certeza?</Modal.Body>
         <Modal.Footer>
-          <Button
-            variant="outline-secondary"
-            onClick={() => setConfirmarExclusaoNc(false)}
-            disabled={excluindoNc}
-          >
+          <Botao variante="secundario" onClick={() => setConfirmarExclusaoNc(false)} disabled={excluindoNc}>
             Cancelar
-          </Button>
-          <Button
-            variant="danger"
-            onClick={excluirNc}
-            disabled={excluindoNc}
-          >
-            {excluindoNc ? "Excluindo..." : "Sim, excluir"}
-          </Button>
+          </Botao>
+          <Botao variante="perigo" onClick={excluirNc} carregando={excluindoNc}>
+            Sim, excluir
+          </Botao>
         </Modal.Footer>
       </Modal>
 
@@ -419,10 +409,7 @@ export default function DetalhesNcPage() {
         <Modal.Header closeButton>
           <Modal.Title className="h5">
             Remover evidência
-            {evidenciaSelecionada
-              ? ` "${evidenciaSelecionada.nome_original}"`
-              : ""}
-            ?
+            {evidenciaSelecionada ? ` "${evidenciaSelecionada.nome_original}"` : ""}?
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -430,8 +417,8 @@ export default function DetalhesNcPage() {
           evidências desta NC. Deseja continuar?
         </Modal.Body>
         <Modal.Footer>
-          <Button
-            variant="outline-secondary"
+          <Botao
+            variante="secundario"
             onClick={() => {
               setConfirmarExclusaoEvidencia(false);
               setEvidenciaSelecionada(null);
@@ -439,14 +426,10 @@ export default function DetalhesNcPage() {
             disabled={excluindoEvidencia}
           >
             Cancelar
-          </Button>
-          <Button
-            variant="danger"
-            onClick={confirmarExcluirEvidencia}
-            disabled={excluindoEvidencia}
-          >
-            {excluindoEvidencia ? "Removendo..." : "Sim, remover"}
-          </Button>
+          </Botao>
+          <Botao variante="perigo" onClick={confirmarExcluirEvidencia} carregando={excluindoEvidencia}>
+            Sim, remover
+          </Botao>
         </Modal.Footer>
       </Modal>
     </div>

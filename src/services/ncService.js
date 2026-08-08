@@ -16,6 +16,10 @@ export function editarNc(id, dados) {
   return chamarApi(`/nc/${id}`, { method: "PUT", body: dados });
 }
 
+export function excluirNc(id) {
+  return chamarApi(`/nc/${id}`, { method: "DELETE" });
+}
+
 export function avaliarNc(id, decisao, motivoInvalidacao) {
   return chamarApi(`/nc/${id}/avaliar`, {
     method: "POST",
