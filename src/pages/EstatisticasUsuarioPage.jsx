@@ -113,7 +113,7 @@ export default function EstatisticasUsuarioPage() {
                       {estatisticas.setor || "Setor não informado"}
                     </p>
                   </div>
-                  <span className="sg-badge sg-badge--azul">
+                  <span className="sg-badge bg-primary sg-badge--azul">
                     Últimos 12 meses
                   </span>
                 </div>
@@ -213,8 +213,8 @@ export default function EstatisticasUsuarioPage() {
                                   <td>
                                     <span
                                       className={`sg-badge ${medida.status === "aplicada"
-                                          ? "sg-badge--verde"
-                                          : "sg-badge--cinza"
+                                        ? "sg-badge--verde"
+                                        : "sg-badge--cinza"
                                         }`}
                                     >
                                       {medida.status}
