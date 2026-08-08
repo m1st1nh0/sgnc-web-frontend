@@ -7,7 +7,7 @@ import Col from "react-bootstrap/Col";
 import Alert from "react-bootstrap/Alert";
 
 import BarraNavegacao from "../components/BarraNavegacao";
-import CampoCausas from "../components/CampoCausas";
+import CampoCausas from "../components/CampoCausas.jsx";
 import { buscarNc, editarNc, listarCausasConhecidas } from "../services/ncService";
 import { listarUsuarios } from "../services/usuarioService";
 import { useAuth } from "../context/AuthContext";
