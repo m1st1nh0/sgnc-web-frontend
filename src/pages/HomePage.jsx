@@ -38,39 +38,51 @@ export default function HomePage() {
   const [usuarios, setUsuarios] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [atualizando, setAtualizando] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState("todas");
 
-  useEffect(() => {
-    async function carregar() {
-      try {
-        // Usa allSettled: a lista de usuários é auxiliar (resolve nomes de
-        // "aberto_por"). Se falhar, o dashboard continua funcionando com "-".
-        const [resultadoNcs, resultadoUsuarios] = await Promise.allSettled([
-          listarNcs(),
-          listarUsuarios(),
-        ]);
+  async function carregar() {
+    try {
+      // Usa allSettled: a lista de usuários é auxiliar (resolve nomes de
+      // "aberto_por"). Se falhar, o dashboard continua funcionando com "-".
+      const [resultadoNcs, resultadoUsuarios] = await Promise.allSettled([
+        listarNcs(),
+        listarUsuarios(),
+      ]);
 
-        if (resultadoNcs.status === "fulfilled") {
-          setNcs(resultadoNcs.value);
-        } else {
-          throw resultadoNcs.reason;
-        }
-
-        if (resultadoUsuarios.status === "fulfilled") {
-          setUsuarios(resultadoUsuarios.value);
-        }
-      } catch (e) {
-        setErro(
-          e instanceof ErroApi
-            ? e.message
-            : "Não foi possível carregar as Não Conformidades."
-        );
-      } finally {
-        setCarregando(false);
+      if (resultadoNcs.status === "fulfilled") {
+        setNcs(resultadoNcs.value);
+      } else {
+        throw resultadoNcs.reason;
       }
+
+      if (resultadoUsuarios.status === "fulfilled") {
+        setUsuarios(resultadoUsuarios.value);
+      }
+    } catch (e) {
+      setErro(
+        e instanceof ErroApi
+          ? e.message
+          : "Não foi possível carregar as Não Conformidades."
+      );
+    } finally {
+      setCarregando(false);
     }
+  }
+
+  useEffect(() => {
+    // Busca inicial das NCs ao montar o dashboard.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     carregar();
   }, []);
+
+  // Atualização manual: mantém a tela visível e recarrega os dados.
+  async function atualizar() {
+    setAtualizando(true);
+    setErro("");
+    await carregar();
+    setAtualizando(false);
+  }
 
   const ncsFiltradas = useMemo(() => {
     const filtro = ABAS_FILTRO.find((a) => a.chave === abaAtiva);
@@ -182,9 +194,16 @@ export default function HomePage() {
                 <span className="sg-acao-rapida__icone" aria-hidden="true">+</span>
                 Abrir Não Conformidade
               </Link>
-              <Link to="/" className="sg-acao-rapida">
+              <Link
+                to="/"
+                className="sg-acao-rapida"
+                onClick={(e) => {
+                  e.preventDefault();
+                  atualizar();
+                }}
+              >
                 <span className="sg-acao-rapida__icone" aria-hidden="true">↻</span>
-                Ver todas as NCs
+                {atualizando ? "Atualizando NCs..." : "Atualizar as NCs"}
               </Link>
             </div>
 
