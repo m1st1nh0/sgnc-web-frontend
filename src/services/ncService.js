@@ -66,3 +66,10 @@ export function excluirEvidencia(ncId, evidenciaId) {
     method: "DELETE",
   });
 }
+
+export function registrarMedidaDisciplinar(dados) {
+  return chamarApi("/nc/medidas-disciplinares", {
+    method: "POST",
+    body: dados,
+  });
+}

@@ -6,11 +6,15 @@ import Table from "react-bootstrap/Table";
 import BarraNavegacao from "../components/BarraNavegacao";
 import { useAuth } from "../context/AuthContext";
 import { buscarEstatisticasUsuario } from "../services/usuarioService";
+import { registrarMedidaDisciplinar } from "../services/ncService";
+import { ErroApi } from "../services/api";
 import CabecalhoPagina from "../components/ui/CabecalhoPagina";
 import CardMetrica from "../components/ui/CardMetrica";
 import EstadoCarregamento from "../components/ui/EstadoCarregamento";
 import EstadoVazio from "../components/ui/EstadoVazio";
 import MensagemErro from "../components/ui/MensagemErro";
+import Botao from "../components/ui/Botao";
+import ModalRegistrarMedida from "../components/ModalRegistrarMedida";
 
 const ROTULOS_MEDIDA = {
   advertencia: "Advertência",
@@ -42,6 +46,17 @@ function corDaMedida(tipo) {
   return CORES_MEDIDA[tipo] || "sg-badge--cinza";
 }
 
+function medidaDaUltimaOcorrencia(causa) {
+  const numero = causa?.ultima_ocorrencia_numero;
+  if (numero == null) return null;
+
+  return (
+    (causa?.medidas || []).find(
+      (m) => Number(m.ocorrencia_gatilho) === Number(numero)
+    ) || null
+  );
+}
+
 export default function EstatisticasUsuarioPage() {
   const { usuarioId } = useParams();
   const { usuario } = useAuth();
@@ -50,30 +65,57 @@ export default function EstatisticasUsuarioPage() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
-  useEffect(() => {
-    async function carregarEstatisticas() {
-      if (!usuarioId) return;
+  async function carregarEstatisticas() {
+    if (!usuarioId) return;
 
-      setCarregando(true);
-      setErro("");
+    setCarregando(true);
+    setErro("");
 
-      try {
-        const resposta = await buscarEstatisticasUsuario(usuarioId);
-        setEstatisticas(resposta);
-      } catch (e) {
-        setErro(
-          e?.message ||
-          "Não foi possível carregar as estatísticas do colaborador."
-        );
-      } finally {
-        setCarregando(false);
-      }
+    try {
+      const resposta = await buscarEstatisticasUsuario(usuarioId);
+      setEstatisticas(resposta);
+    } catch (e) {
+      setErro(
+        e?.message ||
+        "Não foi possível carregar as estatísticas do colaborador."
+      );
+    } finally {
+      setCarregando(false);
     }
+  }
 
+  useEffect(() => {
+    // Busca inicial das estatísticas ao montar a página.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     carregarEstatisticas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuarioId]);
 
   const ehPropriaEstatistica = usuario?.id === usuarioId;
+  const ehAdm = usuario?.papel === "adm";
+
+  const [causaEmRegistro, setCausaEmRegistro] = useState(null);
+  const [vezAberturaModal, setVezAberturaModal] = useState(0);
+  const [registrandoMedida, setRegistrandoMedida] = useState(false);
+  const [erroMedida, setErroMedida] = useState("");
+
+  async function registrarMedida(dados) {
+    setRegistrandoMedida(true);
+    setErroMedida("");
+    try {
+      await registrarMedidaDisciplinar(dados);
+      setCausaEmRegistro(null);
+      await carregarEstatisticas();
+    } catch (e) {
+      setErroMedida(
+        e instanceof ErroApi
+          ? e.message
+          : "Não foi possível registrar a medida disciplinar."
+      );
+    } finally {
+      setRegistrandoMedida(false);
+    }
+  }
 
   const totalMedidas = (estatisticas?.causas || []).reduce(
     (total, causa) => total + (causa.medidas?.length || 0),
@@ -181,6 +223,37 @@ export default function EstatisticasUsuarioPage() {
                       </span>
                     </div>
 
+                    {causa.medida_sugerida && (
+                      <div className="sg-alerta sg-alerta--atencao p-3 mb-3 d-flex flex-wrap align-items-center gap-2">
+                        <span className="texto-sm fw-semibold">
+                          Passível de medida disciplinar
+                        </span>
+                        <span
+                          className={`sg-badge ${corDaMedida(causa.medida_sugerida)}`}
+                        >
+                          {formatarMedida(causa.medida_sugerida)}
+                        </span>
+                        {ehAdm &&
+                          (medidaDaUltimaOcorrencia(causa) ? (
+                            <span className="sg-badge sg-badge--verde">
+                              Medida registrada
+                            </span>
+                          ) : (
+                            <Botao
+                              variante="secundario"
+                              tamanho="sm"
+                              onClick={() => {
+                                setErroMedida("");
+                                setVezAberturaModal((v) => v + 1);
+                                setCausaEmRegistro(causa);
+                              }}
+                            >
+                              Registrar medida
+                            </Botao>
+                          ))}
+                      </div>
+                    )}
+
                     {causa.medidas?.length > 0 ? (
                       <div>
                         <h3 className="h6 mb-2">Medidas disciplinares</h3>
@@ -239,6 +312,16 @@ export default function EstatisticasUsuarioPage() {
           </div>
         )}
       </Container>
+
+      <ModalRegistrarMedida
+        key={`${causaEmRegistro?.causa_id || "fechado"}-${vezAberturaModal}`}
+        visivel={!!causaEmRegistro}
+        causa={causaEmRegistro}
+        erro={erroMedida}
+        aoFechar={() => setCausaEmRegistro(null)}
+        aoRegistrar={registrarMedida}
+        carregando={registrandoMedida}
+      />
     </div>
   );
 }
