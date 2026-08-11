@@ -65,6 +65,11 @@ export default function BarraNavegacao() {
             <Nav.Link as={NavLink} to="/abrir-nc" onClick={aoNavegar} className={isRotaAtiva}>
               Abrir NC
             </Nav.Link>
+            {(usuario?.papel === "adm" || usuario?.papel === "supervisor") && (
+              <Nav.Link as={NavLink} to="/insights" onClick={aoNavegar} className={isRotaAtiva}>
+                Insights
+              </Nav.Link>
+            )}
             {usuario && (
               <Nav.Link
                 as={NavLink}

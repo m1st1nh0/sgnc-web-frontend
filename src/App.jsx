@@ -1,5 +1,6 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import EstatisticasUsuarioPage from "./pages/EstatisticasUsuarioPage";
+import EstadoCarregamento from "./components/ui/EstadoCarregamento";
 import { AuthProvider } from "./context/AuthContext";
 import RotaProtegida from "./components/RotaProtegida";
 import LoginPage from "./pages/LoginPage";
@@ -9,6 +10,11 @@ import AbrirNcPage from "./pages/AbrirNcPage";
 import EditarNcPage from "./pages/EditarNcPage";
 import DetalhesNcPage from "./pages/DetalhesNcPage";
 import UsuariosPage from "./pages/UsuariosPage";
+import EstatisticasUsuarioPage from "./pages/EstatisticasUsuarioPage";
+
+// Carregada sob demanda: a página de Insights usa o Recharts, que fica
+// isolado em um chunk separado para não pesar no carregamento inicial.
+const InsightsPage = lazy(() => import("./pages/InsightsPage"));
 
 export default function App() {
   return (
@@ -22,6 +28,15 @@ export default function App() {
           <Route path="/nc/:id" element={<RotaProtegida><DetalhesNcPage /></RotaProtegida>} />
           <Route path="/nc/:id/editar" element={<RotaProtegida><EditarNcPage /></RotaProtegida>} />
           <Route path="/usuarios" element={<RotaProtegida><UsuariosPage /></RotaProtegida>} />
+          <Route path="/insights" element={
+              <RotaProtegida>
+                <Suspense
+                  fallback={<EstadoCarregamento mensagem="Carregando insights..." />}
+                >
+                  <InsightsPage />
+                </Suspense>
+              </RotaProtegida>
+            } />
           <Route
   path="/usuarios/:usuarioId/estatisticas"
   element={

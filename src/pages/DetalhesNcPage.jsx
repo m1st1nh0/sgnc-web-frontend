@@ -19,8 +19,32 @@ import Botao from "../components/ui/Botao";
 import EstadoCarregamento from "../components/ui/EstadoCarregamento";
 import EstadoVazio from "../components/ui/EstadoVazio";
 import MensagemErro from "../components/ui/MensagemErro";
+import ModalVisualizarEvidencia from "../components/ui/ModalVisualizarEvidencia";
 import BadgeStatus from "../components/ui/BadgeStatus";
 import BadgePrioridade from "../components/ui/BadgePrioridade";
+
+const EXTENSOES_IMAGEM = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "bmp",
+  "svg",
+  "avif",
+  "ico",
+  "tif",
+  "tiff",
+  "heic",
+  "heif",
+]);
+
+/** Retorna true quando o arquivo é uma imagem passível de preview no modal. */
+function ehImagem(nomeArquivo) {
+  if (!nomeArquivo) return false;
+  const extensao = nomeArquivo.split(".").pop()?.toLowerCase() || "";
+  return EXTENSOES_IMAGEM.has(extensao);
+}
 
 export default function DetalhesNcPage() {
   const { id } = useParams();
@@ -42,6 +66,7 @@ export default function DetalhesNcPage() {
   const [confirmarExclusaoEvidencia, setConfirmarExclusaoEvidencia] = useState(false);
   const [evidenciaSelecionada, setEvidenciaSelecionada] = useState(null);
   const [excluindoEvidencia, setExcluindoEvidencia] = useState(false);
+  const [evidenciaVisualizada, setEvidenciaVisualizada] = useState(null);
 
   async function carregarNc() {
     try {
@@ -350,16 +375,25 @@ export default function DetalhesNcPage() {
                         <div key={ev.id} className="sg-evidencia-item">
                           <div className="me-3 min-w-0">
                             <div className="sg-evidencia-item__nome">{ev.nome_original}</div>
-                            {ev.url_temporaria && (
-                              <a
-                                href={ev.url_temporaria}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="sg-evidencia-item__link"
-                              >
-                                Abrir arquivo
-                              </a>
-                            )}
+                            {ev.url_temporaria &&
+                              (ehImagem(ev.nome_original) ? (
+                                <button
+                                  type="button"
+                                  className="sg-evidencia-item__link sg-evidencia-item__link--botao"
+                                  onClick={() => setEvidenciaVisualizada(ev)}
+                                >
+                                  Visualizar imagem
+                                </button>
+                              ) : (
+                                <a
+                                  href={ev.url_temporaria}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="sg-evidencia-item__link"
+                                >
+                                  Abrir arquivo
+                                </a>
+                              ))}
                           </div>
                           {(ehAdm || (ehAutor && nc.status === "aberta")) && (
                             <Botao
@@ -432,6 +466,13 @@ export default function DetalhesNcPage() {
           </Botao>
         </Modal.Footer>
       </Modal>
+
+      {/* Modal de visualização de imagem de evidência */}
+      <ModalVisualizarEvidencia
+        visivel={evidenciaVisualizada !== null}
+        evidencia={evidenciaVisualizada}
+        aoFechar={() => setEvidenciaVisualizada(null)}
+      />
     </div>
   );
 }
