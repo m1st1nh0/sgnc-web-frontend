@@ -12,8 +12,6 @@ import DetalhesNcPage from "./pages/DetalhesNcPage";
 import UsuariosPage from "./pages/UsuariosPage";
 import EstatisticasUsuarioPage from "./pages/EstatisticasUsuarioPage";
 
-// Carregada sob demanda: a página de Insights usa o Recharts, que fica
-// isolado em um chunk separado para não pesar no carregamento inicial.
 const InsightsPage = lazy(() => import("./pages/InsightsPage"));
 
 export default function App() {
@@ -26,25 +24,42 @@ export default function App() {
           <Route path="/" element={<RotaProtegida><HomePage /></RotaProtegida>} />
           <Route path="/abrir-nc" element={<RotaProtegida><AbrirNcPage /></RotaProtegida>} />
           <Route path="/nc/:id" element={<RotaProtegida><DetalhesNcPage /></RotaProtegida>} />
-          <Route path="/nc/:id/editar" element={<RotaProtegida><EditarNcPage /></RotaProtegida>} />
-          <Route path="/usuarios" element={<RotaProtegida><UsuariosPage /></RotaProtegida>} />
-          <Route path="/insights" element={
-              <RotaProtegida>
+          <Route
+            path="/nc/:id/editar"
+            element={
+              <RotaProtegida papeis={["adm"]}>
+                <EditarNcPage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/usuarios"
+            element={
+              <RotaProtegida papeis={["adm"]}>
+                <UsuariosPage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/insights"
+            element={
+              <RotaProtegida papeis={["adm", "supervisor"]}>
                 <Suspense
                   fallback={<EstadoCarregamento mensagem="Carregando insights..." />}
                 >
                   <InsightsPage />
                 </Suspense>
               </RotaProtegida>
-            } />
+            }
+          />
           <Route
-  path="/usuarios/:usuarioId/estatisticas"
-  element={
-    <RotaProtegida>
-      <EstatisticasUsuarioPage />
-    </RotaProtegida>
-  }
-/>
+            path="/usuarios/:usuarioId/estatisticas"
+            element={
+              <RotaProtegida>
+                <EstatisticasUsuarioPage />
+              </RotaProtegida>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
