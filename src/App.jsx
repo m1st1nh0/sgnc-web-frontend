@@ -13,6 +13,7 @@ import UsuariosPage from "./pages/UsuariosPage";
 import EstatisticasUsuarioPage from "./pages/EstatisticasUsuarioPage";
 
 const InsightsPage = lazy(() => import("./pages/InsightsPage"));
+const RelatoriosPage = lazy(() => import("./pages/RelatoriosPage"));
 
 export default function App() {
   return (
@@ -44,10 +45,18 @@ export default function App() {
             path="/insights"
             element={
               <RotaProtegida papeis={["adm", "supervisor"]}>
-                <Suspense
-                  fallback={<EstadoCarregamento mensagem="Carregando insights..." />}
-                >
+                <Suspense fallback={<EstadoCarregamento mensagem="Carregando insights..." />}>
                   <InsightsPage />
+                </Suspense>
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/relatorios"
+            element={
+              <RotaProtegida papeis={["adm", "supervisor"]}>
+                <Suspense fallback={<EstadoCarregamento mensagem="Carregando relatórios..." />}>
+                  <RelatoriosPage />
                 </Suspense>
               </RotaProtegida>
             }
