@@ -7,12 +7,12 @@ import Botao from "./ui/Botao";
 import MensagemErro from "./ui/MensagemErro";
 
 /**
- * Exibido só para o ADM, quando a NC está em 'aberta'.
- * Decide se a NC é procedente (validada) ou não (invalidada,
- * exigindo motivo).
+ * Exibido para o ADM quando a NC está aberta.
+ * Validar agora avança diretamente para "aguardando_feedback" e torna a NC
+ * visível ao colaborador analisado e ao supervisor direto.
  */
 export default function PainelAvaliar({ nc, aoConcluir }) {
-  const [decisao, setDecisao] = useState(null); // "validar" | "invalidar" | null
+  const [decisao, setDecisao] = useState(null);
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
@@ -53,8 +53,12 @@ export default function PainelAvaliar({ nc, aoConcluir }) {
         <h2 className="sg-painel__titulo">Avaliar Não Conformidade</h2>
       </div>
       <div className="sg-painel__corpo">
-        <p className="texto-secundario texto-sm mb-3">
+        <p className="texto-secundario texto-sm mb-2">
           Esta NC ainda não foi avaliada. Ela é procedente?
+        </p>
+        <p className="texto-xs texto-suave mb-3">
+          Ao validar, ela seguirá diretamente para feedback e ficará disponível
+          ao colaborador analisado e ao supervisor direto.
         </p>
 
         {erro && <MensagemErro mensagem={erro} />}
@@ -62,7 +66,7 @@ export default function PainelAvaliar({ nc, aoConcluir }) {
         {decisao !== "invalidar" ? (
           <div className="d-flex gap-2">
             <Botao variante="sucesso" carregando={enviando} onClick={confirmarValidar}>
-              Validar
+              Validar e seguir para feedback
             </Botao>
             <Botao variante="secundario" disabled={enviando} onClick={() => setDecisao("invalidar")}>
               Invalidar
@@ -71,9 +75,7 @@ export default function PainelAvaliar({ nc, aoConcluir }) {
         ) : (
           <>
             <Form.Group className="mb-3">
-              <Form.Label className="sg-label">
-                Motivo da invalidação *
-              </Form.Label>
+              <Form.Label className="sg-label">Motivo da invalidação *</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={3}
