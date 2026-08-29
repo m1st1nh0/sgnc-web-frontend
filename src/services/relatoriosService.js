@@ -1,4 +1,4 @@
-import { baixarArquivoApi } from "./api";
+import { baixarArquivoApi } from "./api.js";
 
 function adicionar(params, chave, valor) {
   if (valor !== undefined && valor !== null && String(valor).trim() !== "") {
