@@ -27,10 +27,6 @@ export function avaliarNc(id, decisao, motivoInvalidacao) {
   });
 }
 
-export function enviarNc(id) {
-  return chamarApi(`/nc/${id}/enviar`, { method: "POST" });
-}
-
 export function aplicarFeedback(id, feedback) {
   return chamarApi(`/nc/${id}/feedback`, {
     method: "POST",
@@ -61,6 +57,7 @@ export function anexarEvidencia(ncId, arquivo) {
     body: formData,
   });
 }
+
 export function excluirEvidencia(ncId, evidenciaId) {
   return chamarApi(`/nc/${ncId}/evidencias/${evidenciaId}`, {
     method: "DELETE",
