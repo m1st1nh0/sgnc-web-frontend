@@ -16,6 +16,7 @@ import {
   desativarUsuario,
   reativarUsuario,
 } from "../services/usuarioService";
+import { AJUDA_SENHA_FORTE, erroSenhaForte } from "../services/senhaPolicy";
 import { useAuth } from "../context/AuthContext";
 import { ErroApi } from "../services/api";
 import CabecalhoPagina from "../components/ui/CabecalhoPagina";
@@ -71,9 +72,12 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
       return;
     }
 
-    if (!editando && senhaInicial.length < 6) {
-      setErro("Senha inicial deve ter ao menos 6 caracteres.");
-      return;
+    if (!editando) {
+      const erroPolitica = erroSenhaForte(senhaInicial);
+      if (erroPolitica) {
+        setErro(erroPolitica);
+        return;
+      }
     }
 
     setEnviando(true);
@@ -166,10 +170,12 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
         <CampoTexto
           rotulo="Senha inicial (provisória)"
           obrigatorio
+          type="password"
           value={senhaInicial}
           onChange={(e) => setSenhaInicial(e.target.value)}
-          placeholder="Ao menos 6 caracteres"
-          helper="O usuário será obrigado a trocar no primeiro acesso."
+          placeholder="Senha forte provisória"
+          helper={`${AJUDA_SENHA_FORTE} O usuário deverá trocá-la no primeiro acesso.`}
+          autoComplete="new-password"
         />
       )}
 
@@ -192,12 +198,10 @@ export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-
   const [modal, setModal] = useState(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
-
     try {
       setUsuarios(await listarUsuarios());
     } catch (e) {
@@ -225,7 +229,6 @@ export default function UsuariosPage() {
       } else {
         await reativarUsuario(usuario.id);
       }
-
       await carregar();
     } catch (e) {
       setErro(
@@ -313,16 +316,14 @@ export default function UsuariosPage() {
                     </td>
                     <td>
                       <span
-                        className={`sg-badge ${u.senha_provisoria ? "sg-badge--amarelo" : "sg-badge--verde"
-                          }`}
+                        className={`sg-badge ${u.senha_provisoria ? "sg-badge--amarelo" : "sg-badge--verde"}`}
                       >
                         {u.senha_provisoria ? "Provisória" : "Definitiva"}
                       </span>
                     </td>
                     <td>
                       <span
-                        className={`sg-badge ${u.ativo ? "sg-badge--verde" : "sg-badge--vermelho"
-                          }`}
+                        className={`sg-badge ${u.ativo ? "sg-badge--verde" : "sg-badge--vermelho"}`}
                       >
                         {u.ativo ? "Ativo" : "Inativo"}
                       </span>
@@ -352,11 +353,8 @@ export default function UsuariosPage() {
 
                           {u.id !== usuarioLogado?.id && (
                             <Button
-                              variant={
-                                u.ativo ? "outline-danger" : "outline-success"
-                              }
-                              className={`sg-btn sg-btn--sm ${u.ativo ? "sg-btn--perigo" : "sg-btn--sucesso"
-                                }`}
+                              variant={u.ativo ? "outline-danger" : "outline-success"}
+                              className={`sg-btn sg-btn--sm ${u.ativo ? "sg-btn--perigo" : "sg-btn--sucesso"}`}
                               onClick={() => toggleAtivo(u)}
                             >
                               {u.ativo ? "Desativar" : "Reativar"}
