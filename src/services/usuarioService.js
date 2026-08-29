@@ -4,6 +4,10 @@ export function listarUsuarios() {
   return chamarApi("/usuarios");
 }
 
+export function listarOpcoesNc() {
+  return chamarApi("/usuarios/opcoes-nc");
+}
+
 export function cadastrarUsuario(dados) {
   return chamarApi("/usuarios", { method: "POST", body: dados });
 }
@@ -19,6 +23,7 @@ export function desativarUsuario(id) {
 export function reativarUsuario(id) {
   return chamarApi(`/usuarios/${id}/reativar`, { method: "PATCH" });
 }
+
 export function buscarEstatisticasUsuario(usuarioId) {
   return chamarApi(`/usuarios/${usuarioId}/estatisticas`);
 }

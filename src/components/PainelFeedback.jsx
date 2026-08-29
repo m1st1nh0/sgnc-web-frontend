@@ -6,11 +6,7 @@ import { ErroApi } from "../services/api";
 import Botao from "./ui/Botao";
 import MensagemErro from "./ui/MensagemErro";
 
-/**
- * Exibido só para o ADM, quando a NC está 'aguardando_analise'.
- * O feedback registrado aqui fica visível ao colaborador e ao
- * supervisor, e depois exige o aceite formal do colaborador.
- */
+/** Exibido para o ADM quando a NC está aguardando feedback. */
 export default function PainelFeedback({ nc, aoConcluir }) {
   const [feedback, setFeedback] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -36,13 +32,12 @@ export default function PainelFeedback({ nc, aoConcluir }) {
   return (
     <div className="sg-painel">
       <div className="sg-painel__cabecalho">
-        <h2 className="sg-painel__titulo">Aplicar feedback</h2>
+        <h2 className="sg-painel__titulo">Registrar feedback</h2>
       </div>
       <div className="sg-painel__corpo">
         <p className="texto-secundario texto-sm mb-3">
-          Descreva o que ficou combinado com o colaborador. Este texto
-          ficará visível a ele e ao supervisor, e será necessário o
-          aceite formal do colaborador para concluir a NC.
+          Registre o que ficou combinado com o colaborador. Depois disso, a NC
+          ficará aguardando o aceite formal dele.
         </p>
 
         {erro && <MensagemErro mensagem={erro} />}
@@ -60,7 +55,7 @@ export default function PainelFeedback({ nc, aoConcluir }) {
         </Form.Group>
 
         <Botao variante="primario" carregando={enviando} onClick={confirmar}>
-          Aplicar feedback
+          Registrar feedback
         </Botao>
       </div>
     </div>
