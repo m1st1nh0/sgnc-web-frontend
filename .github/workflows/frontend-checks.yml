@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, pr05-role-aware-ux]
+    branches: [main, pr05-role-aware-ux, pr08-security-hardening]
 
 permissions:
   contents: read
@@ -24,5 +24,7 @@ jobs:
         run: npm run lint
       - name: PR05 role-aware UX regression
         run: node test_pr05.mjs
+      - name: PR08 frontend security regression
+        run: node test_pr08.mjs
       - name: Build
         run: npm run build
