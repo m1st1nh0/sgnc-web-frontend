@@ -5,6 +5,7 @@ import Form from "react-bootstrap/Form";
 import { useAuth } from "../context/AuthContext";
 import { trocarSenha } from "../services/authService";
 import { ErroApi } from "../services/api";
+import { AJUDA_SENHA_FORTE, erroSenhaForte } from "../services/senhaPolicy";
 import AuthLayout from "../components/ui/AuthLayout";
 import Botao from "../components/ui/Botao";
 import CampoTexto from "../components/ui/CampoTexto";
@@ -28,17 +29,16 @@ export default function TrocarSenhaPage() {
       setErro("A nova senha e a confirmação não coincidem.");
       return;
     }
-    if (senhaNova.length < 6) {
-      setErro("A nova senha deve ter ao menos 6 caracteres.");
+
+    const erroPolitica = erroSenhaForte(senhaNova);
+    if (erroPolitica) {
+      setErro(erroPolitica);
       return;
     }
 
     setCarregando(true);
     try {
       await trocarSenha(senhaAtual, senhaNova);
-      // Logout intencional: após trocar a senha, o token antigo fica
-      // inválido. Sair força o usuário a entrar de novo e obter um token
-      // novo, evitando chamadas à API com token velho.
       sair();
       navigate("/login", {
         replace: true,
@@ -71,6 +71,7 @@ export default function TrocarSenhaPage() {
           onChange={(e) => setSenhaAtual(e.target.value)}
           required
           autoFocus
+          autoComplete="current-password"
         />
 
         <CampoTexto
@@ -79,6 +80,8 @@ export default function TrocarSenhaPage() {
           value={senhaNova}
           onChange={(e) => setSenhaNova(e.target.value)}
           required
+          helper={AJUDA_SENHA_FORTE}
+          autoComplete="new-password"
         />
 
         <CampoTexto
@@ -87,6 +90,7 @@ export default function TrocarSenhaPage() {
           value={confirmacao}
           onChange={(e) => setConfirmacao(e.target.value)}
           required
+          autoComplete="new-password"
         />
 
         <Botao
