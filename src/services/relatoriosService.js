@@ -1,8 +1,5 @@
 import { baixarArquivoApi } from "./api.js";
-import {
-  montarQueryRelatorio,
-  nomeArquivoRelatorio,
-} from "./relatoriosQuery.js";
+import { montarQueryRelatorio } from "./relatoriosQuery.js";
 
 export { montarQueryRelatorio, nomeArquivoRelatorio } from "./relatoriosQuery.js";
 
