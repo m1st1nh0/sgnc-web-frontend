@@ -117,10 +117,17 @@ export default function EstatisticasUsuarioPage() {
     }
   }
 
-  const totalMedidas = (estatisticas?.causas || []).reduce(
+  const causas = estatisticas?.causas || [];
+  const totalMedidas = causas.reduce(
     (total, causa) => total + (causa.medidas?.length || 0),
     0
   );
+  const causasReincidentes = causas.filter(
+    (causa) => Number(causa.ocorrencias_12m) > 1
+  ).length;
+  const principalCausa = [...causas].sort(
+    (a, b) => Number(b.ocorrencias_12m) - Number(a.ocorrencias_12m)
+  )[0];
 
   return (
     <div>
@@ -136,7 +143,7 @@ export default function EstatisticasUsuarioPage() {
               ? "Minhas estatísticas"
               : "Estatísticas do colaborador"
           }
-          subtitulo="Acompanhamento dos últimos 12 meses"
+          subtitulo="Entenda seu histórico por causa, recorrência e medidas registradas."
         />
 
         {carregando && <EstadoCarregamento mensagem="Carregando estatísticas..." />}
@@ -162,6 +169,14 @@ export default function EstatisticasUsuarioPage() {
               </div>
             </div>
 
+            <div className="sg-guia-leitura">
+              <strong>Como esta página é calculada</strong>
+              <p>
+                Cada causa é contada separadamente nas NCs procedentes dos últimos
+                12 meses de calendário. NCs abertas ou invalidadas não entram.
+              </p>
+            </div>
+
             {/* Métricas */}
             <div className="row g-3">
               <div className="col-md-4">
@@ -174,17 +189,21 @@ export default function EstatisticasUsuarioPage() {
               </div>
               <div className="col-md-4">
                 <CardMetrica
-                  rotulo="Causas identificadas"
-                  valor={estatisticas.causas?.length ?? 0}
-                  descricao="Causas com histórico registrado"
+                  rotulo="Causas reincidentes"
+                  valor={causasReincidentes}
+                  descricao="Causas que apareceram mais de uma vez"
                   cor="amarela"
                 />
               </div>
               <div className="col-md-4">
                 <CardMetrica
-                  rotulo="Medidas disciplinares"
-                  valor={totalMedidas}
-                  descricao="Medidas registradas"
+                  rotulo={ehAdm ? "Medidas registradas" : "Causa mais frequente"}
+                  valor={ehAdm ? totalMedidas : principalCausa?.ocorrencias_12m ?? 0}
+                  descricao={
+                    ehAdm
+                      ? "Decisões manuais registradas"
+                      : principalCausa?.causa || "Nenhuma causa no período"
+                  }
                   cor="vermelha"
                 />
               </div>
@@ -193,8 +212,8 @@ export default function EstatisticasUsuarioPage() {
             {/* Causas / reincidências */}
             {estatisticas.causas?.length === 0 ? (
               <EstadoVazio
-                titulo="Nenhuma reincidência registrada"
-                descricao="Nenhuma reincidência registrada nos últimos 12 meses."
+                titulo="Nenhuma causa contabilizada"
+                descricao="Não há NC procedente com causa registrada nesta janela de 12 meses."
               />
             ) : (
               estatisticas.causas.map((causa) => (
@@ -205,28 +224,29 @@ export default function EstatisticasUsuarioPage() {
                         <h2 className="h6 mb-1">
                           {causa.causa || "Causa não identificada"}
                         </h2>
-                        <div className="texto-xs texto-suave">
-                          Causa ID: {causa.causa_id}
-                        </div>
+                        <p className="texto-xs texto-suave mb-0">
+                          {Number(causa.ocorrencias_12m) > 1
+                            ? "Esta causa se repetiu dentro da janela analisada."
+                            : "Primeira ocorrência desta causa na janela analisada."}
+                        </p>
                       </div>
-                      <span className="sg-badge sg-badge--cinza">
-                        {causa.ocorrencias_12m} ocorrência(s)
+                      <span className={`sg-badge ${Number(causa.ocorrencias_12m) > 1 ? "sg-badge--amarelo" : "sg-badge--cinza"}`}>
+                        {causa.ocorrencias_12m} {Number(causa.ocorrencias_12m) === 1 ? "ocorrência" : "ocorrências"}
                       </span>
                     </div>
 
-                    <div className="mb-3">
-                      <span className="texto-secundario texto-sm">
-                        Última ocorrência contabilizada:{" "}
-                      </span>
-                      <span className="fw-semibold">
-                        {causa.ultima_ocorrencia_numero || "-"}
+                    <div className="sg-explicacao-causa mb-3">
+                      <strong>Contagem canônica: {causa.ultima_ocorrencia_numero || "-"}</strong>
+                      <span>
+                        É o número sequencial desta causa para o colaborador, não
+                        o número total de NCs.
                       </span>
                     </div>
 
                     {causa.medida_sugerida && (
                       <div className="sg-alerta sg-alerta--atencao p-3 mb-3 d-flex flex-wrap align-items-center gap-2">
                         <span className="texto-sm fw-semibold">
-                          Passível de medida disciplinar
+                          Sugestão para avaliação da gestão
                         </span>
                         <span
                           className={`sg-badge ${corDaMedida(causa.medida_sugerida)}`}
@@ -302,7 +322,7 @@ export default function EstatisticasUsuarioPage() {
                       </div>
                     ) : (
                       <p className="texto-secundario texto-sm mb-0">
-                        Nenhuma medida disciplinar registrada para esta causa.
+                        Nenhuma medida disciplinar foi registrada manualmente para esta causa.
                       </p>
                     )}
                   </div>
