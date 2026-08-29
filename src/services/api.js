@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./config";
+import { API_BASE_URL } from "./config.js";
 
 /**
  * Erro customizado para respostas de erro da API, guardando o
@@ -43,7 +43,7 @@ export async function chamarApi(caminho, { method = "GET", body, semAuth = false
   let corpoFinal = undefined;
 
   if (body instanceof FormData) {
-    corpoFinal = body; // o navegador define o Content-Type sozinho (multipart)
+    corpoFinal = body;
   } else if (body !== undefined) {
     headers["Content-Type"] = "application/json";
     corpoFinal = JSON.stringify(body);
@@ -57,7 +57,6 @@ export async function chamarApi(caminho, { method = "GET", body, semAuth = false
 
   await exigirRespostaOk(resposta);
 
-  // Algumas respostas (ex: DELETE) podem não ter corpo
   const texto = await resposta.text();
   return texto ? JSON.parse(texto) : null;
 }
