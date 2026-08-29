@@ -102,8 +102,8 @@ export default function InsightsPage() {
     await carregar();
   }
 
-  const kpis = dados?.kpis || {};
-  const tempos = dados?.tempos || {};
+  const kpis = useMemo(() => dados?.kpis || {}, [dados]);
+  const tempos = useMemo(() => dados?.tempos || {}, [dados]);
   const metodologia = resumoMetodologia(dados);
 
   const backlogStatus = useMemo(
@@ -158,6 +158,40 @@ export default function InsightsPage() {
       ),
     [dados]
   );
+
+  const leituraExecutiva = useMemo(() => {
+    if (!dados) return [];
+    const itens = [];
+    const backlog = Number(kpis.backlog_ativo_atual || 0);
+    const feedback = Number(kpis.aguardando_feedback_atual || 0);
+    const aceite = Number(kpis.aguardando_aceite_atual || 0);
+
+    itens.push({
+      titulo: backlog === 0 ? "Operação sem pendências" : `${backlog} NC(s) exigem acompanhamento`,
+      texto:
+        backlog === 0
+          ? "Não há NC ativa no escopo neste momento."
+          : `${feedback} aguardam feedback e ${aceite} aguardam aceite.`,
+    });
+
+    if (dados.aged_backlog?.mais_antiga) {
+      itens.push({
+        titulo: `NC #${dados.aged_backlog.mais_antiga.nc_id} é a mais antiga`,
+        texto: `Está há ${dados.aged_backlog.mais_antiga.dias_na_etapa} dia(s) na etapa atual.`,
+      });
+    }
+
+    const causa = porReincidenciaCausa[0];
+    itens.push({
+      titulo: causa
+        ? `${causa.causa} lidera as reincidências`
+        : "Sem reincidência no recorte",
+      texto: causa
+        ? `${causa.reincidencias_12m} reincidência(s) canônica(s) em 12 meses.`
+        : "Nenhuma causa reincidente foi identificada no escopo.",
+    });
+    return itens;
+  }, [dados, kpis, porReincidenciaCausa]);
 
   const podeVer =
     usuario && (usuario.papel === "adm" || usuario.papel === "supervisor");
@@ -236,10 +270,15 @@ export default function InsightsPage() {
             </Form>
 
             {dados && (
-              <div className="texto-xs texto-suave mt-3">
-                <strong>Leitura do período:</strong> volume usa a abertura da NC;
-                backlog é a fotografia atual; tempos entram no período pela
-                transição final medida.
+              <div className="sg-periodo-explicado mt-3">
+                <div>
+                  <strong>Fotografia atual</strong>
+                  <span>Backlog e aging não mudam com o filtro de datas.</span>
+                </div>
+                <div>
+                  <strong>Histórico do período</strong>
+                  <span>Volume, tendências e tempos respeitam o intervalo selecionado.</span>
+                </div>
               </div>
             )}
           </div>
@@ -251,8 +290,33 @@ export default function InsightsPage() {
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
 
         {!erro && dados && (
-          <div className="d-flex flex-column gap-5">
-            <section>
+          <>
+            <nav className="sg-indice-insights mb-4" aria-label="Atalhos dos Insights">
+              <a href="#operacao">Operação agora</a>
+              <a href="#tempos">Tempos</a>
+              <a href="#reincidencia">Reincidência</a>
+              <a href="#distribuicao">Distribuição</a>
+              <a href="#disciplina">Disciplina</a>
+            </nav>
+
+            <section className="sg-leitura-executiva mb-5" aria-labelledby="leitura-executiva">
+              <div>
+                <span className="sg-leitura-executiva__rotulo">Leitura rápida</span>
+                <h2 id="leitura-executiva">O que estes números dizem agora</h2>
+                <p>Resumo automático para orientar a análise; a decisão continua com a gestão.</p>
+              </div>
+              <div className="sg-leitura-executiva__itens">
+                {leituraExecutiva.map((item) => (
+                  <article key={item.titulo}>
+                    <strong>{item.titulo}</strong>
+                    <span>{item.texto}</span>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <div className="d-flex flex-column gap-5">
+            <section id="operacao">
               <div className="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
                 <div>
                   <h2 className="h5 mb-1">Operação agora</h2>
@@ -349,7 +413,7 @@ export default function InsightsPage() {
               </div>
             </section>
 
-            <section>
+            <section id="tempos">
               <div className="mb-3">
                 <h2 className="h5 mb-1">Velocidade do fluxo</h2>
                 <p className="texto-sm texto-suave mb-0">
@@ -466,11 +530,11 @@ export default function InsightsPage() {
               </PainelGrafico>
             </section>
 
-            <section>
+            <section id="reincidencia">
               <div className="mb-3">
                 <h2 className="h5 mb-1">Causas e reincidência</h2>
                 <p className="texto-sm texto-suave mb-0">
-                  Reincidência segue o snapshot canônico de 12 meses do backend.
+                  A primeira ocorrência inicia a contagem; as seguintes, para o mesmo colaborador e a mesma causa, são reincidências dentro de 12 meses. Apenas NCs procedentes entram.
                 </p>
               </div>
               <div className="row g-3">
@@ -555,7 +619,7 @@ export default function InsightsPage() {
               </div>
             </section>
 
-            <section>
+            <section id="distribuicao">
               <div className="mb-3">
                 <h2 className="h5 mb-1">Distribuição organizacional</h2>
                 <p className="texto-sm texto-suave mb-0">
@@ -605,7 +669,7 @@ export default function InsightsPage() {
               </div>
             </section>
 
-            <section>
+            <section id="disciplina">
               <div className="mb-3">
                 <h2 className="h5 mb-1">Disciplina</h2>
                 <p className="texto-sm texto-suave mb-0">
@@ -704,6 +768,7 @@ export default function InsightsPage() {
               </div>
             </section>
           </div>
+          </>
         )}
       </Container>
     </div>
