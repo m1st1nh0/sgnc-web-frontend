@@ -2,13 +2,11 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 /**
- * Envolve páginas que exigem login. Se não estiver logado, manda
- * para /login. Se estiver logado mas ainda com senha provisória,
- * força a passagem pela tela de troca de senha antes de qualquer
- * outra coisa (evita alguém "pular" essa etapa navegando direto
- * para outra URL).
+ * Protege rotas autenticadas e, quando `papeis` é informado, impede que a UI
+ * ofereça páginas administrativas a um papel que o backend já rejeitaria.
+ * O backend continua sendo a autoridade final de autorização.
  */
-export default function RotaProtegida({ children }) {
+export default function RotaProtegida({ children, papeis }) {
   const { usuario } = useAuth();
 
   if (!usuario) {
@@ -17,6 +15,10 @@ export default function RotaProtegida({ children }) {
 
   if (usuario.senhaProvisoria) {
     return <Navigate to="/trocar-senha" replace />;
+  }
+
+  if (papeis?.length > 0 && !papeis.includes(usuario.papel)) {
+    return <Navigate to="/" replace />;
   }
 
   return children;
