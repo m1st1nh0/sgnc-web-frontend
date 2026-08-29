@@ -356,7 +356,7 @@ export default function InsightsPage() {
               <div className="col-lg-6">
                 <PainelGrafico
                   titulo="Reincidência por causa"
-                  descricao="Ocorrências que voltaram a acontecer após uma NC concluída"
+                  descricao="Ocorrências reincidentes na janela móvel de 12 meses"
                   vazio={porReincidencia.length === 0}
                 >
                   <GraficoBarrasHorizontais
@@ -365,7 +365,7 @@ export default function InsightsPage() {
                     empilhado
                     series={[
                       { chave: "nao_reincidiu", cor: CORES_GRAFICO.azulClaro, nome: "Demais ocorrências" },
-                      { chave: "reincidiu_apos_conclusao", cor: CORES_GRAFICO.vermelho, nome: "Reincidiu após conclusão" },
+                      { chave: "reincidiu_apos_conclusao", cor: CORES_GRAFICO.vermelho, nome: "Reincidentes em 12 meses" },
                     ]}
                   />
                 </PainelGrafico>
