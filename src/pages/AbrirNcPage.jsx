@@ -8,7 +8,7 @@ import Alert from "react-bootstrap/Alert";
 
 import BarraNavegacao from "../components/BarraNavegacao";
 import CampoCausas from "../components/CampoCausas";
-import { listarUsuarios } from "../services/usuarioService";
+import { listarOpcoesNc } from "../services/usuarioService";
 import { ErroApi } from "../services/api";
 import { abrirNc, listarCausasConhecidas, anexarEvidencia } from "../services/ncService";
 import CabecalhoPagina from "../components/ui/CabecalhoPagina";
@@ -29,23 +29,19 @@ export default function AbrirNcPage() {
   const [criticidade, setCriticidade] = useState("Baixa");
   const [descricao, setDescricao] = useState("");
   const [causas, setCausas] = useState([]);
-
   const [usuarios, setUsuarios] = useState([]);
   const [causasConhecidas, setCausasConhecidas] = useState([]);
   const [carregandoDados, setCarregandoDados] = useState(true);
-
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
   const [errosCampo, setErrosCampo] = useState({});
-
-  // evidências selecionadas antes de abrir a NC
   const [arquivosEvidencias, setArquivosEvidencias] = useState([]);
 
   useEffect(() => {
     async function carregarDadosDeApoio() {
       try {
         const [listaUsuarios, listaCausas] = await Promise.all([
-          listarUsuarios(),
+          listarOpcoesNc(),
           listarCausasConhecidas(),
         ]);
         setUsuarios(listaUsuarios);
@@ -77,7 +73,6 @@ export default function AbrirNcPage() {
     if (!descricao.trim()) {
       novosErros.descricao = "Descreva o que aconteceu.";
     }
-
     if (Object.keys(novosErros).length > 0) {
       setErrosCampo(novosErros);
       return;
@@ -85,7 +80,6 @@ export default function AbrirNcPage() {
 
     setEnviando(true);
     try {
-      // 1) Abre a NC no backend
       const nc = await abrirNc({
         chamado: chamado || null,
         colaborador_id: colaboradorId,
@@ -94,31 +88,19 @@ export default function AbrirNcPage() {
         causas,
       });
 
-      // 2) Dispara os uploads em paralelo em background (sem bloquear a navegação)
       if (arquivosEvidencias.length > 0) {
         Promise.all(
           arquivosEvidencias.map((arquivo) => anexarEvidencia(nc.id, arquivo))
-        ).catch((e) => {
-          console.error("Erro ao anexar evidências:", e);
-        });
+        ).catch((e) => console.error("Erro ao anexar evidências:", e));
       }
-
-      // 3) Navega imediatamente para detalhes da NC
       navigate(`/nc/${nc.id}`);
     } catch (e) {
       setErro(
-        e instanceof ErroApi
-          ? e.message
-          : "Não foi possível abrir a Não Conformidade."
+        e instanceof ErroApi ? e.message : "Não foi possível abrir a Não Conformidade."
       );
     } finally {
       setEnviando(false);
     }
-  }
-
-  function aoSelecionarEvidencias(evento) {
-    const files = Array.from(evento.target.files || []);
-    setArquivosEvidencias(files);
   }
 
   return (
@@ -137,7 +119,6 @@ export default function AbrirNcPage() {
         ) : (
           <div className="sg-card">
             <Form onSubmit={aoEnviar}>
-              {/* Seção 1: Informações básicas */}
               <div className="sg-secao-form">
                 <h2 className="sg-secao-form__titulo">Informações da ocorrência</h2>
                 <p className="sg-secao-form__descricao">
@@ -164,7 +145,7 @@ export default function AbrirNcPage() {
                       <option value="">Selecione...</option>
                       {usuarios.map((u) => (
                         <option key={u.id} value={u.id}>
-                          {u.nome} ({u.email})
+                          {u.nome}{u.setor ? ` — ${u.setor}` : ""}
                         </option>
                       ))}
                     </CampoSelecao>
@@ -190,14 +171,11 @@ export default function AbrirNcPage() {
                   onChange={(e) => setCriticidade(e.target.value)}
                 >
                   {OPCOES_CRITICIDADE.map((opcao) => (
-                    <option key={opcao} value={opcao}>
-                      {opcao}
-                    </option>
+                    <option key={opcao} value={opcao}>{opcao}</option>
                   ))}
                 </CampoSelecao>
               </div>
 
-              {/* Seção 2: Descrição e causas */}
               <div className="sg-secao-form">
                 <h2 className="sg-secao-form__titulo">Detalhes da não conformidade</h2>
                 <p className="sg-secao-form__descricao">
@@ -222,47 +200,36 @@ export default function AbrirNcPage() {
                     sugestoes={causasConhecidas}
                   />
                   <Form.Text className="sg-helper">
-                    Digite e pressione Enter. Causas novas são adicionadas à
-                    lista automaticamente.
+                    Digite e pressione Enter. Causas novas são adicionadas à lista automaticamente.
                   </Form.Text>
                 </Form.Group>
               </div>
 
-              {/* Seção 3: Evidências */}
               <div className="sg-secao-form">
                 <h2 className="sg-secao-form__titulo">Evidências (opcional)</h2>
                 <p className="sg-secao-form__descricao">
                   Anexe arquivos para comprovar a não conformidade.
                 </p>
-
                 <Form.Group className="mb-1">
                   <Form.Control
                     type="file"
                     multiple
                     className="sg-input"
-                    onChange={aoSelecionarEvidencias}
+                    onChange={(e) => setArquivosEvidencias(Array.from(e.target.files || []))}
                   />
                   <Form.Text className="sg-helper">
-                    Você pode selecionar uma ou mais evidências antes de abrir
-                    a NC. Elas serão anexadas em segundo plano logo após a
-                    criação.
+                    Você pode selecionar uma ou mais evidências antes de abrir a NC.
                   </Form.Text>
                 </Form.Group>
                 {arquivosEvidencias.length > 0 && (
                   <Alert variant="info" className="mt-2 mb-0 py-2 px-3 small">
-                    {arquivosEvidencias.length} arquivo(s) serão enviados como
-                    evidência assim que a NC for criada.
+                    {arquivosEvidencias.length} arquivo(s) serão enviados após a criação da NC.
                   </Alert>
                 )}
               </div>
 
               <div className="sg-secao-form d-flex gap-2">
-                <Botao
-                  type="submit"
-                  variante="primario"
-                  carregando={enviando}
-                  tamanho="lg"
-                >
+                <Botao type="submit" variante="primario" carregando={enviando} tamanho="lg">
                   {arquivosEvidencias.length > 0
                     ? "Abrir NC e iniciar anexos..."
                     : "Abrir Não Conformidade"}
