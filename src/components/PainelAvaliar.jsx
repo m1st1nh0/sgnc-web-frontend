@@ -8,16 +8,16 @@ import MensagemErro from "./ui/MensagemErro";
 
 /**
  * Exibido para o ADM quando a NC está aberta.
- * Validar agora avança diretamente para "aguardando_feedback" e torna a NC
- * visível ao colaborador analisado e ao supervisor direto.
+ * `bloqueado` evita uma corrida entre upload de evidência e mudança de status.
  */
-export default function PainelAvaliar({ nc, aoConcluir }) {
+export default function PainelAvaliar({ nc, aoConcluir, bloqueado = false }) {
   const [decisao, setDecisao] = useState(null);
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
   async function confirmarValidar() {
+    if (bloqueado) return;
     setErro("");
     setEnviando(true);
     try {
@@ -31,6 +31,7 @@ export default function PainelAvaliar({ nc, aoConcluir }) {
   }
 
   async function confirmarInvalidar() {
+    if (bloqueado) return;
     setErro("");
     if (!motivo.trim()) {
       setErro("Informe o motivo da invalidação.");
@@ -47,6 +48,8 @@ export default function PainelAvaliar({ nc, aoConcluir }) {
     }
   }
 
+  const indisponivel = enviando || bloqueado;
+
   return (
     <div className="sg-painel">
       <div className="sg-painel__cabecalho">
@@ -61,14 +64,28 @@ export default function PainelAvaliar({ nc, aoConcluir }) {
           ao colaborador analisado e ao supervisor direto.
         </p>
 
+        {bloqueado && (
+          <div className="sg-alerta sg-alerta--info mb-3">
+            Aguarde o envio da evidência terminar antes de avaliar esta NC.
+          </div>
+        )}
         {erro && <MensagemErro mensagem={erro} />}
 
         {decisao !== "invalidar" ? (
           <div className="d-flex gap-2">
-            <Botao variante="sucesso" carregando={enviando} onClick={confirmarValidar}>
+            <Botao
+              variante="sucesso"
+              carregando={enviando}
+              disabled={indisponivel}
+              onClick={confirmarValidar}
+            >
               Validar e seguir para feedback
             </Botao>
-            <Botao variante="secundario" disabled={enviando} onClick={() => setDecisao("invalidar")}>
+            <Botao
+              variante="secundario"
+              disabled={indisponivel}
+              onClick={() => setDecisao("invalidar")}
+            >
               Invalidar
             </Botao>
           </div>
@@ -82,14 +99,24 @@ export default function PainelAvaliar({ nc, aoConcluir }) {
                 className="sg-textarea"
                 value={motivo}
                 onChange={(e) => setMotivo(e.target.value)}
+                disabled={indisponivel}
                 autoFocus
               />
             </Form.Group>
             <div className="d-flex gap-2">
-              <Botao variante="perigo" carregando={enviando} onClick={confirmarInvalidar}>
+              <Botao
+                variante="perigo"
+                carregando={enviando}
+                disabled={indisponivel}
+                onClick={confirmarInvalidar}
+              >
                 Confirmar invalidação
               </Botao>
-              <Botao variante="secundario" disabled={enviando} onClick={() => setDecisao(null)}>
+              <Botao
+                variante="secundario"
+                disabled={indisponivel}
+                onClick={() => setDecisao(null)}
+              >
                 Cancelar
               </Botao>
             </div>

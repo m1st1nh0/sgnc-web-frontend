@@ -13,6 +13,12 @@ const NOME_PAPEL = {
   funcionario: "Funcionário",
 };
 
+const ROTULO_HOME = {
+  adm: "Gestão de NCs",
+  supervisor: "Minha equipe",
+  funcionario: "Minhas NCs",
+};
+
 function isRotaAtiva({ isActive }) {
   return isActive ? "nav-link active" : "nav-link";
 }
@@ -41,11 +47,7 @@ export default function BarraNavegacao() {
   }
 
   return (
-    <Navbar
-      className="sg-navbar"
-      expand="lg"
-      expanded={expandido}
-    >
+    <Navbar className="sg-navbar" expand="lg" expanded={expandido}>
       <Container className="sg-navbar__container">
         <Navbar.Brand as={NavLink} to="/" onClick={aoNavegar}>
           <span aria-hidden="true">NC</span>
@@ -59,14 +61,30 @@ export default function BarraNavegacao() {
 
         <Navbar.Collapse id="sgnc-navbar-nav">
           <Nav className="me-auto">
-            <Nav.Link as={NavLink} to="/" end onClick={aoNavegar} className={isRotaAtiva}>
-              Não Conformidades
+            <Nav.Link
+              as={NavLink}
+              to="/"
+              end
+              onClick={aoNavegar}
+              className={isRotaAtiva}
+            >
+              {ROTULO_HOME[usuario?.papel] || "Não Conformidades"}
             </Nav.Link>
-            <Nav.Link as={NavLink} to="/abrir-nc" onClick={aoNavegar} className={isRotaAtiva}>
+            <Nav.Link
+              as={NavLink}
+              to="/abrir-nc"
+              onClick={aoNavegar}
+              className={isRotaAtiva}
+            >
               Abrir NC
             </Nav.Link>
             {(usuario?.papel === "adm" || usuario?.papel === "supervisor") && (
-              <Nav.Link as={NavLink} to="/insights" onClick={aoNavegar} className={isRotaAtiva}>
+              <Nav.Link
+                as={NavLink}
+                to="/insights"
+                onClick={aoNavegar}
+                className={isRotaAtiva}
+              >
                 Insights
               </Nav.Link>
             )}
@@ -81,7 +99,13 @@ export default function BarraNavegacao() {
               </Nav.Link>
             )}
             {usuario?.papel === "adm" && (
-              <Nav.Link as={NavLink} to="/usuarios" end onClick={aoNavegar} className={isRotaAtiva}>
+              <Nav.Link
+                as={NavLink}
+                to="/usuarios"
+                end
+                onClick={aoNavegar}
+                className={isRotaAtiva}
+              >
                 Usuários
               </Nav.Link>
             )}
@@ -98,7 +122,10 @@ export default function BarraNavegacao() {
                   {NOME_PAPEL[usuario.papel] ?? usuario.papel}
                 </div>
               </div>
-              <span className="sg-navbar__divider d-none d-md-block" aria-hidden="true" />
+              <span
+                className="sg-navbar__divider d-none d-md-block"
+                aria-hidden="true"
+              />
               <Botao variante="subtle" tamanho="sm" onClick={aoSair}>
                 Sair
               </Botao>
