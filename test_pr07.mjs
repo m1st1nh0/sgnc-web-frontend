@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   montarQueryRelatorio,
   nomeArquivoRelatorio,
-} from "./src/services/relatoriosService.js";
+} from "./src/services/relatoriosQuery.js";
 
 const filtros = {
   inicio: "2026-01-01",
@@ -39,6 +39,7 @@ assert.equal(
 );
 
 const api = readFileSync("src/services/api.js", "utf8");
+const service = readFileSync("src/services/relatoriosService.js", "utf8");
 const pagina = readFileSync("src/pages/RelatoriosPage.jsx", "utf8");
 const app = readFileSync("src/App.jsx", "utf8");
 const nav = readFileSync("src/components/BarraNavegacao.jsx", "utf8");
@@ -47,6 +48,9 @@ assert.match(api, /export async function baixarArquivoApi/);
 assert.match(api, /Authorization/);
 assert.match(api, /resposta\.blob\(\)/);
 assert.doesNotMatch(api, /sgnc_token.*URLSearchParams/);
+assert.match(service, /\/relatorios\/ncs\.csv/);
+assert.match(service, /\/relatorios\/resumo\.pdf/);
+assert.match(service, /relatoriosQuery\.js/);
 
 assert.match(pagina, /baixarPdfResumo/);
 assert.match(pagina, /baixarCsvNcs/);
