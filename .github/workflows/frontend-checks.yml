@@ -22,5 +22,7 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
+      - name: PR05 role-aware UX regression
+        run: node test_pr05.mjs
       - name: Build
         run: npm run build
