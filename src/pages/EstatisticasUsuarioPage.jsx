@@ -6,7 +6,9 @@ import Table from "react-bootstrap/Table";
 import BarraNavegacao from "../components/BarraNavegacao";
 import { useAuth } from "../context/AuthContext";
 import { buscarEstatisticasUsuario } from "../services/usuarioService";
-import { registrarMedidaDisciplinar } from "../services/ncService";\nimport { baixarPdfDossie } from "../services/relatoriosService";\nimport { salvarArquivoLocal } from "../utils/arquivoLocal";
+import { registrarMedidaDisciplinar } from "../services/ncService";
+import { baixarPdfDossie } from "../services/relatoriosService";
+import { salvarArquivoLocal } from "../utils/arquivoLocal";
 import { ErroApi } from "../services/api";
 import CabecalhoPagina from "../components/ui/CabecalhoPagina";
 import CardMetrica from "../components/ui/CardMetrica";
@@ -63,7 +65,8 @@ export default function EstatisticasUsuarioPage() {
 
   const [estatisticas, setEstatisticas] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState("");\n  const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const [erro, setErro] = useState("");
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
 
   async function carregarEstatisticas() {
     if (!usuarioId) return;
