@@ -6,7 +6,7 @@ import Table from "react-bootstrap/Table";
 import BarraNavegacao from "../components/BarraNavegacao";
 import { useAuth } from "../context/AuthContext";
 import { buscarEstatisticasUsuario } from "../services/usuarioService";
-import { registrarMedidaDisciplinar } from "../services/ncService";
+import { registrarMedidaDisciplinar } from "../services/ncService";\nimport { baixarPdfDossie } from "../services/relatoriosService";\nimport { salvarArquivoLocal } from "../utils/arquivoLocal";
 import { ErroApi } from "../services/api";
 import CabecalhoPagina from "../components/ui/CabecalhoPagina";
 import CardMetrica from "../components/ui/CardMetrica";
@@ -63,7 +63,7 @@ export default function EstatisticasUsuarioPage() {
 
   const [estatisticas, setEstatisticas] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState("");
+  const [erro, setErro] = useState("");\n  const [baixandoPdf, setBaixandoPdf] = useState(false);
 
   async function carregarEstatisticas() {
     if (!usuarioId) return;
@@ -81,6 +81,23 @@ export default function EstatisticasUsuarioPage() {
       );
     } finally {
       setCarregando(false);
+    }
+  }
+
+  async function baixarDossie() {
+    if (!usuarioId || baixandoPdf) return;
+    setBaixandoPdf(true);
+    try {
+      const blob = await baixarPdfDossie(usuarioId);
+      salvarArquivoLocal(blob, `sgnc-dossie-${usuarioId}.pdf`);
+    } catch (e) {
+      setErro(
+        e instanceof ErroApi
+          ? e.message
+          : "Não foi possível baixar o dossiê em PDF."
+      );
+    } finally {
+      setBaixandoPdf(false);
     }
   }
 
@@ -144,6 +161,17 @@ export default function EstatisticasUsuarioPage() {
               : "Dossiê do colaborador"
           }
           subtitulo="Histórico consolidado de não conformidades, recorrências e medidas registradas."
+          acoes={
+            <Botao
+              variante="primario"
+              tamanho="sm"
+              carregando={baixandoPdf}
+              disabled={baixandoPdf}
+              onClick={baixarDossie}
+            >
+              Baixar resumo em PDF
+            </Botao>
+          }
         />
 
         {carregando && <EstadoCarregamento mensagem="Carregando estatísticas..." />}
