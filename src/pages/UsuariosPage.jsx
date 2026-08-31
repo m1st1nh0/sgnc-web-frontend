@@ -17,6 +17,8 @@ import {
 } from "../services/usuarioService";
 import { AJUDA_SENHA_FORTE, erroSenhaForte } from "../services/senhaPolicy";
 import { useAuth } from "../context/AuthContext";
+import { useOnboarding } from "../context/OnboardingContext";
+import DicaContextual from "../components/onboarding/DicaContextual";
 import { ErroApi } from "../services/api";
 import CabecalhoPagina from "../components/ui/CabecalhoPagina";
 import Botao from "../components/ui/Botao";
@@ -192,6 +194,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
 
 export default function UsuariosPage() {
   const { usuario: usuarioLogado } = useAuth();
+  const { concluirEtapa } = useOnboarding();
   const navigate = useNavigate();
 
   const [usuarios, setUsuarios] = useState([]);
@@ -203,6 +206,9 @@ export default function UsuariosPage() {
     setCarregando(true);
     try {
       setUsuarios(await listarUsuarios());
+      await concluirEtapa("checklist_usuarios", "checklist", {
+        pagina: "usuarios",
+      });
     } catch (e) {
       setErro(
         e instanceof ErroApi
@@ -212,7 +218,7 @@ export default function UsuariosPage() {
     } finally {
       setCarregando(false);
     }
-  }, []);
+  }, [concluirEtapa]);
 
   useEffect(() => {
     (async () => {
@@ -275,6 +281,8 @@ export default function UsuariosPage() {
             </Botao>
           }
         />
+
+        <DicaContextual chave="dica_gestao_usuarios" className="mb-3" />
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
 

@@ -5,6 +5,8 @@ import Table from "react-bootstrap/Table";
 
 import BarraNavegacao from "../components/BarraNavegacao";
 import { useAuth } from "../context/AuthContext";
+import { useOnboarding } from "../context/OnboardingContext";
+import DicaContextual from "../components/onboarding/DicaContextual";
 import { buscarEstatisticasUsuario } from "../services/usuarioService";
 import { registrarMedidaDisciplinar } from "../services/ncService";
 import { baixarPdfDossie } from "../services/relatoriosService";
@@ -62,6 +64,7 @@ function medidaDaUltimaOcorrencia(causa) {
 export default function EstatisticasUsuarioPage() {
   const { usuarioId } = useParams();
   const { usuario } = useAuth();
+  const { concluirEtapa } = useOnboarding();
 
   const [estatisticas, setEstatisticas] = useState(null);
   const [carregando, setCarregando] = useState(true);
@@ -77,6 +80,9 @@ export default function EstatisticasUsuarioPage() {
     try {
       const resposta = await buscarEstatisticasUsuario(usuarioId);
       setEstatisticas(resposta);
+      await concluirEtapa("checklist_dossie", "checklist", {
+        usuario_id: usuarioId,
+      });
     } catch (e) {
       setErro(
         e?.message ||
@@ -93,6 +99,10 @@ export default function EstatisticasUsuarioPage() {
     try {
       const blob = await baixarPdfDossie(usuarioId);
       salvarArquivoLocal(blob, `sgnc-dossie-${usuarioId}.pdf`);
+      await concluirEtapa("checklist_baixar_pdf", "checklist", {
+        origem_documento: "dossie",
+        usuario_id: usuarioId,
+      });
     } catch (e) {
       setErro(
         e instanceof ErroApi
@@ -176,6 +186,13 @@ export default function EstatisticasUsuarioPage() {
             </Botao>
           }
         />
+
+        {usuario?.papel === "supervisor" && (
+          <DicaContextual chave="dica_dossie_equipe" className="mb-3" />
+        )}
+        {usuario?.papel === "funcionario" && usuario?.id === usuarioId && (
+          <DicaContextual chave="dica_dossie_pessoal" className="mb-3" />
+        )}
 
         {carregando && <EstadoCarregamento mensagem="Carregando estatísticas..." />}
 

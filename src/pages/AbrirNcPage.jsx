@@ -15,6 +15,8 @@ import CampoSelecao from "../components/ui/CampoSelecao";
 import CampoTextoArea from "../components/ui/CampoTextoArea";
 import EstadoCarregamento from "../components/ui/EstadoCarregamento";
 import MensagemErro from "../components/ui/MensagemErro";
+import DicaContextual from "../components/onboarding/DicaContextual";
+import { useOnboarding } from "../context/OnboardingContext";
 
 const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
 const FORMATOS_EVIDENCIA =
@@ -48,6 +50,7 @@ function formatarTamanho(bytes) {
 
 export default function AbrirNcPage() {
   const navigate = useNavigate();
+  const { concluirEtapa } = useOnboarding();
 
   const [chamado, setChamado] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
@@ -74,6 +77,9 @@ export default function AbrirNcPage() {
         ]);
         setUsuarios(listaUsuarios);
         setCausasConhecidas(listaCausas);
+        await concluirEtapa("checklist_abrir_nc", "checklist", {
+          pagina: "abrir-nc",
+        });
       } catch (e) {
         setErro(
           e instanceof ErroApi
@@ -201,6 +207,11 @@ export default function AbrirNcPage() {
                   helper="Campo opcional. Use para relacionar a NC a um chamado do helpdesk."
                 />
 
+                <DicaContextual
+                  chave="dica_abertura_colaborador"
+                  className="mb-3"
+                />
+
                 <Form.Group className="mb-4">
                   <Form.Label className="sg-label">
                     Colaborador analisado <span className="text-danger">*</span>
@@ -307,6 +318,11 @@ export default function AbrirNcPage() {
                     </p>
                   </div>
                 </div>
+                <DicaContextual
+                  chave="dica_abertura_evidencias"
+                  className="mb-3"
+                />
+
                 <Form.Group className="mb-1">
                   <Form.Control
                     type="file"

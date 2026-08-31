@@ -5,6 +5,7 @@ import Nav from "react-bootstrap/Nav";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
+import { useOnboarding } from "../context/OnboardingContext";
 import Botao from "./ui/Botao";
 import MarcaSgnc from "./ui/MarcaSgnc";
 
@@ -26,8 +27,17 @@ function isRotaAtiva({ isActive }) {
 
 export default function BarraNavegacao() {
   const { usuario, sair } = useAuth();
+  const { progresso, restaurar, abrirRevisao } = useOnboarding();
   const navigate = useNavigate();
   const [expandido, setExpandido] = useState(false);
+
+  async function aoAbrirGuia() {
+    if (progresso?.status === "dispensado") {
+      await restaurar();
+    }
+    await abrirRevisao();
+    setExpandido(false);
+  }
 
   function aoSair() {
     sair();
@@ -108,6 +118,9 @@ export default function BarraNavegacao() {
                   {NOME_PAPEL[usuario.papel] ?? usuario.papel}
                 </div>
               </div>
+              <Botao variante="subtle" tamanho="sm" onClick={aoAbrirGuia}>
+                Guia
+              </Botao>
               <span className="sg-navbar__divider d-none d-md-block" aria-hidden="true" />
               <Botao variante="subtle" tamanho="sm" onClick={aoSair}>
                 Sair
