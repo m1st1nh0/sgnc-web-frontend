@@ -9,6 +9,9 @@ import { listarOpcoesNc, listarUsuarios } from "../services/usuarioService";
 import { ErroApi } from "../services/api";
 import { criarVisaoHome } from "../services/homeUx";
 import { useAuth } from "../context/AuthContext";
+import { useOnboarding } from "../context/OnboardingContext";
+import OnboardingChecklist from "../components/onboarding/OnboardingChecklist";
+import DicaContextual from "../components/onboarding/DicaContextual";
 import EstadoCarregamento from "../components/ui/EstadoCarregamento";
 import EstadoVazio from "../components/ui/EstadoVazio";
 import MensagemErro from "../components/ui/MensagemErro";
@@ -34,6 +37,7 @@ const ABAS_FILTRO = [
 export default function HomePage() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
+  const { concluirEtapa } = useOnboarding();
   const [ncs, setNcs] = useState([]);
   const [pessoas, setPessoas] = useState([]);
   const [equipeIds, setEquipeIds] = useState([]);
@@ -69,6 +73,16 @@ export default function HomePage() {
           ? resultadoEquipe.value.map((item) => item.id)
           : []
       );
+      await concluirEtapa("checklist_conhecer_painel", "checklist", {
+        pagina: "home",
+      });
+      if (usuario?.papel === "supervisor") {
+        await concluirEtapa("checklist_equipe", "checklist", {
+          quantidade: resultadoEquipe.status === "fulfilled"
+            ? resultadoEquipe.value.length
+            : 0,
+        });
+      }
     } catch (e) {
       setErro(
         e instanceof ErroApi
@@ -144,6 +158,11 @@ export default function HomePage() {
             </Link>
           }
         />
+
+        <OnboardingChecklist />
+        {usuario?.papel === "supervisor" && (
+          <DicaContextual chave="dica_equipe_direta" className="mb-4" />
+        )}
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
 
