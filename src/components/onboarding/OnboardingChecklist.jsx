@@ -13,6 +13,7 @@ export default function OnboardingChecklist() {
     etapaConcluida,
     dispensar,
     abrirRevisao,
+    concluirEtapa,
   } = useOnboarding();
 
   if (
@@ -72,6 +73,13 @@ export default function OnboardingChecklist() {
                 "sg-onboarding-tarefa" +
                 (concluido ? " sg-onboarding-tarefa--concluida" : "")
               }
+              onClick={() => {
+                if (item.concluirAoAbrir && !concluido) {
+                  concluirEtapa(item.chave, "checklist", {
+                    origem: "atalho_onboarding",
+                  });
+                }
+              }}
             >
               <span className="sg-onboarding-tarefa__estado" aria-hidden="true">
                 {concluido ? "✓" : "○"}
