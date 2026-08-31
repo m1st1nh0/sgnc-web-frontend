@@ -49,4 +49,11 @@ for (const caminho of arquivosCriticos) {
   assert.doesNotMatch(fonte, /dangerouslySetInnerHTML/);
 }
 
+const authLayout = readFileSync("src/components/ui/AuthLayout.jsx", "utf8");
+assert.doesNotMatch(
+  authLayout,
+  /\\n/,
+  "AuthLayout não deve renderizar sequências de quebra de linha como texto"
+);
+
 console.log("PR08 FRONTEND SECURITY TESTS PASSED");
