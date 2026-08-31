@@ -2,6 +2,8 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import EstadoCarregamento from "./components/ui/EstadoCarregamento";
 import { AuthProvider } from "./context/AuthContext";
+import { OnboardingProvider } from "./context/OnboardingContext";
+import OnboardingInicialModal from "./components/onboarding/OnboardingInicialModal";
 import RotaProtegida from "./components/RotaProtegida";
 import LoginPage from "./pages/LoginPage";
 import TrocarSenhaPage from "./pages/TrocarSenhaPage";
@@ -19,7 +21,9 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
+        <OnboardingProvider>
+          <OnboardingInicialModal />
+          <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/trocar-senha" element={<TrocarSenhaPage />} />
           <Route path="/" element={<RotaProtegida><HomePage /></RotaProtegida>} />
@@ -77,7 +81,8 @@ export default function App() {
               </RotaProtegida>
             }
           />
-        </Routes>
+          </Routes>
+        </OnboardingProvider>
       </BrowserRouter>
     </AuthProvider>
   );
