@@ -2,8 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
 
 import BarraNavegacao from "../components/BarraNavegacao";
 import CampoCausas from "../components/CampoCausas";
@@ -24,6 +22,22 @@ const EXPLICACOES_CRITICIDADE = {
   Média: "Impacto perceptível, retrabalho ou risco moderado para a operação.",
   Alta: "Impacto grave, interrupção ou risco elevado que exige prioridade.",
 };
+
+function PreviewImagem({ arquivo, aoFechar }) {
+  const url = useMemo(() => URL.createObjectURL(arquivo), [arquivo]);
+
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+
+  return (
+    <div className="sg-preview-evidencia" role="dialog" aria-label={`Pré-visualização de ${arquivo.name}`}>
+      <div className="sg-preview-evidencia__cabecalho">
+        <div><strong>Confirme a imagem</strong><span>{arquivo.name}</span></div>
+        <button type="button" onClick={aoFechar}>Fechar preview</button>
+      </div>
+      <img src={url} alt={`Pré-visualização de ${arquivo.name}`} />
+    </div>
+  );
+}
 
 function formatarTamanho(bytes) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -47,6 +61,7 @@ export default function AbrirNcPage() {
   const [arquivosEvidencias, setArquivosEvidencias] = useState([]);
   const [buscaColaborador, setBuscaColaborador] = useState("");
   const [etapaEnvio, setEtapaEnvio] = useState("");
+  const [previewArquivo, setPreviewArquivo] = useState(null);
 
   useEffect(() => {
     async function carregarDadosDeApoio() {
@@ -82,7 +97,17 @@ export default function AbrirNcPage() {
   }, [buscaColaborador, usuarios]);
 
   function removerArquivo(indice) {
-    setArquivosEvidencias((atuais) => atuais.filter((_, i) => i !== indice));
+    setArquivosEvidencias((atuais) => {
+      const removido = atuais[indice];
+      if (removido === previewArquivo) setPreviewArquivo(null);
+      return atuais.filter((_, i) => i !== indice);
+    });
+  }
+
+  function selecionarArquivos(evento) {
+    const arquivos = Array.from(evento.target.files || []);
+    setArquivosEvidencias(arquivos);
+    setPreviewArquivo(arquivos.find((arquivo) => arquivo.type.startsWith("image/")) || null);
   }
 
   async function aoEnviar(evento) {
@@ -165,53 +190,54 @@ export default function AbrirNcPage() {
                   helper="Campo opcional. Use para relacionar a NC a um chamado do helpdesk."
                 />
 
-                <CampoTexto
-                  rotulo="Buscar colaborador"
-                  value={buscaColaborador}
-                  onChange={(e) => setBuscaColaborador(e.target.value)}
-                  placeholder="Digite o nome ou setor"
-                  helper={`${usuariosFiltrados.length} de ${usuarios.length} colaborador(es) disponível(is)`}
-                />
+                <Form.Group className="mb-4">
+                  <Form.Label className="sg-label">
+                    Colaborador analisado <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    type="search"
+                    className="sg-input"
+                    value={buscaColaborador}
+                    onChange={(e) => setBuscaColaborador(e.target.value)}
+                    placeholder="Digite o nome ou setor para localizar"
+                    aria-describedby="ajuda-colaborador"
+                  />
+                  <Form.Text id="ajuda-colaborador" className="sg-helper">
+                    Clique em uma pessoa abaixo para selecioná-la. A busca apenas filtra os resultados.
+                  </Form.Text>
 
-                <Row>
-                  <Col md={8}>
-                    <CampoSelecao
-                      rotulo="Colaborador analisado"
-                      obrigatorio
-                      value={colaboradorId}
-                      onChange={(e) => setColaboradorId(e.target.value)}
-                      erro={errosCampo.colaborador}
-                    >
-                      <option value="">Selecione...</option>
-                      {usuariosFiltrados.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.nome}{u.setor ? ` — ${u.setor}` : ""}
-                        </option>
-                      ))}
-                    </CampoSelecao>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="sg-label">Setor</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="sg-input"
-                        value={colaboradorSelecionado?.setor || ""}
-                        readOnly
-                        disabled
-                        placeholder="Definido pelo cadastro"
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-
-                {colaboradorSelecionado && (
-                  <div className="sg-resumo-selecao mb-3" role="status">
-                    <span>Selecionado</span>
-                    <strong>{colaboradorSelecionado.nome}</strong>
-                    <small>{colaboradorSelecionado.setor || "Setor não informado"}</small>
+                  <div className="sg-seletor-colaborador mt-2" role="listbox" aria-label="Colaboradores ativos">
+                    {usuariosFiltrados.length === 0 ? (
+                      <div className="sg-seletor-colaborador__vazio">
+                        Nenhum colaborador encontrado para “{buscaColaborador}”.
+                      </div>
+                    ) : (
+                      usuariosFiltrados.map((pessoa) => {
+                        const selecionado = pessoa.id === colaboradorId;
+                        return (
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={selecionado}
+                            className={`sg-seletor-colaborador__opcao ${selecionado ? "sg-seletor-colaborador__opcao--ativa" : ""}`}
+                            key={pessoa.id}
+                            onClick={() => {
+                              setColaboradorId(pessoa.id);
+                              setErrosCampo((atual) => ({ ...atual, colaborador: "" }));
+                            }}
+                          >
+                            <span className="sg-seletor-colaborador__avatar" aria-hidden="true">
+                              {(pessoa.nome || "?").trim().charAt(0).toUpperCase()}
+                            </span>
+                            <span><strong>{pessoa.nome}</strong><small>{pessoa.setor || "Setor não informado"}</small></span>
+                            <span className="sg-seletor-colaborador__marca">{selecionado ? "Selecionado" : "Selecionar"}</span>
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
-                )}
+                  {errosCampo.colaborador && <div className="sg-erro-campo mt-2">{errosCampo.colaborador}</div>}
+                </Form.Group>
 
                 <CampoSelecao
                   rotulo="Criticidade"
@@ -275,7 +301,7 @@ export default function AbrirNcPage() {
                     type="file"
                     multiple
                     className="sg-input"
-                    onChange={(e) => setArquivosEvidencias(Array.from(e.target.files || []))}
+                    onChange={selecionarArquivos}
                   />
                   <Form.Text className="sg-helper">
                     Você pode selecionar uma ou mais evidências antes de abrir a NC.
@@ -286,12 +312,23 @@ export default function AbrirNcPage() {
                     {arquivosEvidencias.map((arquivo, indice) => (
                       <li key={`${arquivo.name}-${arquivo.lastModified}`}>
                         <span><strong>{arquivo.name}</strong><small>{formatarTamanho(arquivo.size)}</small></span>
-                        <button type="button" onClick={() => removerArquivo(indice)} disabled={enviando}>
-                          Remover
-                        </button>
+                        <div className="d-flex gap-2">
+                          {arquivo.type.startsWith("image/") && (
+                            <button type="button" onClick={() => setPreviewArquivo(arquivo)} disabled={enviando}>
+                              Visualizar
+                            </button>
+                          )}
+                          <button type="button" onClick={() => removerArquivo(indice)} disabled={enviando}>
+                            Remover
+                          </button>
+                        </div>
                       </li>
                     ))}
                   </ul>
+                )}
+
+                {previewArquivo && (
+                  <PreviewImagem arquivo={previewArquivo} aoFechar={() => setPreviewArquivo(null)} />
                 )}
 
                 <div className="sg-revisao-nc mt-4">
