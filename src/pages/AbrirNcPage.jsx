@@ -314,11 +314,11 @@ export default function AbrirNcPage() {
                         <span><strong>{arquivo.name}</strong><small>{formatarTamanho(arquivo.size)}</small></span>
                         <div className="d-flex gap-2">
                           {arquivo.type.startsWith("image/") && (
-                            <button type="button" onClick={() => setPreviewArquivo(arquivo)} disabled={enviando}>
+                            <button className="sg-acao-arquivo sg-acao-arquivo--preview" type="button" onClick={() => setPreviewArquivo(arquivo)} disabled={enviando}>
                               Visualizar
                             </button>
                           )}
-                          <button type="button" onClick={() => removerArquivo(indice)} disabled={enviando}>
+                          <button className="sg-acao-arquivo sg-acao-arquivo--remover" type="button" onClick={() => removerArquivo(indice)} disabled={enviando}>
                             Remover
                           </button>
                         </div>
