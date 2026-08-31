@@ -400,7 +400,7 @@ export default function DetalhesNcPage() {
               </div>
             </div>
 
-            <div >
+            <div>
               {podeVerDetalhesCompletos && ehAdm && nc.status === "aberta" && (
                 <PainelAvaliar
                   nc={nc}
