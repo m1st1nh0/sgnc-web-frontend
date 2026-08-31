@@ -17,6 +17,8 @@ import EstadoCarregamento from "../components/ui/EstadoCarregamento";
 import MensagemErro from "../components/ui/MensagemErro";
 
 const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
+const FORMATOS_EVIDENCIA =
+  ".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xlsx";
 const EXPLICACOES_CRITICIDADE = {
   Baixa: "Baixo impacto e sem interrupção relevante da operação.",
   Média: "Impacto perceptível, retrabalho ou risco moderado para a operação.",
@@ -103,9 +105,20 @@ export default function AbrirNcPage() {
   }
 
   function selecionarArquivos(evento) {
-    const arquivos = Array.from(evento.target.files || []);
-    setArquivosEvidencias(arquivos);
-    setPreviewArquivo(arquivos.find((arquivo) => arquivo.type.startsWith("image/")) || null);
+    const novosArquivos = Array.from(evento.target.files || []);
+    setArquivosEvidencias((atuais) => {
+      const arquivosUnicos = new Map(
+        [...atuais, ...novosArquivos].map((arquivo) => [
+          `${arquivo.name}-${arquivo.size}-${arquivo.lastModified}`,
+          arquivo,
+        ])
+      );
+      return Array.from(arquivosUnicos.values());
+    });
+    setPreviewArquivo(
+      novosArquivos.find((arquivo) => arquivo.type.startsWith("image/")) || null
+    );
+    evento.target.value = "";
   }
 
   async function aoEnviar(evento) {
@@ -298,11 +311,12 @@ export default function AbrirNcPage() {
                   <Form.Control
                     type="file"
                     multiple
+                    accept={FORMATOS_EVIDENCIA}
                     className="sg-input"
                     onChange={selecionarArquivos}
                   />
                   <Form.Text className="sg-helper">
-                    Você pode selecionar uma ou mais evidências antes de abrir a NC.
+                    Selecione vários arquivos de uma vez ou faça novas seleções para acrescentar evidências.
                   </Form.Text>
                 </Form.Group>
                 {arquivosEvidencias.length > 0 && (
@@ -336,6 +350,7 @@ export default function AbrirNcPage() {
                     <div><dt>Setor</dt><dd>{colaboradorSelecionado?.setor || "—"}</dd></div>
                     <div><dt>Criticidade</dt><dd>{criticidade}</dd></div>
                     <div><dt>Causas</dt><dd>{causas.length ? causas.join(", ") : "Não informadas"}</dd></div>
+                    <div><dt>Evidências</dt><dd>{arquivosEvidencias.length} arquivo(s)</dd></div>
                   </dl>
                 </div>
               </div>
