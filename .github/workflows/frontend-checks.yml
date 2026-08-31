@@ -2,6 +2,9 @@ name: Frontend checks
 
 on:
   pull_request:
+    branches: [main, pr08-security-hardening]
+  push:
+    branches: [main, pr05-role-aware-ux, pr08-security-hardening, pr09-devsecops]
     branches: [main, pr06-insights-visual-v2]
   push:
     branches: [main, pr05-role-aware-ux, pr06-insights-visual-v2, pr07-relatorios-ui]
@@ -13,8 +16,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -24,6 +27,8 @@ jobs:
         run: npm run lint
       - name: PR05 role-aware UX regression
         run: node test_pr05.mjs
+      - name: PR08 frontend security regression
+        run: node test_pr08.mjs
       - name: PR06 Insights V2 presentation regression
         run: node test_pr06.mjs
       - name: PR07 report UI regression
