@@ -200,7 +200,17 @@ export default function DetalhesNcPage() {
   return (
     <div>
       <BarraNavegacao />
-      <Container className="sg-container" style={{ maxWidth: "900px" }}>
+      <Container className="sg-container sg-print-documento" style={{ maxWidth: "900px" }}>
+        {nc && (
+          <div className="sg-print-cabecalho" aria-hidden="true">
+            <img src="/logo-arquem.png" alt="" />
+            <div>
+              <strong>Registro de Não Conformidade</strong>
+              <span>NC #{id}</span>
+            </div>
+          </div>
+        )}
+
         <CabecalhoPagina
           titulo={`NC #${id}`}
           subtitulo={
@@ -211,6 +221,14 @@ export default function DetalhesNcPage() {
           acoes={
             nc && (
               <>
+                <Botao
+                  variante="secundario"
+                  tamanho="sm"
+                  className="sg-no-print"
+                  onClick={() => window.print()}
+                >
+                  Imprimir NC
+                </Botao>
                 {podeEditar && (
                   <Botao
                     variante="secundario"
@@ -371,21 +389,23 @@ export default function DetalhesNcPage() {
               </div>
             </div>
 
-            {podeVerDetalhesCompletos && ehAdm && nc.status === "aberta" && (
-              <PainelAvaliar
-                nc={nc}
-                aoConcluir={setNc}
-                bloqueado={enviandoArquivo}
-              />
-            )}
-            {podeVerDetalhesCompletos && ehAdm && aguardandoFeedback && (
-              <PainelFeedback nc={nc} aoConcluir={setNc} />
-            )}
-            {podeVerDetalhesCompletos &&
-              ehColaboradorDaNc &&
-              nc.status === "aguardando_aceite" && (
-                <PainelAceite nc={nc} aoConcluir={setNc} />
+            <div className="sg-no-print">
+              {podeVerDetalhesCompletos && ehAdm && nc.status === "aberta" && (
+                <PainelAvaliar
+                  nc={nc}
+                  aoConcluir={setNc}
+                  bloqueado={enviandoArquivo}
+                />
               )}
+              {podeVerDetalhesCompletos && ehAdm && aguardandoFeedback && (
+                <PainelFeedback nc={nc} aoConcluir={setNc} />
+              )}
+              {podeVerDetalhesCompletos &&
+                ehColaboradorDaNc &&
+                nc.status === "aguardando_aceite" && (
+                  <PainelAceite nc={nc} aoConcluir={setNc} />
+                )}
+            </div>
 
             {podeVerDetalhesCompletos && (
               <div className="sg-card">
@@ -401,7 +421,7 @@ export default function DetalhesNcPage() {
                     </div>
                     {nc.status === "aberta" &&
                       (ehAdm || ehAutor || ehColaboradorDaNc) && (
-                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <div className="d-flex align-items-center gap-2 flex-wrap sg-no-print">
                           <Form.Control
                             type="file"
                             size="sm"
