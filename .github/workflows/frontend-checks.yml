@@ -33,5 +33,7 @@ jobs:
         run: node test_pr06.mjs
       - name: PR07 report UI regression
         run: node test_pr07.mjs
+      - name: UX operation and KPI explanation regression
+        run: node test_ux_operacao_indicadores.mjs
       - name: Build
         run: npm run build

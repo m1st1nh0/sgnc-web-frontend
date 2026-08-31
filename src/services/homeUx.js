@@ -54,6 +54,23 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
     return {
       titulo: "Gestão de Não Conformidades",
       subtitulo: "Priorize avaliações, feedbacks e o acompanhamento do fluxo.",
+      destaque: {
+        rotulo: "Visão da Qualidade",
+        titulo:
+          contar(ncs, "aberta") > 0
+            ? `${contar(ncs, "aberta")} NC(s) aguardam avaliação`
+            : "Nenhuma avaliação pendente",
+        descricao:
+          contar(ncs, "aguardando_feedback") > 0
+            ? `${contar(ncs, "aguardando_feedback")} NC(s) procedentes ainda aguardam feedback.`
+            : "O fluxo administrativo está sem feedbacks pendentes.",
+        acao: { rotulo: "Ver ações da Qualidade", destino: "#prioridades" },
+      },
+      atalhos: [
+        { rotulo: "Analisar indicadores", descricao: "Backlog, tempos e reincidência", destino: "/insights", icone: "↗" },
+        { rotulo: "Emitir relatórios", descricao: "PDF gerencial e CSV detalhado", destino: "/relatorios", icone: "⇩" },
+        { rotulo: "Gerenciar usuários", descricao: "Cadastros, papéis e equipes", destino: "/usuarios", icone: "◉" },
+      ],
       tituloPrioridades: "Ações da Qualidade",
       vazioPrioridades: "Nenhuma ação administrativa pendente no momento.",
       tituloLista: "Todas as NCs visíveis",
@@ -95,6 +112,23 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
     return {
       titulo: "Acompanhamento da Equipe",
       subtitulo: "Acompanhe somente as NCs dos seus subordinados diretos.",
+      destaque: {
+        rotulo: "Sua equipe direta",
+        titulo:
+          prioridades.length > 0
+            ? `${prioridades.length} NC(s) ativas em acompanhamento`
+            : "Equipe sem NC ativa no momento",
+        descricao:
+          contar(equipe, "aguardando_aceite") > 0
+            ? `${contar(equipe, "aguardando_aceite")} NC(s) aguardam confirmação após o feedback.`
+            : "Não há aceites pendentes na equipe direta.",
+        acao: { rotulo: "Ver equipe em acompanhamento", destino: "#prioridades" },
+      },
+      atalhos: [
+        { rotulo: "Insights da equipe", descricao: "Somente subordinados diretos", destino: "/insights", icone: "↗" },
+        { rotulo: "Relatórios da equipe", descricao: "PDF e CSV dentro do seu escopo", destino: "/relatorios", icone: "⇩" },
+        { rotulo: "Minhas estatísticas", descricao: "Seus indicadores pessoais separados", destino: `/usuarios/${usuario.id}/estatisticas`, icone: "≡" },
+      ],
       tituloPrioridades: "Equipe em acompanhamento",
       vazioPrioridades: "Sua equipe não possui NCs ativas visíveis no momento.",
       tituloLista: "NCs visíveis para você",
@@ -139,6 +173,31 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
   return {
     titulo: "Minhas Não Conformidades",
     subtitulo: "Veja o que exige sua atenção e acompanhe os registros que você abriu.",
+    destaque: {
+      rotulo: "Seu próximo passo",
+      titulo:
+        contar(minhasNcs, "aguardando_aceite") > 0
+          ? `${contar(minhasNcs, "aguardando_aceite")} feedback(s) aguardam seu aceite`
+          : "Nenhum aceite pendente",
+      descricao:
+        prioridades.length > 0
+          ? `Você possui ${prioridades.length} NC(s) ativa(s) para acompanhar.`
+          : "Você está em dia. Continue acompanhando seu histórico pessoal.",
+      acao: {
+        rotulo:
+          contar(minhasNcs, "aguardando_aceite") > 0
+            ? "Ver o que precisa de atenção"
+            : "Consultar minhas estatísticas",
+        destino:
+          contar(minhasNcs, "aguardando_aceite") > 0
+            ? "#prioridades"
+            : `/usuarios/${usuario.id}/estatisticas`,
+      },
+    },
+    atalhos: [
+      { rotulo: "Minhas estatísticas", descricao: "Histórico por causa e recorrência", destino: `/usuarios/${usuario.id}/estatisticas`, icone: "≡" },
+      { rotulo: "Abrir uma NC", descricao: "Registrar um fato para qualquer colaborador ativo", destino: "/abrir-nc", icone: "+" },
+    ],
     tituloPrioridades: "O que precisa da sua atenção",
     vazioPrioridades: "Você não possui nenhuma NC ativa para acompanhar no momento.",
     tituloLista: "Minhas NCs e registros abertos por mim",
