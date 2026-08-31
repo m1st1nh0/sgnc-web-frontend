@@ -36,7 +36,7 @@ assert.match(estatisticas, /NCs abertas ou invalidadas não entram/);
 assert.match(estatisticas, /Dossiê do colaborador/);
 assert.match(estatisticas, /Abrir NC #/);
 assert.doesNotMatch(estatisticas, /bg-primary/);
-assert.match(usuarios, />Dossiê/);
+assert.match(usuarios, /Dossiê/);
 assert.doesNotMatch(usuarios, /react-bootstrap\/Badge/);
 assert.match(navegacao, /Meu dossiê/);
 assert.match(app, /\/usuarios\/:usuarioId\/dossie/);
