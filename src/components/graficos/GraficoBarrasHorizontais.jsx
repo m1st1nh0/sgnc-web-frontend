@@ -8,16 +8,12 @@ import {
   YAxis,
 } from "recharts";
 
-/**
- * Gráfico de barras horizontais genérico (Recharts).
- *
- * Props:
- *  - dados: array de objetos com os valores
- *  - categoriaChave: chave usada como rótulo da categoria (eixo Y)
- *  - series: [{ chave, cor, nome }] — uma ou mais séries
- *  - empilhado: se true, as séries ficam empilhadas uma sobre a outra
- *  - altura: altura do gráfico em px
- */
+const TICK_SECUNDARIO = {
+  fontFamily: "var(--fonte-sans)",
+  fontSize: 12,
+  fill: "var(--texto-secundario)",
+};
+
 export default function GraficoBarrasHorizontais({
   dados,
   categoriaChave,
@@ -31,44 +27,43 @@ export default function GraficoBarrasHorizontais({
         data={dados}
         layout="vertical"
         margin={{ top: 4, right: 20, bottom: 4, left: 8 }}
-        barCategoryGap={empilhado ? "16%" : "30%"}
+        barCategoryGap={empilhado ? "18%" : "34%"}
       >
-        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+        <CartesianGrid horizontal={false} stroke="var(--borda)" />
         <XAxis
           type="number"
           allowDecimals={false}
-          tick={{ fontSize: 12, fill: "#64748b" }}
-          axisLine={{ stroke: "#e2e8f0" }}
+          tick={TICK_SECUNDARIO}
+          axisLine={{ stroke: "var(--borda)" }}
           tickLine={false}
         />
         <YAxis
           type="category"
           dataKey={categoriaChave}
           width={138}
-          tick={{ fontSize: 12, fill: "#0f172a" }}
+          tick={{ ...TICK_SECUNDARIO, fill: "var(--texto-primario)" }}
           axisLine={false}
           tickLine={false}
         />
         <Tooltip
-          cursor={{ fill: "#f1f5f9" }}
+          cursor={{ fill: "var(--fundo-hover)" }}
           contentStyle={{
-            borderRadius: 8,
-            border: "1px solid #e2e8f0",
-            boxShadow: "var(--sombra-md)",
-            fontSize: "0.85rem",
+            borderRadius: 6,
+            border: "1px solid var(--borda)",
+            boxShadow: "var(--sombra-elevada)",
+            fontFamily: "var(--fonte-sans)",
+            fontSize: "0.8125rem",
           }}
         />
-        {series.map((s, indice) => (
+        {series.map((serie, indice) => (
           <Bar
-            key={s.chave}
-            dataKey={s.chave}
-            name={s.nome ?? s.chave}
-            fill={s.cor}
+            key={serie.chave}
+            dataKey={serie.chave}
+            name={serie.nome ?? serie.chave}
+            fill={serie.cor}
             stackId={empilhado ? "total" : undefined}
-            radius={
-              empilhado && indice === series.length - 1 ? [0, 6, 6, 0] : [0, 0, 0, 0]
-            }
-            maxBarSize={26}
+            radius={empilhado && indice === series.length - 1 ? [0, 3, 3, 0] : 0}
+            maxBarSize={24}
           />
         ))}
       </BarChart>
