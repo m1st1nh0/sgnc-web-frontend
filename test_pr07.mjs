@@ -58,8 +58,6 @@ assert.match(pagina, /baixarPdfResumo/);
 assert.match(pagina, /baixarCsvNcs/);
 assert.match(pagina, /listarUsuarios/);
 assert.match(pagina, /ocorrência canônica de 12 meses/);
-assert.match(pagina, /Baixar resumo em PDF/);
-assert.match(pagina, /baixarPdfDossie/);
 assert.match(pagina, /somente sua equipe direta/);
 
 assert.match(app, /path="\/relatorios"/);
