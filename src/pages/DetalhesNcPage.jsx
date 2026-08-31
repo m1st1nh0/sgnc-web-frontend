@@ -220,17 +220,7 @@ export default function DetalhesNcPage() {
   return (
     <div>
       <BarraNavegacao />
-      <Container className="sg-container sg-print-documento" style={{ maxWidth: "900px" }}>
-        {nc && (
-          <div className="sg-print-cabecalho" aria-hidden="true">
-            <img src="/logo-arquem.png" alt="" />
-            <div>
-              <strong>Registro de Não Conformidade</strong>
-              <span>NC #{id}</span>
-            </div>
-          </div>
-        )}
-
+      <Container className="sg-container" style={{ maxWidth: "900px" }}>
         <CabecalhoPagina
           titulo={`NC #${id}`}
           subtitulo={
@@ -244,21 +234,11 @@ export default function DetalhesNcPage() {
                 <Botao
                   variante="primario"
                   tamanho="sm"
-                  className="sg-no-print"
                   carregando={baixandoPdf}
                   disabled={baixandoPdf}
                   onClick={baixarRelatorioPdf}
                 >
                   Baixar relatório PDF
-                </Botao>
-                <Botao
-                  variante="secundario"
-                  tamanho="sm"
-                  className="sg-no-print"
-                  disabled={baixandoPdf}
-                  onClick={() => window.print()}
-                >
-                  Imprimir NC
                 </Botao>
                 {podeEditar && (
                   <Botao
@@ -420,7 +400,7 @@ export default function DetalhesNcPage() {
               </div>
             </div>
 
-            <div className="sg-no-print">
+            <div >
               {podeVerDetalhesCompletos && ehAdm && nc.status === "aberta" && (
                 <PainelAvaliar
                   nc={nc}
@@ -452,7 +432,7 @@ export default function DetalhesNcPage() {
                     </div>
                     {nc.status === "aberta" &&
                       (ehAdm || ehAutor || ehColaboradorDaNc) && (
-                        <div className="d-flex align-items-center gap-2 flex-wrap sg-no-print">
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
                           <Form.Control
                             type="file"
                             size="sm"
