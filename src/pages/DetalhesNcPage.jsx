@@ -16,6 +16,8 @@ import {
 } from "../services/ncService";
 import { useAuth } from "../context/AuthContext";
 import { ErroApi, chamarApi } from "../services/api";
+import { baixarPdfNc } from "../services/relatoriosService";
+import { salvarArquivoLocal } from "../utils/arquivoLocal";
 import { formatarData, formatarDataHora } from "../utils/formato";
 import CabecalhoPagina from "../components/ui/CabecalhoPagina";
 import Botao from "../components/ui/Botao";
@@ -70,6 +72,24 @@ export default function DetalhesNcPage() {
   const [evidenciaSelecionada, setEvidenciaSelecionada] = useState(null);
   const [excluindoEvidencia, setExcluindoEvidencia] = useState(false);
   const [evidenciaVisualizada, setEvidenciaVisualizada] = useState(null);
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
+
+  async function baixarRelatorioPdf() {
+    if (!id || baixandoPdf) return;
+    setBaixandoPdf(true);
+    try {
+      const blob = await baixarPdfNc(id);
+      salvarArquivoLocal(blob, `sgnc-nc-${id}.pdf`);
+    } catch (e) {
+      setErro(
+        e instanceof ErroApi
+          ? e.message
+          : "Não foi possível baixar o relatório da NC em PDF."
+      );
+    } finally {
+      setBaixandoPdf(false);
+    }
+  }
 
   async function carregarNc() {
     try {
@@ -222,9 +242,20 @@ export default function DetalhesNcPage() {
             nc && (
               <>
                 <Botao
+                  variante="primario"
+                  tamanho="sm"
+                  className="sg-no-print"
+                  carregando={baixandoPdf}
+                  disabled={baixandoPdf}
+                  onClick={baixarRelatorioPdf}
+                >
+                  Baixar relatório PDF
+                </Botao>
+                <Botao
                   variante="secundario"
                   tamanho="sm"
                   className="sg-no-print"
+                  disabled={baixandoPdf}
                   onClick={() => window.print()}
                 >
                   Imprimir NC
