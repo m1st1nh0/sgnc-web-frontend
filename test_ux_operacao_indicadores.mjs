@@ -42,6 +42,8 @@ assert.match(navegacao, /Meu dossiê/);
 assert.match(app, /\/usuarios\/:usuarioId\/dossie/);
 
 assert.match(detalhes, /window\.print\(\)/);
+assert.match(detalhes, /Baixar relatório PDF/);
+assert.match(detalhes, /baixarPdfNc/);
 assert.match(detalhes, /sg-print-cabecalho/);
 assert.match(estilos, /@media print/);
 assert.match(estilos, /@page/);
