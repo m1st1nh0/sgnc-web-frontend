@@ -16,7 +16,10 @@ export default function AuthLayout({ children }) {
           </div>
           <span className="sg-auth-contexto__rodape">Ambiente interno</span>
         </aside>
-        <main className="sg-auth-card">\n          <MarcaSgnc completa />\n          {children}\n        </main>
+        <main className="sg-auth-card">
+          <MarcaSgnc completa />
+          {children}
+        </main>
       </div>
     </div>
   );
