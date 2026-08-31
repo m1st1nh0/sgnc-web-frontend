@@ -1,21 +1,23 @@
-/**
- * Layout compartilhado das telas de autenticação (login e troca de senha).
- * Centraliza o wrapper de fundo, o logo e o card para evitar duplicação.
- *
- * Props:
- *  - children: conteúdo do card (formulário)
- */
+import MarcaSgnc from "./MarcaSgnc";
+
 export default function AuthLayout({ children }) {
-    return (
-        <div className="sg-auth-wrapper">
-            <div className="sg-auth-card">
-                <div className="sg-auth-logo" aria-hidden="true">
-                    NC
-                </div>
-                <div className="sg-card">
-                    <div className="sg-card-body p-4">{children}</div>
-                </div>
-            </div>
-        </div>
-    );
+  return (
+    <div className="sg-auth-wrapper">
+      <div className="sg-auth-shell">
+        <aside className="sg-auth-contexto">
+          <MarcaSgnc completa clara />
+          <div className="sg-auth-contexto__conteudo">
+            <span className="sg-auth-contexto__rotulo">Qualidade e conformidade</span>
+            <h2>Desvios claros.<br />Ações rastreáveis.</h2>
+            <p>
+              Registre, acompanhe e encerre não conformidades com
+              responsabilidade definida em cada etapa.
+            </p>
+          </div>
+          <span className="sg-auth-contexto__rodape">Ambiente interno</span>
+        </aside>
+        <main className="sg-auth-card">{children}</main>
+      </div>
+    </div>
+  );
 }

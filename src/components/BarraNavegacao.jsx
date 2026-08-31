@@ -6,6 +6,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import Botao from "./ui/Botao";
+import MarcaSgnc from "./ui/MarcaSgnc";
 
 const NOME_PAPEL = {
   adm: "Administrador (Qualidade)",
@@ -52,12 +53,12 @@ export default function BarraNavegacao() {
     <Navbar className="sg-navbar" expand="lg" expanded={expandido}>
       <Container className="sg-navbar__container">
         <Navbar.Brand as={NavLink} to="/" onClick={aoNavegar}>
-          <span aria-hidden="true">NC</span>
-          SGNC
+          <MarcaSgnc completa />
         </Navbar.Brand>
 
         <Navbar.Toggle
           aria-controls="sgnc-navbar-nav"
+          aria-label={expandido ? "Fechar navegação" : "Abrir navegação"}
           onClick={() => setExpandido((e) => !e)}
         />
 
