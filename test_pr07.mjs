@@ -50,7 +50,9 @@ assert.match(api, /resposta\.blob\(\)/);
 assert.doesNotMatch(api, /sgnc_token.*URLSearchParams/);
 assert.match(service, /\/relatorios\/ncs\.csv/);
 assert.match(service, /\/relatorios\/resumo\.pdf/);
-assert.match(service, /relatoriosQuery\.js/);\nassert.match(service, /relatorios\\/usuarios\\/.*dossie\\.pdf/);\nassert.match(service, /relatorios\\/nc\\/.*pdf/);
+assert.match(service, /relatoriosQuery\.js/);
+assert.match(service, /\/relatorios\/usuarios\/.*dossie\.pdf/);
+assert.match(service, /\/relatorios\/nc\/.*\.pdf/);
 
 assert.match(pagina, /baixarPdfResumo/);
 assert.match(pagina, /baixarCsvNcs/);
