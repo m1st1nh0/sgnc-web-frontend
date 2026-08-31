@@ -1,5 +1,6 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { login as loginApi } from "../services/authService";
+import { EVENTO_SESSAO_EXPIRADA } from "../services/api";
 
 const AuthContext = createContext(null);
 
@@ -21,6 +22,17 @@ function carregarSessaoSalva() {
 export function AuthProvider({ children }) {
   const sessaoSalva = carregarSessaoSalva();
   const [usuario, setUsuario] = useState(sessaoSalva?.usuario ?? null);
+
+  useEffect(() => {
+    function encerrarSessaoExpirada() {
+      setUsuario(null);
+    }
+
+    window.addEventListener(EVENTO_SESSAO_EXPIRADA, encerrarSessaoExpirada);
+    return () => {
+      window.removeEventListener(EVENTO_SESSAO_EXPIRADA, encerrarSessaoExpirada);
+    };
+  }, []);
 
   async function entrar(email, senha) {
     const resposta = await loginApi(email, senha);
