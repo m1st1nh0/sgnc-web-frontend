@@ -28,6 +28,22 @@ for (const papel of papeis) {
   }
 }
 
+for (const chave of [
+  "checklist_avaliar_nc",
+  "checklist_feedback",
+  "checklist_evidencias",
+  "checklist_aceite",
+]) {
+  const itens = [
+    ...checklistDoPapel("adm", "usuario-1"),
+    ...checklistDoPapel("funcionario", "usuario-1"),
+  ];
+  assert.equal(
+    itens.find((item) => item.chave === chave)?.concluirAoAbrir,
+    true
+  );
+}
+
 assert(DICAS_ONBOARDING.dica_abertura_evidencias);
 assert(DICAS_ONBOARDING.dica_nc_pdf);
 assert(DICAS_ONBOARDING.dica_nc_aceite);
