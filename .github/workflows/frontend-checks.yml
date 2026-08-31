@@ -2,9 +2,9 @@ name: Frontend checks
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, pr08-security-hardening]
   push:
-    branches: [main, pr05-role-aware-ux, pr08-security-hardening]
+    branches: [main, pr05-role-aware-ux, pr08-security-hardening, pr09-devsecops]
 
 permissions:
   contents: read
@@ -13,8 +13,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
