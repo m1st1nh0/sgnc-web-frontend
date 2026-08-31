@@ -1087,6 +1087,10 @@ textarea:focus-visible {
     border-color: #aeb8b2;
   }
 
+  .sg-print-documento .sg-evidencia-item .sg-btn {
+    display: none !important;
+  }
+
   .sg-print-documento a {
     color: #182230;
     text-decoration: none;
