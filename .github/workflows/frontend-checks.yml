@@ -2,12 +2,9 @@ name: Frontend checks
 
 on:
   pull_request:
-    branches: [main, pr08-security-hardening]
+    branches: [main]
   push:
-    branches: [main, pr05-role-aware-ux, pr08-security-hardening, pr09-devsecops]
-    branches: [main, pr06-insights-visual-v2]
-  push:
-    branches: [main, pr05-role-aware-ux, pr06-insights-visual-v2, pr07-relatorios-ui]
+    branches: [main]
 
 permissions:
   contents: read
