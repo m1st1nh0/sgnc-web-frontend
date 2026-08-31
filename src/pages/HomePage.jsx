@@ -130,7 +130,6 @@ export default function HomePage() {
     return pessoa?.nome || "Usuário não disponível";
   }
 
-  const ehGestao = ["adm", "supervisor"].includes(usuario?.papel);
 
   return (
     <div>
@@ -152,6 +151,32 @@ export default function HomePage() {
           <EstadoCarregamento mensagem="Carregando não conformidades..." />
         ) : (
           <>
+            <section className={`sg-home-destaque sg-home-destaque--${usuario?.papel || "funcionario"} mb-4`}>
+              <div className="sg-home-destaque__conteudo">
+                <span className="sg-home-destaque__rotulo">{visao.destaque.rotulo}</span>
+                <h2>{visao.destaque.titulo}</h2>
+                <p>{visao.destaque.descricao}</p>
+                {visao.destaque.acao.destino.startsWith("#") ? (
+                  <a href={visao.destaque.acao.destino} className="sg-btn sg-btn--claro">
+                    {visao.destaque.acao.rotulo}
+                  </a>
+                ) : (
+                  <Link to={visao.destaque.acao.destino} className="sg-btn sg-btn--claro">
+                    {visao.destaque.acao.rotulo}
+                  </Link>
+                )}
+              </div>
+              <button
+                type="button"
+                className="sg-home-atualizar"
+                onClick={atualizar}
+                disabled={atualizando}
+              >
+                <span aria-hidden="true">↻</span>
+                {atualizando ? "Atualizando..." : "Atualizar dados"}
+              </button>
+            </section>
+
             <div className="row g-3 mb-4">
               {visao.cards.map((card) => (
                 <div className="col-sm-6 col-lg-3" key={card.rotulo}>
@@ -165,61 +190,25 @@ export default function HomePage() {
               ))}
             </div>
 
-            <div className="sg-acoes-rapidas mb-5">
-              <Link
-                to="/abrir-nc"
-                className="sg-acao-rapida sg-acao-rapida--principal"
-              >
-                <span className="sg-acao-rapida__icone" aria-hidden="true">
-                  +
-                </span>
-                Abrir Não Conformidade
-              </Link>
+            <section className="mb-5" aria-labelledby="atalhos-do-papel">
+              <div className="d-flex justify-content-between align-items-end gap-3 mb-3">
+                <div>
+                  <h2 id="atalhos-do-papel" className="h5 mb-1">Acessos importantes para você</h2>
+                  <p className="texto-sm texto-suave mb-0">Atalhos organizados conforme seu papel no sistema.</p>
+                </div>
+              </div>
+              <div className="sg-atalhos-papel">
+                {visao.atalhos.map((atalho) => (
+                  <Link to={atalho.destino} className="sg-atalho-papel" key={atalho.rotulo}>
+                    <span className="sg-atalho-papel__icone" aria-hidden="true">{atalho.icone}</span>
+                    <span><strong>{atalho.rotulo}</strong><small>{atalho.descricao}</small></span>
+                    <span className="sg-atalho-papel__seta" aria-hidden="true">→</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
 
-              {ehGestao && (
-                <Link to="/insights" className="sg-acao-rapida">
-                  <span className="sg-acao-rapida__icone" aria-hidden="true">
-                    ↗
-                  </span>
-                  Ver Insights
-                </Link>
-              )}
-
-              {usuario?.papel === "adm" ? (
-                <Link to="/usuarios" className="sg-acao-rapida">
-                  <span className="sg-acao-rapida__icone" aria-hidden="true">
-                    ◉
-                  </span>
-                  Gerenciar usuários
-                </Link>
-              ) : (
-                <Link
-                  to={`/usuarios/${usuario?.id}/estatisticas`}
-                  className="sg-acao-rapida"
-                >
-                  <span className="sg-acao-rapida__icone" aria-hidden="true">
-                    ≡
-                  </span>
-                  Minhas estatísticas
-                </Link>
-              )}
-
-              <Link
-                to="/"
-                className="sg-acao-rapida"
-                onClick={(e) => {
-                  e.preventDefault();
-                  atualizar();
-                }}
-              >
-                <span className="sg-acao-rapida__icone" aria-hidden="true">
-                  ↻
-                </span>
-                {atualizando ? "Atualizando..." : "Atualizar"}
-              </Link>
-            </div>
-
-            <h2 className="h5 mb-3">{visao.tituloPrioridades}</h2>
+            <h2 id="prioridades" className="h5 mb-3 sg-ancora-secao">{visao.tituloPrioridades}</h2>
             {visao.prioridades.length === 0 ? (
               <EstadoVazio
                 titulo="Tudo em dia"
