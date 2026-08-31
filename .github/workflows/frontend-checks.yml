@@ -5,6 +5,9 @@ on:
     branches: [main, pr08-security-hardening]
   push:
     branches: [main, pr05-role-aware-ux, pr08-security-hardening, pr09-devsecops]
+    branches: [main, pr06-insights-visual-v2]
+  push:
+    branches: [main, pr05-role-aware-ux, pr06-insights-visual-v2, pr07-relatorios-ui]
 
 permissions:
   contents: read
@@ -26,5 +29,9 @@ jobs:
         run: node test_pr05.mjs
       - name: PR08 frontend security regression
         run: node test_pr08.mjs
+      - name: PR06 Insights V2 presentation regression
+        run: node test_pr06.mjs
+      - name: PR07 report UI regression
+        run: node test_pr07.mjs
       - name: Build
         run: npm run build

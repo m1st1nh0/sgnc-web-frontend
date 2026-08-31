@@ -6,6 +6,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import Botao from "./ui/Botao";
+import MarcaSgnc from "./ui/MarcaSgnc";
 
 const NOME_PAPEL = {
   adm: "Administrador (Qualidade)",
@@ -46,46 +47,37 @@ export default function BarraNavegacao() {
     return nome[0].toUpperCase();
   }
 
+  const ehGestao = usuario?.papel === "adm" || usuario?.papel === "supervisor";
+
   return (
     <Navbar className="sg-navbar" expand="lg" expanded={expandido}>
       <Container className="sg-navbar__container">
         <Navbar.Brand as={NavLink} to="/" onClick={aoNavegar}>
-          <span aria-hidden="true">NC</span>
-          SGNC
+          <MarcaSgnc />
         </Navbar.Brand>
 
         <Navbar.Toggle
           aria-controls="sgnc-navbar-nav"
+          aria-label={expandido ? "Fechar navegação" : "Abrir navegação"}
           onClick={() => setExpandido((e) => !e)}
         />
 
         <Navbar.Collapse id="sgnc-navbar-nav">
           <Nav className="me-auto">
-            <Nav.Link
-              as={NavLink}
-              to="/"
-              end
-              onClick={aoNavegar}
-              className={isRotaAtiva}
-            >
+            <Nav.Link as={NavLink} to="/" end onClick={aoNavegar} className={isRotaAtiva}>
               {ROTULO_HOME[usuario?.papel] || "Não Conformidades"}
             </Nav.Link>
-            <Nav.Link
-              as={NavLink}
-              to="/abrir-nc"
-              onClick={aoNavegar}
-              className={isRotaAtiva}
-            >
+            <Nav.Link as={NavLink} to="/abrir-nc" onClick={aoNavegar} className={isRotaAtiva}>
               Abrir NC
             </Nav.Link>
-            {(usuario?.papel === "adm" || usuario?.papel === "supervisor") && (
-              <Nav.Link
-                as={NavLink}
-                to="/insights"
-                onClick={aoNavegar}
-                className={isRotaAtiva}
-              >
+            {ehGestao && (
+              <Nav.Link as={NavLink} to="/insights" onClick={aoNavegar} className={isRotaAtiva}>
                 Insights
+              </Nav.Link>
+            )}
+            {ehGestao && (
+              <Nav.Link as={NavLink} to="/relatorios" onClick={aoNavegar} className={isRotaAtiva}>
+                Relatórios
               </Nav.Link>
             )}
             {usuario && (
@@ -99,13 +91,7 @@ export default function BarraNavegacao() {
               </Nav.Link>
             )}
             {usuario?.papel === "adm" && (
-              <Nav.Link
-                as={NavLink}
-                to="/usuarios"
-                end
-                onClick={aoNavegar}
-                className={isRotaAtiva}
-              >
+              <Nav.Link as={NavLink} to="/usuarios" end onClick={aoNavegar} className={isRotaAtiva}>
                 Usuários
               </Nav.Link>
             )}
@@ -122,10 +108,7 @@ export default function BarraNavegacao() {
                   {NOME_PAPEL[usuario.papel] ?? usuario.papel}
                 </div>
               </div>
-              <span
-                className="sg-navbar__divider d-none d-md-block"
-                aria-hidden="true"
-              />
+              <span className="sg-navbar__divider d-none d-md-block" aria-hidden="true" />
               <Botao variante="subtle" tamanho="sm" onClick={aoSair}>
                 Sair
               </Botao>
