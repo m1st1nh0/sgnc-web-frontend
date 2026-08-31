@@ -5,6 +5,7 @@ import Form from "react-bootstrap/Form";
 
 import BarraNavegacao from "../components/BarraNavegacao";
 import { useAuth } from "../context/AuthContext";
+import { useOnboarding } from "../context/OnboardingContext";
 import { buscarInsights } from "../services/insightsService";
 import { ErroApi } from "../services/api";
 import {
@@ -56,6 +57,7 @@ function TempoCard({ rotulo, resumo, cor }) {
 
 export default function InsightsPage() {
   const { usuario } = useAuth();
+  const { concluirEtapa } = useOnboarding();
   const [dados, setDados] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -70,6 +72,9 @@ export default function InsightsPage() {
         throw new Error("Contrato de Insights incompatível com a interface V2.");
       }
       setDados(resultado);
+      await concluirEtapa("checklist_insights", "checklist", {
+        escopo: usuario?.papel === "supervisor" ? "equipe_direta" : "organizacao",
+      });
       setFiltros({
         inicio: resultado.periodo?.inicio || opcoes.inicio || "",
         fim: resultado.periodo?.fim || opcoes.fim || "",
