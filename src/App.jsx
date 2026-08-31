@@ -62,6 +62,14 @@ export default function App() {
             }
           />
           <Route
+            path="/usuarios/:usuarioId/dossie"
+            element={
+              <RotaProtegida>
+                <EstatisticasUsuarioPage />
+              </RotaProtegida>
+            }
+          />
+          <Route
             path="/usuarios/:usuarioId/estatisticas"
             element={
               <RotaProtegida>

@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "react-bootstrap/Container";
 import Table from "react-bootstrap/Table";
-import Badge from "react-bootstrap/Badge";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
@@ -310,9 +309,9 @@ export default function UsuariosPage() {
                     <td>{u.email}</td>
                     <td>{u.setor || "-"}</td>
                     <td>
-                      <Badge className={COR_PAPEL[u.papel] ?? "sg-badge--cinza"}>
+                      <span className={`sg-badge ${COR_PAPEL[u.papel] ?? "sg-badge--cinza"}`}>
                         {NOME_PAPEL[u.papel] ?? u.papel}
-                      </Badge>
+                      </span>
                     </td>
                     <td>
                       <span
@@ -335,10 +334,10 @@ export default function UsuariosPage() {
                             variante="secundario"
                             tamanho="sm"
                             onClick={() =>
-                              navigate(`/usuarios/${u.id}/estatisticas`)
+                              navigate(`/usuarios/${u.id}/dossie`)
                             }
                           >
-                            Estatísticas
+                            Dossiê
                           </Botao>
                         )}
 

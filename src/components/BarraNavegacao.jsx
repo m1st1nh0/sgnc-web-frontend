@@ -83,11 +83,11 @@ export default function BarraNavegacao() {
             {usuario && (
               <Nav.Link
                 as={NavLink}
-                to={`/usuarios/${usuario.id}/estatisticas`}
+                to={`/usuarios/${usuario.id}/dossie`}
                 onClick={aoNavegar}
                 className={isRotaAtiva}
               >
-                Minhas estatísticas
+                Meu dossiê
               </Nav.Link>
             )}
             {usuario?.papel === "adm" && (
