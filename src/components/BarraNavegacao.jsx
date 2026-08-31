@@ -53,7 +53,7 @@ export default function BarraNavegacao() {
     <Navbar className="sg-navbar" expand="lg" expanded={expandido}>
       <Container className="sg-navbar__container">
         <Navbar.Brand as={NavLink} to="/" onClick={aoNavegar}>
-          <MarcaSgnc completa />
+          <MarcaSgnc />
         </Navbar.Brand>
 
         <Navbar.Toggle

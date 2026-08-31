@@ -5,7 +5,7 @@ export default function AuthLayout({ children }) {
     <div className="sg-auth-wrapper">
       <div className="sg-auth-shell">
         <aside className="sg-auth-contexto">
-          <MarcaSgnc completa clara />
+          <MarcaSgnc />
           <div className="sg-auth-contexto__conteudo">
             <span className="sg-auth-contexto__rotulo">Qualidade e conformidade</span>
             <h2>Desvios claros.<br />Ações rastreáveis.</h2>
@@ -16,7 +16,7 @@ export default function AuthLayout({ children }) {
           </div>
           <span className="sg-auth-contexto__rodape">Ambiente interno</span>
         </aside>
-        <main className="sg-auth-card">{children}</main>
+        <main className="sg-auth-card">\n          <MarcaSgnc completa />\n          {children}\n        </main>
       </div>
     </div>
   );

@@ -123,63 +123,27 @@ h6 {
 .sg-marca {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  color: var(--cor-norma);
   line-height: 1;
 }
 
-.sg-marca__simbolo {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  overflow: visible;
+.sg-marca__imagem {
+  display: block;
+  max-width: 100%;
+  object-fit: contain;
 }
 
-.sg-marca__folha {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linejoin: round;
+.sg-marca--simbolo .sg-marca__imagem {
+  width: 38px;
+  height: 38px;
 }
 
-.sg-marca__linhas,
-.sg-marca__check {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: square;
-  stroke-linejoin: round;
+.sg-marca--completa {
+  width: min(280px, 100%);
 }
 
-.sg-marca__check {
-  stroke: var(--cor-controle);
-  stroke-width: 2.4;
-}
-
-.sg-marca__texto {
-  display: grid;
-  gap: 3px;
-}
-
-.sg-marca__texto strong {
-  font-size: 1rem;
-  letter-spacing: 0.09em;
-}
-
-.sg-marca__texto small {
-  font-size: 0.625rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  opacity: 0.76;
-  white-space: nowrap;
-}
-
-.sg-marca--clara {
-  color: #fff;
-}
-
-.sg-marca--clara .sg-marca__check {
-  stroke: #6fc8b5;
+.sg-marca--completa .sg-marca__imagem {
+  width: 100%;
+  height: auto;
 }
 
 /* Navegação — faixa operacional, sem aparência de template */
@@ -200,10 +164,6 @@ h6 {
 
 .sg-navbar .sg-marca {
   color: #fff;
-}
-
-.sg-navbar .sg-marca__check {
-  stroke: #6fc8b5;
 }
 
 .sg-navbar .nav-link {
@@ -850,6 +810,10 @@ textarea:focus-visible {
   background: #fff;
 }
 
+ .sg-auth-card > .sg-marca {
+  margin-bottom: 32px;
+}
+
 .sg-auth-card h1 {
   margin-bottom: 6px !important;
   text-align: left !important;
@@ -1016,8 +980,9 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .sg-marca__texto small {
-    display: none;
+  .sg-auth-card > .sg-marca {
+    width: min(230px, 100%);
+    margin-bottom: 24px;
   }
 }
 
