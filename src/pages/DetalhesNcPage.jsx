@@ -443,9 +443,9 @@ export default function DetalhesNcPage() {
                 <>
                   <DicaContextual chave="dica_nc_avaliacao" className="mb-3" />
                   <PainelAvaliar
-                  nc={nc}
-                  aoConcluir={aoConcluirAvaliacao}
-                  bloqueado={enviandoArquivo}
+                    nc={nc}
+                    aoConcluir={aoConcluirAvaliacao}
+                    bloqueado={enviandoArquivo}
                   />
                 </>
               )}
