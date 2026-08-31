@@ -97,11 +97,9 @@ export default function AbrirNcPage() {
   }, [buscaColaborador, usuarios]);
 
   function removerArquivo(indice) {
-    setArquivosEvidencias((atuais) => {
-      const removido = atuais[indice];
-      if (removido === previewArquivo) setPreviewArquivo(null);
-      return atuais.filter((_, i) => i !== indice);
-    });
+    const removido = arquivosEvidencias[indice];
+    if (removido === previewArquivo) setPreviewArquivo(null);
+    setArquivosEvidencias((atuais) => atuais.filter((_, i) => i !== indice));
   }
 
   function selecionarArquivos(evento) {
