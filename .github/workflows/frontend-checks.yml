@@ -32,5 +32,7 @@ jobs:
         run: node test_pr07.mjs
       - name: UX operation and KPI explanation regression
         run: node test_ux_operacao_indicadores.mjs
+      - name: PR09 hybrid onboarding regression
+        run: node test_pr09_onboarding.mjs
       - name: Build
         run: npm run build
