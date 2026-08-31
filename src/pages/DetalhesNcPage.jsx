@@ -27,6 +27,8 @@ import MensagemErro from "../components/ui/MensagemErro";
 import ModalVisualizarEvidencia from "../components/ui/ModalVisualizarEvidencia";
 import BadgeStatus from "../components/ui/BadgeStatus";
 import BadgePrioridade from "../components/ui/BadgePrioridade";
+import DicaContextual from "../components/onboarding/DicaContextual";
+import { useOnboarding } from "../context/OnboardingContext";
 
 const EXTENSOES_IMAGEM = new Set([
   "jpg",
@@ -53,6 +55,7 @@ function ehImagem(nomeArquivo) {
 export default function DetalhesNcPage() {
   const { id } = useParams();
   const { usuario } = useAuth();
+  const { concluirEtapa } = useOnboarding();
   const navigate = useNavigate();
 
   const [nc, setNc] = useState(null);
@@ -80,6 +83,10 @@ export default function DetalhesNcPage() {
     try {
       const blob = await baixarPdfNc(id);
       salvarArquivoLocal(blob, `sgnc-nc-${id}.pdf`);
+      await concluirEtapa("checklist_baixar_pdf", "checklist", {
+        origem_documento: "relatorio_nc",
+        nc_id: id,
+      });
     } catch (e) {
       setErro(
         e instanceof ErroApi
@@ -94,7 +101,16 @@ export default function DetalhesNcPage() {
   async function carregarNc() {
     try {
       setErro("");
-      setNc(await buscarNc(id));
+      const ncCarregada = await buscarNc(id);
+      setNc(ncCarregada);
+      await concluirEtapa("checklist_visualizar_nc", "checklist", {
+        nc_id: id,
+      });
+      if (usuario?.papel === "supervisor") {
+        await concluirEtapa("checklist_acompanhar_nc", "checklist", {
+          nc_id: id,
+        });
+      }
     } catch (e) {
       setErro(
         e instanceof ErroApi ? e.message : "Não foi possível carregar a NC."
@@ -163,6 +179,11 @@ export default function DetalhesNcPage() {
       setArquivoNovo(null);
       await carregarEvidencias();
       setMensagemEvidencia("Evidência anexada com sucesso.");
+      if (usuario?.papel === "funcionario") {
+        await concluirEtapa("checklist_evidencias", "checklist", {
+          nc_id: id,
+        });
+      }
     } catch (e) {
       setFalhaUpload(true);
       setErroEvidencias(
@@ -173,6 +194,21 @@ export default function DetalhesNcPage() {
     } finally {
       setEnviandoArquivo(false);
     }
+  }
+
+  function aoConcluirAvaliacao(ncAtualizada) {
+    setNc(ncAtualizada);
+    concluirEtapa("checklist_avaliar_nc", "checklist", { nc_id: id });
+  }
+
+  function aoConcluirFeedback(ncAtualizada) {
+    setNc(ncAtualizada);
+    concluirEtapa("checklist_feedback", "checklist", { nc_id: id });
+  }
+
+  function aoConcluirAceite(ncAtualizada) {
+    setNc(ncAtualizada);
+    concluirEtapa("checklist_aceite", "checklist", { nc_id: id });
   }
 
   function abrirModalExclusaoEvidencia(evidencia) {
@@ -264,6 +300,8 @@ export default function DetalhesNcPage() {
             )
           }
         />
+
+        <DicaContextual chave="dica_nc_pdf" className="mb-3" />
 
         <Link to="/" className="sg-voltar mb-3 d-inline-flex">
           &larr; Voltar para a lista
@@ -402,19 +440,28 @@ export default function DetalhesNcPage() {
 
             <div>
               {podeVerDetalhesCompletos && ehAdm && nc.status === "aberta" && (
-                <PainelAvaliar
+                <>
+                  <DicaContextual chave="dica_nc_avaliacao" className="mb-3" />
+                  <PainelAvaliar
                   nc={nc}
-                  aoConcluir={setNc}
+                  aoConcluir={aoConcluirAvaliacao}
                   bloqueado={enviandoArquivo}
-                />
+                  />
+                </>
               )}
               {podeVerDetalhesCompletos && ehAdm && aguardandoFeedback && (
-                <PainelFeedback nc={nc} aoConcluir={setNc} />
+                <>
+                  <DicaContextual chave="dica_nc_feedback" className="mb-3" />
+                  <PainelFeedback nc={nc} aoConcluir={aoConcluirFeedback} />
+                </>
               )}
               {podeVerDetalhesCompletos &&
                 ehColaboradorDaNc &&
                 nc.status === "aguardando_aceite" && (
-                  <PainelAceite nc={nc} aoConcluir={setNc} />
+                  <>
+                    <DicaContextual chave="dica_nc_aceite" className="mb-3" />
+                    <PainelAceite nc={nc} aoConcluir={aoConcluirAceite} />
+                  </>
                 )}
             </div>
 
