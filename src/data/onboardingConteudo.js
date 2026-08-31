@@ -52,12 +52,14 @@ const CHECKLIST_COMUM = [
     titulo: "Conheça seu painel",
     descricao: "Veja prioridades, indicadores e atalhos do seu papel.",
     destino: "/",
+    concluirAoAbrir: true,
   },
   {
     chave: "checklist_abrir_nc",
     titulo: "Conheça a abertura de NC",
     descricao: "Veja como selecionar o colaborador e anexar evidências.",
     destino: "/abrir-nc",
+    concluirAoAbrir: true,
   },
   {
     chave: "checklist_visualizar_nc",
@@ -86,12 +88,14 @@ const CHECKLIST_ESPECIFICO = {
       titulo: "Conheça a avaliação de NC",
       descricao: "Valide ou invalide um registro aberto.",
       destino: "/#prioridades",
+      concluirAoAbrir: true,
     },
     {
       chave: "checklist_feedback",
       titulo: "Conheça o registro de feedback",
       descricao: "Veja como formalizar o combinado com o colaborador.",
       destino: "/#prioridades",
+      concluirAoAbrir: true,
     },
     {
       chave: "checklist_insights",
@@ -132,12 +136,14 @@ const CHECKLIST_ESPECIFICO = {
       titulo: "Conheça as evidências",
       descricao: "Veja como anexar e visualizar arquivos.",
       destino: "/abrir-nc",
+      concluirAoAbrir: true,
     },
     {
       chave: "checklist_aceite",
       titulo: "Conheça o processo de aceite",
       descricao: "Entenda como confirmar o feedback recebido.",
       destino: "/#prioridades",
+      concluirAoAbrir: true,
     },
   ],
 };
