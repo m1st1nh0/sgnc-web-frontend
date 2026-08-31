@@ -41,12 +41,13 @@ assert.doesNotMatch(usuarios, /react-bootstrap\/Badge/);
 assert.match(navegacao, /Meu dossiê/);
 assert.match(app, /\/usuarios\/:usuarioId\/dossie/);
 
-assert.match(detalhes, /window\.print\(\)/);
 assert.match(detalhes, /Baixar relatório PDF/);
 assert.match(detalhes, /baixarPdfNc/);
-assert.match(detalhes, /sg-print-cabecalho/);
-assert.match(estilos, /@media print/);
-assert.match(estilos, /@page/);
+assert.doesNotMatch(detalhes, /window\.print\(\)/);
+assert.doesNotMatch(detalhes, /Imprimir NC/);
+assert.doesNotMatch(detalhes, /sg-print-cabecalho/);
+assert.doesNotMatch(estilos, /@media print/);
+assert.doesNotMatch(estilos, /@page/);
 
 function canalLinear(valorHex) {
   const canal = Number.parseInt(valorHex, 16) / 255;
