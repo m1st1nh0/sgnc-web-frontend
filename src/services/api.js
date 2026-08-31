@@ -1,5 +1,14 @@
 import { API_BASE_URL } from "./config.js";
 
+export const EVENTO_SESSAO_EXPIRADA = "sgnc:sessao-expirada";
+
+function encerrarSessaoLocal() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem("sgnc_token");
+  window.localStorage.removeItem("sgnc_usuario");
+  window.dispatchEvent(new CustomEvent(EVENTO_SESSAO_EXPIRADA));
+}
+
 /**
  * Erro customizado para respostas de erro da API, guardando o
  * status HTTP e a mensagem que o FastAPI devolveu no campo "detail".
@@ -28,6 +37,11 @@ async function exigirRespostaOk(resposta) {
   } catch {
     // resposta sem corpo JSON; mantém a mensagem genérica
   }
+
+  if (resposta.status === 401) {
+    encerrarSessaoLocal();
+  }
+
   throw new ErroApi(mensagem, resposta.status);
 }
 
