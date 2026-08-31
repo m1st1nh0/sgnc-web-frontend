@@ -14,3 +14,13 @@ export function baixarPdfResumo(filtros = {}) {
     `/relatorios/resumo.pdf${montarQueryRelatorio(filtros)}`
   );
 }
+
+export function baixarPdfDossie(usuarioId) {
+  return baixarArquivoApi(
+    `/relatorios/usuarios/${encodeURIComponent(usuarioId)}/dossie.pdf`
+  );
+}
+
+export function baixarPdfNc(ncId) {
+  return baixarArquivoApi(`/relatorios/nc/${encodeURIComponent(ncId)}.pdf`);
+}
