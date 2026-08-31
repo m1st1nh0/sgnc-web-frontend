@@ -9,13 +9,13 @@ export const STATUS_INFO = {
   aguardando_aceite: { rotulo: "Aguardando aceite", cor: "warning", etapa: "aguardando-aceite" },
   concluida: { rotulo: "Concluída", cor: "success", etapa: "concluida" },
   validada: { rotulo: "Validada (legado)", cor: "info", etapa: "validada" },
-  aguardando_analise: { rotulo: "Aguardando feedback", cor: "warning", etapa: "aguardando-analise" },
+  aguardando_analise: { rotulo: "Aguardando feedback", cor: "warning", etapa: "aguardando-feedback" },
 };
 
 export function infoDoStatus(status) {
   return STATUS_INFO[status] ?? {
     rotulo: status,
     cor: "secondary",
-    etapa: "aberta",
+    etapa: "desconhecida",
   };
 }
