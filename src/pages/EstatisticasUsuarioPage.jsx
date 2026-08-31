@@ -140,10 +140,10 @@ export default function EstatisticasUsuarioPage() {
         <CabecalhoPagina
           titulo={
             ehPropriaEstatistica
-              ? "Minhas estatísticas"
-              : "Estatísticas do colaborador"
+              ? "Meu dossiê"
+              : "Dossiê do colaborador"
           }
-          subtitulo="Entenda seu histórico por causa, recorrência e medidas registradas."
+          subtitulo="Histórico consolidado de não conformidades, recorrências e medidas registradas."
         />
 
         {carregando && <EstadoCarregamento mensagem="Carregando estatísticas..." />}
@@ -162,7 +162,7 @@ export default function EstatisticasUsuarioPage() {
                       {estatisticas.setor || "Setor não informado"}
                     </p>
                   </div>
-                  <span className="sg-badge bg-primary sg-badge--azul">
+                  <span className="sg-badge sg-badge--azul">
                     Últimos 12 meses
                   </span>
                 </div>
@@ -241,6 +241,14 @@ export default function EstatisticasUsuarioPage() {
                         É o número sequencial desta causa para o colaborador, não
                         o número total de NCs.
                       </span>
+                      {causa.ultima_ocorrencia_nc_id && (
+                        <Link
+                          to={`/nc/${causa.ultima_ocorrencia_nc_id}`}
+                          className="sg-dossie__link-nc"
+                        >
+                          Abrir NC #{causa.ultima_ocorrencia_nc_id}
+                        </Link>
+                      )}
                     </div>
 
                     {causa.medida_sugerida && (
