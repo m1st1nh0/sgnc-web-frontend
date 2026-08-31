@@ -470,10 +470,10 @@ textarea:focus-visible {
   --status-borda: var(--status-invalidada-borda);
 }
 
-.sg-status--aguardando-analise {
-  --status-cor: var(--status-analise-forte);
-  --status-fundo: var(--status-analise-fundo);
-  --status-borda: var(--status-analise-borda);
+.sg-status--desconhecida {
+  --status-cor: #44525b;
+  --status-fundo: #edf0f1;
+  --status-borda: #c6cdd1;
 }
 
 .sg-status--aguardando-feedback {
@@ -599,7 +599,7 @@ textarea:focus-visible {
 
 .sg-nc-card--validada { --status-linha: var(--status-validada-forte); }
 .sg-nc-card--invalidada { --status-linha: var(--status-invalidada-forte); }
-.sg-nc-card--aguardando-analise { --status-linha: var(--status-analise-forte); }
+.sg-nc-card--desconhecida { --status-linha: var(--grafico-cinza); }
 .sg-nc-card--aguardando-feedback { --status-linha: var(--status-feedback-forte); }
 .sg-nc-card--aguardando-aceite { --status-linha: var(--status-aceite-forte); }
 .sg-nc-card--concluida { --status-linha: var(--status-concluida-forte); }
@@ -727,24 +727,21 @@ textarea:focus-visible {
 }
 
 /* Insights e painéis de dados */
-.sg-container > .d-flex.flex-column.gap-5 > section {
+.sg-insights__secao {
   position: relative;
   padding-left: 18px;
   border-left: 3px solid var(--borda-forte);
 }
 
-.sg-container > .d-flex.flex-column.gap-5 > section:nth-of-type(1),
-.sg-container > .d-flex.flex-column.gap-5 > section:nth-of-type(3) {
+.sg-insights__secao--norma {
   border-left-color: var(--cor-norma);
 }
 
-.sg-container > .d-flex.flex-column.gap-5 > section:nth-of-type(4),
-.sg-container > .d-flex.flex-column.gap-5 > section:nth-of-type(6) {
+.sg-insights__secao--pendencia {
   border-left-color: var(--cor-pendencia);
 }
 
-.sg-container > .d-flex.flex-column.gap-5 > section > .sg-card,
-.sg-container > .d-flex.flex-column.gap-5 > section .sg-card {
+.sg-insights__secao .sg-card {
   border-radius: 6px;
 }
 
@@ -956,7 +953,7 @@ textarea:focus-visible {
     padding: 36px 24px 48px;
   }
 
-  .sg-container > .d-flex.flex-column.gap-5 > section {
+  .sg-insights__secao {
     padding-left: 12px;
   }
 }
