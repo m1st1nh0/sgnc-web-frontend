@@ -251,8 +251,8 @@ export default function InsightsPage() {
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
 
         {!erro && dados && (
-          <div className="d-flex flex-column gap-5">
-            <section>
+          <div className="sg-insights d-flex flex-column gap-5">
+            <section className="sg-insights__secao sg-insights__secao--norma">
               <div className="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
                 <div>
                   <h2 className="h5 mb-1">Operação agora</h2>
@@ -349,7 +349,7 @@ export default function InsightsPage() {
               </div>
             </section>
 
-            <section>
+            <section className="sg-insights__secao">
               <div className="mb-3">
                 <h2 className="h5 mb-1">Velocidade do fluxo</h2>
                 <p className="texto-sm texto-suave mb-0">
@@ -389,7 +389,7 @@ export default function InsightsPage() {
               </div>
             </section>
 
-            <section>
+            <section className="sg-insights__secao sg-insights__secao--norma">
               <div className="mb-3">
                 <h2 className="h5 mb-1">Movimento no período</h2>
                 <p className="texto-sm texto-suave mb-0">
@@ -466,7 +466,7 @@ export default function InsightsPage() {
               </PainelGrafico>
             </section>
 
-            <section>
+            <section className="sg-insights__secao sg-insights__secao--pendencia">
               <div className="mb-3">
                 <h2 className="h5 mb-1">Causas e reincidência</h2>
                 <p className="texto-sm texto-suave mb-0">
@@ -555,7 +555,7 @@ export default function InsightsPage() {
               </div>
             </section>
 
-            <section>
+            <section className="sg-insights__secao">
               <div className="mb-3">
                 <h2 className="h5 mb-1">Distribuição organizacional</h2>
                 <p className="texto-sm texto-suave mb-0">
@@ -605,7 +605,7 @@ export default function InsightsPage() {
               </div>
             </section>
 
-            <section>
+            <section className="sg-insights__secao sg-insights__secao--pendencia">
               <div className="mb-3">
                 <h2 className="h5 mb-1">Disciplina</h2>
                 <p className="texto-sm texto-suave mb-0">
