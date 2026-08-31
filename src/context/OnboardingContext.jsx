@@ -120,23 +120,47 @@ export function OnboardingProvider({ children }) {
     setModoRevisao(false);
   }, []);
 
-  const valor = {
-    progresso,
-    carregando,
-    indisponivel,
-    modalAberto,
-    modoRevisao,
-    chavesConcluidas,
-    etapaConcluida: (chave) => chavesConcluidas.has(chave),
-    carregar,
-    iniciar,
-    concluirEtapa,
-    dispensar,
-    concluir,
-    restaurar,
-    abrirRevisao,
-    fecharModal,
-  };
+  const etapaConcluida = useCallback(
+    (chave) => chavesConcluidas.has(chave),
+    [chavesConcluidas]
+  );
+
+  const valor = useMemo(
+    () => ({
+      progresso,
+      carregando,
+      indisponivel,
+      modalAberto,
+      modoRevisao,
+      chavesConcluidas,
+      etapaConcluida,
+      carregar,
+      iniciar,
+      concluirEtapa,
+      dispensar,
+      concluir,
+      restaurar,
+      abrirRevisao,
+      fecharModal,
+    }),
+    [
+      progresso,
+      carregando,
+      indisponivel,
+      modalAberto,
+      modoRevisao,
+      chavesConcluidas,
+      etapaConcluida,
+      carregar,
+      iniciar,
+      concluirEtapa,
+      dispensar,
+      concluir,
+      restaurar,
+      abrirRevisao,
+      fecharModal,
+    ]
+  );
 
   return (
     <OnboardingContext.Provider value={valor}>
