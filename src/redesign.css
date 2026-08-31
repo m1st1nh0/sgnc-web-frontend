@@ -1003,7 +1003,7 @@ textarea:focus-visible {
 }
 
 
-/* Dossiê e impressão documental */
+/* Dossiê do colaborador */
 .sg-badge--escuro {
   background: #17324d;
   border-color: #17324d;
@@ -1013,86 +1013,4 @@ textarea:focus-visible {
 .sg-dossie__link-nc {
   align-self: flex-start;
   font-weight: 650;
-}
-
-.sg-print-cabecalho {
-  display: none;
-}
-
-@media print {
-  @page {
-    size: A4;
-    margin: 14mm;
-  }
-
-  body,
-  #root {
-    background: #ffffff !important;
-  }
-
-  .sg-navbar,
-  .sg-cabecalho,
-  .sg-voltar,
-  .sg-no-print,
-  .modal,
-  .modal-backdrop {
-    display: none !important;
-  }
-
-  .sg-container.sg-print-documento {
-    width: 100%;
-    max-width: none !important;
-    margin: 0;
-    padding: 0;
-  }
-
-  .sg-print-cabecalho {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 18px;
-    padding-bottom: 14px;
-    border-bottom: 2px solid #17324d;
-  }
-
-  .sg-print-cabecalho img {
-    width: 180px;
-    height: auto;
-  }
-
-  .sg-print-cabecalho div {
-    display: flex;
-    flex-direction: column;
-    text-align: right;
-  }
-
-  .sg-print-cabecalho strong {
-    color: #17324d;
-    font-size: 14pt;
-  }
-
-  .sg-print-cabecalho span {
-    color: #344054;
-    font-size: 11pt;
-  }
-
-  .sg-print-documento .sg-card,
-  .sg-print-documento .sg-card-body {
-    break-inside: avoid;
-    box-shadow: none !important;
-  }
-
-  .sg-print-documento .sg-card {
-    border-color: #aeb8b2;
-  }
-
-  .sg-print-documento .sg-evidencia-item .sg-btn {
-    display: none !important;
-  }
-
-  .sg-print-documento a {
-    color: #182230;
-    text-decoration: none;
-  }
 }
