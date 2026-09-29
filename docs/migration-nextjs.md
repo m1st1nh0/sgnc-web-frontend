@@ -6,7 +6,7 @@
 - Branch de trabalho: `refactor/nextjs-fullstack`, criada a partir de `main` em 2026-09-29.
 - Repositório de referência `m1st1nh0/sgnc-web-api` mantido intacto.
 - Princípio: preservar comportamento, regras, permissões e conteúdo antes de qualquer melhoria visual.
-- Estado: auditoria inicial concluída e fundação Next.js iniciada. Commits locais: auditoria e fundação. O ambiente não disponibilizou credenciais para push via Git remoto.
+- Estado: auditoria e fundação Next.js implementadas localmente; autenticação SSR ainda não conectada ao fluxo. Os commits locais não foram publicados porque o ambiente não disponibilizou credenciais de push Git.
 
 ## Arquitetura atual
 
@@ -79,8 +79,8 @@ Chamadas ainda dependentes da API estão centralizadas em `src/services/api.js` 
 
 - [x] Fundação Next.js 16 App Router/TypeScript, CSS/assets e lint/build; páginas antigas movidas para `src/legacy` e carregadas temporariamente no cliente.
 - [ ] Rotas individuais Next e remoção completa do React Router (temporariamente mantido dentro do app legado).
-- [ ] Supabase SSR e autenticação por cookie (dependência adicionada; clientes ainda não implementados).
-- [ ] Autorização centralizada, usuário ativo e senha provisória.
+- [ ] Supabase SSR e autenticação por cookie (dependência e clientes browser/server/admin implementados; login/logout e sessão ainda não conectados às páginas).
+- [ ] Autorização centralizada, usuário ativo e senha provisória (helpers `requireUser`, `requireRole`, `requirePermission` criados; ainda não aplicados às rotas).
 - [ ] Usuários e hierarquia.
 - [ ] NCs e fluxos (criar, editar, avaliar, feedback, aceitar, medidas, recorrência).
 - [ ] Timeline e histórico.
@@ -103,4 +103,4 @@ Chamadas ainda dependentes da API estão centralizadas em `src/services/api.js` 
 
 ## Estado da dependência externa
 
-A configuração atual contém `VITE_API_URL` e fallback `https://sgnc-web-api.onrender.com`; existem ainda chamadas do frontend para rotas FastAPI. Migração não concluída. API antiga permanece como referência e não foi alterada. A fundação ainda tem o fallback legado ativo em `/src/legacy/services/config.js`.
+A configuração atual contém `VITE_API_URL` e fallback `https://sgnc-web-api.onrender.com`; existem ainda chamadas do frontend para rotas FastAPI. Migração não concluída. API antiga permanece como referência e não foi alterada. A fundação ainda tem o fallback legado ativo em `src/legacy/services/config.js`.
