@@ -98,7 +98,7 @@ Chamadas ainda dependentes da API estão centralizadas em `src/services/api.js` 
 - Migração de ReportLab para Node pode gerar diferenças de paginação/fontes/imagens; requer comparação dos documentos.
 - Cliente service role ignora RLS e deve permanecer isolado em módulos server-only com autorização explícita antes de operações privilegiadas.
 - A criação/edição de usuário envolve Supabase Auth Admin e exige service role; não pode ser executada no browser.
-- Nenhuma divergência entre produção e código foi validada; segredos Supabase ainda não foram conferidos. Preview verificado em 2026-09-29 e falhou com `STATIC_BUILD_NO_OUT_DIR`, porque o projeto Vercel está configurado como Vite/`dist`. O legado permanece temporariamente acoplado ao React Router e à API até a migração de autenticação/domínios.
+- Nenhuma divergência entre produção e código foi validada; segredos Supabase ainda não foram conferidos. Preview verificado em 2026-09-29 e falhou com `STATIC_BUILD_NO_OUT_DIR`, porque o projeto Vercel está configurado como Vite/`dist`. A regra Vite e CSP estática foram removidas/migradas no branch; resta alterar o preset e output directory no projeto Vercel e fazer novo Preview. O legado permanece temporariamente acoplado ao React Router e à API até a migração de autenticação/domínios.
 - Lista temporária de dependência FastAPI permanece marcada pendente até conversão de cada módulo.
 
 ## Estado da dependência externa
@@ -113,8 +113,8 @@ A sequência abaixo mantém a produção atual operante enquanto cada domínio g
 ### PR #21 — Fundação e auditoria (em andamento)
 
 - Bloqueio encontrado: o último deploy Preview falhou com `STATIC_BUILD_NO_OUT_DIR`. O projeto Vercel `sgnc-web-frontend` ainda está com framework `vite` e Output Directory `dist`, embora o repositório agora use Next.js.
-- A Vercel precisa usar Framework Preset `Next.js`, Build Command padrão `next build` e Output Directory automático/em branco (remover a configuração `dist`). Manter instalação com `npm install` padrão. Também revisar `vercel.json`: a regra SPA para `/index.html` não deve interceptar rotas do Next; transferir os headers de segurança para configuração compatível com Next e revisar CSP para scripts/hidratação.
-- Depois do ajuste, aguardar Preview Ready e verificar carregamento de `/`, `/login` e uma rota aninhada. O conector atual permitiu consultar projeto/deploy, mas não expõe alteração das configurações do projeto Vercel.
+- O código já removeu a regra SPA para `/index.html`, transferiu headers para `next.config.ts` e adicionou CSP com nonce via `proxy.ts` para hidratação Next, mantendo a API Render temporariamente em `connect-src`. Falta a configuração do projeto Vercel: Framework Preset `Next.js`, Build Command padrão/automático e Output Directory automático (remover `dist`). Manter instalação automática baseada no `package-lock.json`.
+- Depois do ajuste, aguardar Preview Ready e verificar carregamento de `/`, `/login` e uma rota aninhada. O conector atual permitiu consultar projeto/deploy, mas não expõe alteração das configurações do projeto Vercel; esse ajuste precisa ser feito no painel ou CLI autenticada.
 - Revisar a estrutura App Router e confirmar o preview Vercel.
 - Preservar o fallback legado temporariamente; não remover a API nem as configurações Render ainda.
 - Corrigir avisos lint quando o código legado relacionado for tocado.
