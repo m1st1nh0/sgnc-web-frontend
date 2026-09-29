@@ -6,7 +6,7 @@
 - Branch de trabalho: `refactor/nextjs-fullstack`, criada a partir de `main` em 2026-09-29.
 - Repositório de referência `m1st1nh0/sgnc-web-api` mantido intacto.
 - Princípio: preservar comportamento, regras, permissões e conteúdo antes de qualquer melhoria visual.
-- Estado: auditoria inicial concluída; migração de código ainda não iniciada. Este commit de auditoria está local; o ambiente não disponibilizou credenciais para push via Git remoto.
+- Estado: auditoria inicial concluída e fundação Next.js iniciada. Commits locais: auditoria e fundação. O ambiente não disponibilizou credenciais para push via Git remoto.
 
 ## Arquitetura atual
 
@@ -77,8 +77,9 @@ Chamadas ainda dependentes da API estão centralizadas em `src/services/api.js` 
 
 ## Checklist por módulo
 
-- [ ] Fundação Next.js/App Router/TypeScript, CSS/assets e lint/build.
-- [ ] Supabase SSR e autenticação por cookie.
+- [x] Fundação Next.js 16 App Router/TypeScript, CSS/assets e lint/build; páginas antigas movidas para `src/legacy` e carregadas temporariamente no cliente.
+- [ ] Rotas individuais Next e remoção completa do React Router (temporariamente mantido dentro do app legado).
+- [ ] Supabase SSR e autenticação por cookie (dependência adicionada; clientes ainda não implementados).
 - [ ] Autorização centralizada, usuário ativo e senha provisória.
 - [ ] Usuários e hierarquia.
 - [ ] NCs e fluxos (criar, editar, avaliar, feedback, aceitar, medidas, recorrência).
@@ -97,9 +98,9 @@ Chamadas ainda dependentes da API estão centralizadas em `src/services/api.js` 
 - Migração de ReportLab para Node pode gerar diferenças de paginação/fontes/imagens; requer comparação dos documentos.
 - Cliente service role ignora RLS e deve permanecer isolado em módulos server-only com autorização explícita antes de operações privilegiadas.
 - A criação/edição de usuário envolve Supabase Auth Admin e exige service role; não pode ser executada no browser.
-- Nenhuma divergência entre produção e código foi validada; deploy/segredos Supabase e preview ainda não verificados.
+- Nenhuma divergência entre produção e código foi validada; deploy/segredos Supabase e preview ainda não verificados. O legado permanece temporariamente acoplado ao React Router e à API até a migração de autenticação/domínios.
 - Lista temporária de dependência FastAPI permanece marcada pendente até conversão de cada módulo.
 
 ## Estado da dependência externa
 
-A configuração atual contém `VITE_API_URL` e fallback `https://sgnc-web-api.onrender.com`; existem ainda chamadas do frontend para rotas FastAPI. Migração não concluída. API antiga permanece como referência e não foi alterada.
+A configuração atual contém `VITE_API_URL` e fallback `https://sgnc-web-api.onrender.com`; existem ainda chamadas do frontend para rotas FastAPI. Migração não concluída. API antiga permanece como referência e não foi alterada. A fundação ainda tem o fallback legado ativo em `/src/legacy/services/config.js`.
