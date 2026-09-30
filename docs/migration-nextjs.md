@@ -82,7 +82,7 @@ Chamadas ainda dependentes da API estão centralizadas em `src/services/api.js` 
 - [x] Supabase SSR e autenticação por cookie (login/logout conectados via Server Actions; fluxo real do Preview ainda pendente).
 - [x] Gate server-side de sessão, conta ativa e senha provisória nas rotas raiz/legadas; [ ] autorização por papel para cada domínio.
 - [x] Usuários e hierarquia: handlers Next para listagem por RLS, diretório mínimo, criação, edição, ativação, desativação e troca de senha; validação funcional no Preview ainda pendente.
-- [ ] NCs e fluxos (criar, editar, avaliar, feedback, aceitar, medidas, recorrência).
+- [x] Núcleo de NCs: listar, buscar, causas, criar, editar, excluir, avaliar, aplicar feedback e aceitar migrados para Next; timeline, evidências e medidas seguem nas etapas próprias.
 - [ ] Timeline e histórico.
 - [ ] Evidências (upload/listagem/exclusão/download e permissões).
 - [ ] Estatísticas e comparação com respostas Python.
@@ -141,11 +141,12 @@ A sequência abaixo mantém a produção atual operante enquanto cada domínio g
 
 ### PR — Núcleo de NCs e timeline
 
-- Portar a implementação ativa `nc_service_pr03.py`, schemas e dependências usadas, com `recurrence_v2.py` e `timeline_service.py` onde aplicável.
-- Migrar leitura/listagem, causas, abertura e edição; depois status, avaliação, feedback, aceite, medidas, exclusão e recorrência preservando transições/validações atuais.
-- Separar regras em `nc.service.ts`, `timeline.service.ts` e actions/handlers adequados; manter queries privilegiadas somente no servidor.
-- Criar testes de regras por transição, autorização, filtros, recorrência e sequência cronológica do histórico.
-- Critério: mesmos dados de entrada em fixtures aprovadas para API e Next geram resultados equivalentes; UI não chama FastAPI para NC.
+- Implementados handlers Next para listar, buscar, causas, abrir, editar, excluir, avaliar, aplicar feedback e aceitar NCs, preservando os caminhos usados pela interface.
+- Leituras usam a sessão do usuário e RLS. Mutações validam o papel no servidor e usam service role; as transições reutilizam as RPCs atômicas V3 já instaladas no Postgres.
+- A criação continua atômica com histórico e vínculos de causas. Avaliação, invalidação, feedback e aceite mantêm mensagens e conflitos do serviço Python.
+- Pendente neste domínio: timeline auditável, medidas disciplinares, evidências e testes funcionais dos papéis no Preview; esses itens permanecem separados para revisão.
+- Validação local: typecheck e lint sem erros; build Webpack passou. O primeiro build Turbopack local encontrou cache de persistência corrompido, sem erro de código.
+- Critério: comparar transições e payloads com fixtures do serviço Python e confirmar o fluxo completo no Preview antes de concluir o PR.
 
 ### PR — Evidências e Storage
 
