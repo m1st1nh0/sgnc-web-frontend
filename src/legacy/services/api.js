@@ -8,8 +8,7 @@ function encerrarSessaoLocal() {
 }
 
 /**
- * Erro customizado para respostas de erro da API, guardando o
- * status HTTP e a mensagem que o FastAPI devolveu no campo "detail".
+ * Erro customizado para respostas dos Route Handlers da aplicação.
  */
 export class ErroApi extends Error {
   constructor(mensagem, status) {
@@ -66,7 +65,7 @@ export async function chamarApi(caminho, { method = "GET", body } = {}) {
 }
 
 /**
- * Faz download autenticado de arquivos binários sem expor o token na URL.
+ * Faz download autenticado de arquivos binários same-origin.
  * Retorna o Blob; a camada de UI decide o nome e dispara o salvamento local.
  */
 export async function baixarArquivoApi(caminho) {
