@@ -1,0 +1,147 @@
+import "server-only";
+
+import { ApiError } from "@/lib/api/error";
+import { getUser } from "@/lib/auth/session";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const ACTIVE = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "validada", "aguardando_analise"]);
+const COUNTABLE = new Set(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "concluida"]);
+const STATUS_ORDER = ["aberta", "aguardando_feedback", "aguardando_aceite", "concluida", "invalidada"];
+type Row = Record<string, any>;
+
+async function requireUser() {
+  const user = await getUser();
+  if (!user) throw new ApiError("Sessão inválida ou expirada. Faça login novamente.", 401);
+  if (user.senha_provisoria) throw new ApiError("Troque a senha provisória antes de continuar.", 403);
+  return user;
+}
+const isoDate = (value: unknown) => String(value ?? "").slice(0, 10) || null;
+const canonicalStatus = (value: unknown) => ["validada", "aguardando_analise"].includes(String(value)) ? "aguardando_feedback" : String(value ?? "");
+const seconds = (start: unknown, end: unknown) => {
+  if (!start || !end) return null;
+  const result = Math.floor((Date.parse(String(end)) - Date.parse(String(start))) / 1000);
+  return Number.isFinite(result) && result >= 0 ? result : null;
+};
+const suggestedMeasure = (occurrence: number) => {
+  if (occurrence <= 3 || (occurrence - 4) % 3 !== 0) return null;
+  const measure = Math.floor((occurrence - 4) / 3) + 1;
+  return measure <= 3 ? "advertencia" : measure <= 6 ? "suspensao" : "avaliar_justa_causa";
+};
+const inc = (map: Map<string, number>, key: unknown) => map.set(String(key), (map.get(String(key)) ?? 0) + 1);
+const count = (map: Map<string, number>, key: unknown) => map.get(String(key)) ?? 0;
+
+function startTwelveMonths(end: Date) {
+  const value = new Date(end);
+  value.setUTCFullYear(value.getUTCFullYear() - 1);
+  return value.toISOString().slice(0, 10);
+}
+
+async function causeMap(ncIds: number[]) {
+  if (!ncIds.length) return new Map<number, Row[]>();
+  const { data, error } = await createAdminClient().from("nc_causas")
+    .select("nc_id, causa_id, ocorrencia_numero, causas(descricao)").in("nc_id", ncIds);
+  if (error) throw new ApiError("Não foi possível carregar as causas das NCs.", 500);
+  const map = new Map<number, Row[]>();
+  for (const row of data ?? []) {
+    const joined = row.causas as unknown as { descricao?: string } | null;
+    map.set(row.nc_id, [...(map.get(row.nc_id) ?? []), { causa_id: row.causa_id, descricao: joined?.descricao, ocorrencia_numero: row.ocorrencia_numero }]);
+  }
+  return map;
+}
+
+export async function obterEstatisticasUsuario(userId: string) {
+  const requester = await requireUser();
+  const admin = createAdminClient();
+  const { data: employee, error } = await admin.from("usuarios").select("id, nome, setor, papel, supervisor_id").eq("id", userId).maybeSingle();
+  if (error || !employee) throw new ApiError("Usuário não encontrado.", 404);
+  const allowed = requester.id === userId || requester.papel === "adm" || (requester.papel === "supervisor" && employee.supervisor_id === requester.id);
+  if (!allowed) throw new ApiError("Você não tem permissão para ver essas estatísticas.", 403);
+  const end = new Date();
+  const endDate = end.toISOString().slice(0, 10);
+  const startDate = startTwelveMonths(end);
+  const { data: ncs, error: ncsError } = await admin.from("nao_conformidades").select("id, data")
+    .eq("colaborador_id", userId).in("status", [...COUNTABLE]).gte("data", startDate).lte("data", endDate);
+  if (ncsError) throw new ApiError("Não foi possível carregar as estatísticas.", 500);
+  const ids = (ncs ?? []).map((item) => item.id);
+  const causes = await causeMap(ids);
+  const dates = new Map((ncs ?? []).map((item) => [item.id, isoDate(item.data) ?? ""]));
+  const grouped = new Map<number, Row>();
+  for (const [ncId, rows] of causes) for (const cause of rows) {
+    const item = grouped.get(cause.causa_id) ?? { causa_id: cause.causa_id, causa: cause.descricao, ocorrencias_12m: 0, ultima_ocorrencia_numero: null, ultima_ocorrencia_nc_id: null, medida_sugerida: null, _last: "" };
+    item.ocorrencias_12m++;
+    const key = `${dates.get(ncId)}:${String(ncId).padStart(12, "0")}`;
+    if (key > item._last) { item._last = key; item.ultima_ocorrencia_numero = cause.ocorrencia_numero; item.ultima_ocorrencia_nc_id = ncId; }
+    grouped.set(cause.causa_id, item);
+  }
+  const { data: measures, error: measuresError } = await admin.from("medidas_disciplinares")
+    .select("id, causa_id, nc_id, ocorrencia_gatilho, tipo, status, dias_suspensao, data_aplicacao, observacao")
+    .eq("colaborador_id", userId).order("data_aplicacao", { ascending: false });
+  if (measuresError) throw new ApiError("Não foi possível carregar as medidas disciplinares.", 500);
+  const result = [...grouped.values()].map((item) => {
+    delete item._last;
+    if (requester.papel === "adm" && item.ultima_ocorrencia_numero != null) item.medida_sugerida = suggestedMeasure(Number(item.ultima_ocorrencia_numero));
+    item.medidas = (measures ?? []).filter((measure) => measure.causa_id === item.causa_id);
+    return item;
+  }).sort((a, b) => b.ocorrencias_12m - a.ocorrencias_12m);
+  return { usuario_id: employee.id, nome: employee.nome, setor: employee.setor, total_nc_12m: ids.length, causas: result };
+}
+
+function timeSummary(values: Array<number | null>) {
+  const clean = values.filter((value): value is number => value != null && value >= 0).sort((a, b) => a - b);
+  if (!clean.length) return { amostras: 0, media_segundos: null, mediana_segundos: null, media_horas: null, mediana_horas: null };
+  const average = Math.round(clean.reduce((sum, value) => sum + value, 0) / clean.length);
+  const middle = Math.floor(clean.length / 2);
+  const median = Math.round(clean.length % 2 ? clean[middle] : (clean[middle - 1] + clean[middle]) / 2);
+  return { amostras: clean.length, media_segundos: average, mediana_segundos: median, media_horas: Math.round(average / 36) / 100, mediana_horas: Math.round(median / 36) / 100 };
+}
+
+function monthKeys(start: string, end: string) {
+  const keys: string[] = [];
+  const cursor = new Date(`${start.slice(0, 7)}-01T00:00:00Z`);
+  const limit = new Date(`${end.slice(0, 7)}-01T00:00:00Z`);
+  while (cursor <= limit) { keys.push(cursor.toISOString().slice(0, 7)); cursor.setUTCMonth(cursor.getUTCMonth() + 1); }
+  return keys;
+}
+
+export async function obterInsights(startInput?: string | null, endInput?: string | null) {
+  const user = await requireUser();
+  if (!["adm", "supervisor"].includes(user.papel)) throw new ApiError("Acesso restrito a administradores e supervisores.", 403);
+  const end = endInput || new Date().toISOString().slice(0, 10);
+  const start = startInput || startTwelveMonths(new Date(`${end}T12:00:00Z`));
+  if (start > end) throw new ApiError("A data de início não pode ser posterior à data de fim.");
+  const admin = createAdminClient();
+  let teamIds: string[] | null = null;
+  if (user.papel === "supervisor") {
+    const { data, error } = await admin.from("usuarios").select("id").eq("supervisor_id", user.id).eq("ativo", true);
+    if (error) throw new ApiError("Não foi possível carregar a equipe direta.", 500);
+    teamIds = (data ?? []).map((item) => item.id);
+  }
+  let query = admin.from("nao_conformidades").select("id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, criado_em, atualizado_em, validado_em, feedback_aplicado_em, aceito_em, decidido_em, enviado_em");
+  if (teamIds) { if (!teamIds.length) query = query.in("colaborador_id", ["00000000-0000-0000-0000-000000000000"]); else query = query.in("colaborador_id", teamIds); }
+  const { data, error } = await query;
+  if (error) throw new ApiError("Não foi possível carregar os insights.", 500);
+  const all = (data ?? []) as Row[];
+  const period = all.filter((nc) => { const date = isoDate(nc.data) || isoDate(nc.criado_em); return date && date >= start && date <= end; });
+  const active = all.filter((nc) => ACTIVE.has(nc.status));
+  const causes = await causeMap(all.map((nc) => nc.id));
+  let measuresQuery = admin.from("medidas_disciplinares").select("causa_id, colaborador_id, nc_id, ocorrencia_gatilho, tipo, status, data_aplicacao, criado_em");
+  if (teamIds) measuresQuery = measuresQuery.in("colaborador_id", teamIds.length ? teamIds : ["00000000-0000-0000-0000-000000000000"]);
+  const { data: measures, error: measureError } = await measuresQuery;
+  if (measureError) throw new ApiError("Não foi possível carregar os indicadores disciplinares.", 500);
+  const periodStatus = new Map<string, number>(), backlogStatus = new Map<string, number>();
+  period.forEach((nc) => inc(periodStatus, canonicalStatus(nc.status))); active.forEach((nc) => inc(backlogStatus, canonicalStatus(nc.status)));
+  const inPeriod = (value: unknown) => { const date = isoDate(value); return !!date && date >= start && date <= end; };
+  const kpis = { total_ncs: period.length, ncs_abertas: count(periodStatus, "aberta"), ncs_pendentes: count(periodStatus, "aguardando_feedback") + count(periodStatus, "aguardando_aceite"), ncs_concluidas: count(periodStatus, "concluida"), ncs_invalidadas: count(periodStatus, "invalidada"), taxa_invalidacao: period.length ? Math.round(count(periodStatus, "invalidada") / period.length * 10000) / 10000 : null, ncs_sem_chamado: period.filter((nc) => !String(nc.chamado ?? "").trim()).length, backlog_ativo_atual: active.length, abertas_atuais: count(backlogStatus, "aberta"), aguardando_feedback_atual: count(backlogStatus, "aguardando_feedback"), aguardando_aceite_atual: count(backlogStatus, "aguardando_aceite"), concluidas_no_periodo: all.filter((nc) => inPeriod(nc.aceito_em)).length, invalidadas_no_periodo: all.filter((nc) => nc.status === "invalidada" && inPeriod(nc.decidido_em)).length };
+  const durations = { criacao_ate_validacao: timeSummary(all.filter((nc) => inPeriod(nc.validado_em)).map((nc) => seconds(nc.criado_em, nc.validado_em))), validacao_ate_feedback: timeSummary(all.filter((nc) => inPeriod(nc.feedback_aplicado_em)).map((nc) => seconds(nc.validado_em, nc.feedback_aplicado_em))), feedback_ate_aceite: timeSummary(all.filter((nc) => inPeriod(nc.aceito_em)).map((nc) => seconds(nc.feedback_aplicado_em, nc.aceito_em))), ciclo_total: timeSummary(all.filter((nc) => inPeriod(nc.aceito_em)).map((nc) => seconds(nc.criado_em, nc.aceito_em))), criacao_ate_decisao: timeSummary(all.filter((nc) => inPeriod(nc.decidido_em)).map((nc) => seconds(nc.criado_em, nc.decidido_em))) };
+  const ranges = new Map([['0-1d',0],['2-3d',0],['4-7d',0],['8+d',0]]); let oldest: Row | null = null; const now = Date.now();
+  for (const nc of active) { const since = nc.status === 'aberta' ? nc.criado_em : nc.status === 'aguardando_aceite' ? (nc.feedback_aplicado_em || nc.validado_em || nc.criado_em) : (nc.validado_em || nc.enviado_em || nc.criado_em); const days = Math.floor((now - Date.parse(since)) / 86400000); const range = days < 2 ? '0-1d' : days < 4 ? '2-3d' : days < 8 ? '4-7d' : '8+d'; ranges.set(range, (ranges.get(range) ?? 0) + 1); if (!oldest || days > oldest.dias_na_etapa) oldest = { nc_id:nc.id,status:canonicalStatus(nc.status),dias_na_etapa:days,desde:new Date(since).toISOString() }; }
+  const months = new Map(monthKeys(start,end).map((month) => [month,{mes:month,total:0,concluidas:0,invalidadas:0,reincidentes:0}]));
+  const collaborators = new Map<string,Row>(), sectors = new Map<string,Row>(), causeTotals = new Map<number,Row>();
+  for (const nc of period) { const recurring = (causes.get(nc.id) ?? []).some((cause) => Number(cause.ocorrencia_numero) > 1); const month=months.get((isoDate(nc.data)||isoDate(nc.criado_em))!.slice(0,7)); if(month){month.total++;if(nc.status==='concluida')month.concluidas++;if(nc.status==='invalidada')month.invalidadas++;if(recurring)month.reincidentes++;} const key=nc.colaborador_id||nc.colaborador||'Não informado'; const person=collaborators.get(key)??{colaborador_id:nc.colaborador_id,colaborador:nc.colaborador||'Não informado',setor:nc.setor,total:0,invalidadas:0,reincidencias:0,reincidencias_12m:0,backlog_ativo:0}; person.total++;if(nc.status==='invalidada')person.invalidadas++;if(recurring){person.reincidencias++;person.reincidencias_12m++;}collaborators.set(key,person); const sector=nc.setor||'Não informado';const si=sectors.get(sector)??{setor:sector,total:0,invalidadas:0,backlog_ativo:0};si.total++;if(nc.status==='invalidada')si.invalidadas++;sectors.set(sector,si); for(const cause of causes.get(nc.id)??[]){const ci=causeTotals.get(cause.causa_id)??{causa_id:cause.causa_id,causa:cause.descricao||`Causa ${cause.causa_id}`,total:0,total_reincidentes:0,ocorrencias:0,reincidencias_12m:0};ci.total++;if(COUNTABLE.has(nc.status)){ci.ocorrencias++;if(Number(cause.ocorrencia_numero)>1){ci.total_reincidentes++;ci.reincidencias_12m++;}}causeTotals.set(cause.causa_id,ci);}}
+  for(const nc of active){const key=nc.colaborador_id||nc.colaborador||'Não informado';const person=collaborators.get(key)??{colaborador_id:nc.colaborador_id,colaborador:nc.colaborador||'Não informado',setor:nc.setor,total:0,invalidadas:0,reincidencias:0,reincidencias_12m:0,backlog_ativo:0};person.backlog_ativo++;collaborators.set(key,person);const sector=nc.setor||'Não informado';const si=sectors.get(sector)??{setor:sector,total:0,invalidadas:0,backlog_ativo:0};si.backlog_ativo++;sectors.set(sector,si);}
+  const disciplineApplied=new Map<string,number>(), disciplineSuggested=new Map<string,number>(), suggestions=new Map<number,Row>(), measuresByCause=new Map<number,Row>();
+  for(const measure of measures??[]){const date=isoDate(measure.data_aplicacao)||isoDate(measure.criado_em);if(!date||date<start||date>end)continue;inc(disciplineApplied,measure.tipo);const ci=measuresByCause.get(measure.causa_id)??{causa_id:measure.causa_id,causa:causeTotals.get(measure.causa_id)?.causa||`Causa ${measure.causa_id}`,advertencias:0,suspensoes:0,avaliacoes_justa_causa:0,total:0};ci.total++;if(measure.tipo==='advertencia')ci.advertencias++;else if(measure.tipo==='suspensao')ci.suspensoes++;else ci.avaliacoes_justa_causa++;measuresByCause.set(measure.causa_id,ci);}
+  for(const nc of period.filter((item)=>COUNTABLE.has(item.status)))for(const cause of causes.get(nc.id)??[]){const suggestion=suggestedMeasure(Number(cause.ocorrencia_numero));if(!suggestion)continue;inc(disciplineSuggested,suggestion);const si=suggestions.get(cause.causa_id)??{causa_id:cause.causa_id,causa:cause.descricao||`Causa ${cause.causa_id}`,advertencias_sugeridas:0,suspensoes_sugeridas:0,avaliacoes_justa_causa_sugeridas:0,total_sugestoes:0};si.total_sugestoes++;if(suggestion==='advertencia')si.advertencias_sugeridas++;else if(suggestion==='suspensao')si.suspensoes_sugeridas++;else si.avaliacoes_justa_causa_sugeridas++;suggestions.set(cause.causa_id,si);}
+  const criticities=new Map<string,number>();period.forEach((nc)=>inc(criticities,nc.criticidade||'Não informada'));
+  return {versao_contrato:'insights-v2',periodo:{inicio:start,fim:end},escopo:{tipo:teamIds===null?'global':'equipe_direta',quantidade_colaboradores:teamIds?.length??null},metodologia:{volume:'NCs cuja data efetiva de abertura está dentro do período.',backlog:'Fotografia atual de todas as NCs ativas do escopo, independentemente da data de abertura.',tempos:'Cada amostra pertence ao período pelo timestamp da transição final medida.',reincidencia:'Mesmo colaborador + mesma causa; snapshot ocorrencia_numero > 1 na janela móvel de 12 meses.'},kpis,tempos:durations,aged_backlog:{total:active.length,faixas:[...ranges].map(([faixa,quantidade])=>({faixa,quantidade})),por_status:STATUS_ORDER.slice(0,3).filter((status)=>count(backlogStatus,status)).map((status)=>({status,quantidade:count(backlogStatus,status)})),mais_antiga:oldest},ncs_por_mes:[...months.values()],ncs_por_status:STATUS_ORDER.filter((status)=>count(periodStatus,status)).map((status)=>({status,quantidade:count(periodStatus,status)})),ncs_por_colaborador:[...collaborators.values()].sort((a,b)=>b.total-a.total||b.backlog_ativo-a.backlog_ativo),ncs_por_setor:[...sectors.values()].sort((a,b)=>b.total-a.total||b.backlog_ativo-a.backlog_ativo),ncs_por_criticidade:[...criticities].map(([criticidade,total])=>({criticidade,total})).sort((a,b)=>b.total-a.total),ncs_por_causa:[...causeTotals.values()].map(({ocorrencias,reincidencias_12m,...rest})=>rest).sort((a,b)=>b.total-a.total),reincidencia_por_causa:[...causeTotals.values()].filter((item)=>item.ocorrencias).map((item)=>({causa_id:item.causa_id,causa:item.causa,ocorrencias:item.ocorrencias,reincidencias_12m:item.reincidencias_12m,reincidiu_apos_conclusao:item.reincidencias_12m})).sort((a,b)=>b.ocorrencias-a.ocorrencias),reincidencia_por_colaborador:[...collaborators.values()].filter((item)=>item.reincidencias_12m>0).map((item)=>({colaborador_id:item.colaborador_id,colaborador:item.colaborador,setor:item.setor,reincidencias_12m:item.reincidencias_12m,total_ncs:item.total})).sort((a,b)=>b.reincidencias_12m-a.reincidencias_12m),medidas_por_causa:[...measuresByCause.values()].sort((a,b)=>b.total-a.total),disciplina:{aplicadas:{advertencias:count(disciplineApplied,'advertencia'),suspensoes:count(disciplineApplied,'suspensao'),avaliacoes_justa_causa:count(disciplineApplied,'avaliar_justa_causa'),total:[...disciplineApplied.values()].reduce((a,b)=>a+b,0)},sugeridas:{advertencias:count(disciplineSuggested,'advertencia'),suspensoes:count(disciplineSuggested,'suspensao'),avaliacoes_justa_causa:count(disciplineSuggested,'avaliar_justa_causa'),total:[...disciplineSuggested.values()].reduce((a,b)=>a+b,0)}},sugestoes_disciplinares_por_causa:[...suggestions.values()].sort((a,b)=>b.total_sugestoes-a.total_sugestoes)};
+}
