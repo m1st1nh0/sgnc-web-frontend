@@ -154,7 +154,11 @@ function durations(nc: Record<string, unknown>) {
 
 function filterSensitive(nc: Record<string, unknown>, user: UsuarioAutenticado) {
   const isAuthor = nc.aberto_por === user.id;
-  const complete = user.papel === "adm" || nc.colaborador_id === user.id || nc.responsavel_id === user.id;
+  const complete =
+    user.papel === "adm" ||
+    user.papel === "supervisor" ||
+    nc.colaborador_id === user.id ||
+    nc.responsavel_id === user.id;
   if (isAuthor && !complete) {
     return {
       ...nc,
@@ -275,7 +279,105 @@ export async function avaliarNc(id: number, input: { decisao?: unknown; motivo_i
   }
   const result = await rpcTransition("validar_nc_com_workflow_v3", { p_nc_id: id, p_responsavel_id: user.id });
   const response = await buscarNc(id);
-  return { ...response, ocorrencias: result.ocorrencias ?? [] };
+  const ocorrencias = Array.isArray(result.ocorrencias)
+    ? result.ocorrencias.map((item) => {
+        const occurrence = item as Record<string, unknown>;
+        const number = Number(occurrence.ocorrencia_numero ?? 0);
+        return { ...occurrence, medida_sugerida: suggestedMeasure(number) };
+      })
+    : [];
+  return { ...response, ocorrencias };
+}
+
+function suggestedMeasure(occurrence: number) {
+  if (occurrence <= 3) return null;
+  const cyclePosition = occurrence - 3;
+  if ((cyclePosition - 1) % 3 !== 0) return null;
+  const measureNumber = Math.floor((cyclePosition - 1) / 3) + 1;
+  if (measureNumber <= 3) return "advertencia";
+  if (measureNumber <= 6) return "suspensao";
+  return "avaliar_justa_causa";
+}
+
+export async function obterTimeline(id: number) {
+  const user = await requireUser();
+  const nc = (await buscarNc(id)) as Record<string, unknown>;
+  const { data, error } = await createAdminClient()
+    .from("historico_nc")
+    .select("id, usuario_id, status_anterior, status_novo, observacao, criado_em")
+    .eq("nc_id", id)
+    .order("criado_em");
+  if (error) throw new ApiError("Não foi possível carregar o histórico da NC.", 500);
+  const isRestrictedAuthor =
+    nc.aberto_por === user.id &&
+    user.papel !== "adm" &&
+    user.papel !== "supervisor" &&
+    nc.colaborador_id !== user.id &&
+    nc.responsavel_id !== user.id;
+  const events = isRestrictedAuthor
+    ? (data ?? []).map((event) => ({ ...event, observacao: null }))
+    : (data ?? []);
+  return { nc_id: id, status_atual: nc.status, duracoes: nc.duracoes, eventos: events };
+}
+
+type DisciplinaryMeasureInput = {
+  causa_id?: unknown;
+  nc_id?: unknown;
+  ocorrencia_gatilho?: unknown;
+  tipo?: unknown;
+  dias_suspensao?: unknown;
+  observacao?: unknown;
+};
+
+export async function registrarMedidaDisciplinar(input: DisciplinaryMeasureInput) {
+  const user = await requireAdmin();
+  const ncId = Number(input.nc_id);
+  const causeId = Number(input.causa_id);
+  const occurrence = Number(input.ocorrencia_gatilho);
+  const type = String(input.tipo ?? "");
+  const allowed = ["advertencia", "suspensao", "avaliar_justa_causa"];
+  if (!Number.isInteger(ncId) || !Number.isInteger(causeId) || !Number.isInteger(occurrence)) {
+    throw new ApiError("NC, causa e ocorrência devem ser informadas.");
+  }
+  if (!allowed.includes(type)) throw new ApiError("Tipo de medida disciplinar inválido.");
+  if (occurrence < 4) throw new ApiError("Não é possível registrar medida disciplinar antes da quarta ocorrência.");
+  const suspensionDays = input.dias_suspensao == null ? null : Number(input.dias_suspensao);
+  if (type === "suspensao" && (!Number.isInteger(suspensionDays) || suspensionDays! < 1 || suspensionDays! > 30)) {
+    throw new ApiError("A suspensão deve possuir entre 1 e 30 dias.");
+  }
+  if (type !== "suspensao" && suspensionDays !== null) {
+    throw new ApiError("A quantidade de dias só deve ser informada para medidas do tipo suspensão.");
+  }
+  const admin = createAdminClient();
+  const { data: nc, error: ncError } = await admin
+    .from("nao_conformidades").select("id, colaborador_id").eq("id", ncId).maybeSingle();
+  if (ncError || !nc) throw new ApiError("Não conformidade não encontrada.", 404);
+  if (!nc.colaborador_id) throw new ApiError("A não conformidade não possui um colaborador associado.");
+  const { data: relation, error: relationError } = await admin
+    .from("nc_causas").select("causa_id, ocorrencia_numero")
+    .eq("nc_id", ncId).eq("causa_id", causeId).maybeSingle();
+  if (relationError || !relation) throw new ApiError("A causa informada não pertence à não conformidade.");
+  if (relation.ocorrencia_numero != null && Number(relation.ocorrencia_numero) !== occurrence) {
+    throw new ApiError("A ocorrência informada não corresponde à ocorrência registrada para esta causa.");
+  }
+  const { data: existing, error: existingError } = await admin
+    .from("medidas_disciplinares").select("id").eq("nc_id", ncId)
+    .eq("causa_id", causeId).eq("ocorrencia_gatilho", occurrence).maybeSingle();
+  if (existingError) throw new ApiError("Não foi possível verificar a medida disciplinar.", 500);
+  if (existing) throw new ApiError("Já existe uma medida registrada para esta NC, causa e ocorrência.", 409);
+  const { data, error } = await admin.from("medidas_disciplinares").insert({
+    colaborador_id: nc.colaborador_id,
+    causa_id: causeId,
+    nc_id: ncId,
+    ocorrencia_gatilho: occurrence,
+    tipo: type,
+    status: "aplicada",
+    dias_suspensao: suspensionDays,
+    aplicada_por: user.id,
+    observacao: input.observacao ? String(input.observacao).trim() || null : null,
+  }).select("*").single();
+  if (error || !data) throw new ApiError("Não foi possível registrar a medida disciplinar.", 500);
+  return data;
 }
 
 export async function aplicarFeedback(id: number, input: { feedback?: unknown }) {
