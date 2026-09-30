@@ -1,0 +1,2 @@
+import { apiErrorResponse } from "@/lib/api/error"; import { gerarPdfNc } from "@/lib/reports/service"; import { downloadResponse } from "@/lib/reports/response";
+type Context={params:Promise<{ncId:string}>};export async function GET(_request:Request,context:Context){try{const file=await gerarPdfNc(Number((await context.params).ncId));return downloadResponse(file.bytes,file.filename,"application/pdf");}catch(error){return apiErrorResponse(error);}}

@@ -1,3 +1,2 @@
-// A API FastAPI é acessada pelo Route Handler same-origin, que valida a
-// sessão Supabase no servidor antes de encaminhar as chamadas.
+// Os serviços da interface usam exclusivamente Route Handlers same-origin.
 export const API_BASE_URL = "/api/legacy";
