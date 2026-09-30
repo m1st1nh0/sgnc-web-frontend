@@ -4,8 +4,6 @@ export const EVENTO_SESSAO_EXPIRADA = "sgnc:sessao-expirada";
 
 function encerrarSessaoLocal() {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem("sgnc_token");
-  window.localStorage.removeItem("sgnc_usuario");
   window.dispatchEvent(new CustomEvent(EVENTO_SESSAO_EXPIRADA));
 }
 
@@ -18,13 +16,6 @@ export class ErroApi extends Error {
     super(mensagem);
     this.status = status;
   }
-}
-
-function headersAutenticados() {
-  const headers = {};
-  const token = localStorage.getItem("sgnc_token");
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  return headers;
 }
 
 async function exigirRespostaOk(resposta) {
@@ -46,14 +37,12 @@ async function exigirRespostaOk(resposta) {
 }
 
 /**
- * Função central que faz todas as chamadas JSON à API.
- * - Anexa automaticamente o token (se houver um salvo)
- * - Se o corpo for um objeto comum, converte para JSON
- * - Se o corpo for um FormData (upload de arquivo), manda como está
- * - Lança ErroApi em respostas de erro, já com a mensagem legível
+ * Função central para chamadas JSON à rota same-origin. O Route Handler
+ * valida a sessão Supabase e encaminha o token ao FastAPI no servidor.
+ * Objetos viram JSON e FormData segue sem reserialização.
  */
-export async function chamarApi(caminho, { method = "GET", body, semAuth = false } = {}) {
-  const headers = semAuth ? {} : headersAutenticados();
+export async function chamarApi(caminho, { method = "GET", body } = {}) {
+  const headers = {};
   let corpoFinal = undefined;
 
   if (body instanceof FormData) {
@@ -67,6 +56,7 @@ export async function chamarApi(caminho, { method = "GET", body, semAuth = false
     method,
     headers,
     body: corpoFinal,
+    credentials: "same-origin",
   });
 
   await exigirRespostaOk(resposta);
@@ -82,7 +72,8 @@ export async function chamarApi(caminho, { method = "GET", body, semAuth = false
 export async function baixarArquivoApi(caminho) {
   const resposta = await fetch(`${API_BASE_URL}${caminho}`, {
     method: "GET",
-    headers: headersAutenticados(),
+    headers: {},
+    credentials: "same-origin",
   });
 
   await exigirRespostaOk(resposta);

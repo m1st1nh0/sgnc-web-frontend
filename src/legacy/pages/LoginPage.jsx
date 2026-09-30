@@ -1,49 +1,16 @@
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+"use client";
+
+import { useActionState } from "react";
 import Form from "react-bootstrap/Form";
 
-import { useAuth } from "../context/AuthContext";
-import { ErroApi } from "../services/api";
+import { loginAction } from "@/app/actions/auth";
 import AuthLayout from "../components/ui/AuthLayout";
 import Botao from "../components/ui/Botao";
 import CampoTexto from "../components/ui/CampoTexto";
 import MensagemErro from "../components/ui/MensagemErro";
 
-export default function LoginPage() {
-  const { entrar } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [carregando, setCarregando] = useState(false);
-  const [erro, setErro] = useState("");
-  const [sucesso, setSucesso] = useState(location.state?.mensagem || "");
-
-  async function aoEnviar(evento) {
-    evento.preventDefault();
-    setErro("");
-    setSucesso("");
-    setCarregando(true);
-
-    try {
-      const usuarioLogado = await entrar(email, senha);
-
-      if (usuarioLogado.senhaProvisoria) {
-        navigate("/trocar-senha");
-      } else {
-        navigate("/");
-      }
-    } catch (e) {
-      if (e instanceof ErroApi) {
-        setErro(e.message);
-      } else {
-        setErro("Não foi possível conectar ao servidor. Verifique se a API está rodando.");
-      }
-    } finally {
-      setCarregando(false);
-    }
-  }
+export default function LoginPage({ successMessage = "" }) {
+  const [state, formAction, pending] = useActionState(loginAction, { error: "" });
 
   return (
     <AuthLayout>
@@ -52,37 +19,37 @@ export default function LoginPage() {
         Sistema de Gestão de Não Conformidades
       </p>
 
-      {sucesso && (
+      {successMessage && (
         <div className="sg-alerta sg-alerta--sucesso mb-3" role="status">
-          {sucesso}
+          {successMessage}
         </div>
       )}
 
-      {erro && <MensagemErro mensagem={erro} />}
+      {state.error && <MensagemErro mensagem={state.error} />}
 
-      <Form onSubmit={aoEnviar}>
+      <Form action={formAction}>
         <CampoTexto
           rotulo="Email"
           type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          name="email"
           required
           autoFocus
+          autoComplete="username"
         />
 
         <CampoTexto
           rotulo="Senha"
           type="password"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
+          name="senha"
           required
+          autoComplete="current-password"
         />
 
         <Botao
           type="submit"
           className="w-100"
           variante="primario"
-          carregando={carregando}
+          carregando={pending}
           tamanho="lg"
         >
           Entrar

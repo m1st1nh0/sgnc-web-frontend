@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -8,13 +9,18 @@ import { useAuth } from "../context/AuthContext";
  */
 export default function RotaProtegida({ children, papeis }) {
   const { usuario } = useAuth();
+  const destino = !usuario ? "/login" : usuario.senhaProvisoria ? "/trocar-senha" : null;
+
+  useEffect(() => {
+    if (destino) window.location.assign(destino);
+  }, [destino]);
 
   if (!usuario) {
-    return <Navigate to="/login" replace />;
+    return null;
   }
 
   if (usuario.senhaProvisoria) {
-    return <Navigate to="/trocar-senha" replace />;
+    return null;
   }
 
   if (papeis?.length > 0 && !papeis.includes(usuario.papel)) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export default function LegacyApplication() {
+export default function LegacyApplication({ initialUser }) {
   const [App, setApp] = useState(null);
 
   useEffect(() => {
@@ -10,5 +10,5 @@ export default function LegacyApplication() {
   }, []);
 
   if (!App) return <main className="container py-5">Carregando SGNC…</main>;
-  return <App />;
+  return <App initialUser={initialUser} />;
 }

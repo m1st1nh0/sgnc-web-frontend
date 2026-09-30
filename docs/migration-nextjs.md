@@ -6,11 +6,11 @@
 - Branch de trabalho: `refactor/nextjs-fullstack`, criada a partir de `main` em 2026-09-29.
 - Repositório de referência `m1st1nh0/sgnc-web-api` mantido intacto.
 - Princípio: preservar comportamento, regras, permissões e conteúdo antes de qualquer melhoria visual.
-- Estado: auditoria e fundação Next.js implementadas localmente; autenticação SSR ainda não conectada ao fluxo. Os commits locais não foram publicados porque o ambiente não disponibilizou credenciais de push Git.
+- Estado: fundação Next.js publicada no PR #21 e validada visualmente no Preview; o PR #22 adiciona autenticação SSR, gates de sessão e proxy same-origin para a API legada. Login autenticado real ainda depende das variáveis Supabase no Preview e de validação com conta de teste.
 
 ## Arquitetura atual
 
-React 19 + Vite + React Router 7 + React Bootstrap/Bootstrap 5 + Recharts são implantados na Vercel. O backend Python FastAPI usa Supabase Auth, PostgREST e Storage, e está implantado no Render. O cliente usa `VITE_API_URL` ou fallback `https://sgnc-web-api.onrender.com`; o bearer token é mantido em `localStorage`. A API usa cliente anon autenticado pelo bearer para operações protegidas por RLS e `SUPABASE_SERVICE_ROLE_KEY` para operações internas privilegiadas.
+React 19 + Next.js App Router + React Bootstrap/Bootstrap 5 + Recharts são implantados na Vercel. O backend Python FastAPI usa Supabase Auth, PostgREST e Storage, e está implantado no Render. A sessão web usa cookies SSR do Supabase; chamadas legadas do browser passam por Route Handler same-origin autenticado, que encaminha as requisições ao FastAPI sem alteração da API.
 
 ## Arquitetura futura
 
@@ -54,7 +54,7 @@ Chamadas ainda dependentes da API estão centralizadas em `src/services/api.js` 
 
 | Endpoint FastAPI | Serviço ativo | Dados principais | Consumidor | Destino Next |
 |---|---|---|---|---|
-| `POST /auth/login` | `auth_router.py` | Supabase Auth, `usuarios` | Login | Supabase SSR + `auth.service.ts` |
+| `POST /auth/login` | `auth_router.py` | Supabase Auth, `usuarios` | Login | Supabase SSR Server Action |
 | `POST /usuarios/trocar-senha` | `usuario_service.py` | Supabase Auth, `usuarios` | Trocar senha | Server Action |
 | `GET/POST /usuarios`, `GET /usuarios/opcoes-nc`, `PUT/PATCH /usuarios/*` | `usuario_service.py` | `usuarios`, Auth Admin | Usuários, abertura NC | `usuario.service.ts` + actions |
 | `GET /usuarios/{id}/estatisticas` | `estatisticas_service_v2.py` | NC, causas, medidas, usuários | Estatísticas/dossiê | service + Route Handler PDF |
@@ -79,8 +79,8 @@ Chamadas ainda dependentes da API estão centralizadas em `src/services/api.js` 
 
 - [x] Fundação Next.js 16 App Router/TypeScript, CSS/assets e lint/build; páginas antigas movidas para `src/legacy` e carregadas temporariamente no cliente.
 - [ ] Rotas individuais Next e remoção completa do React Router (temporariamente mantido dentro do app legado).
-- [ ] Supabase SSR e autenticação por cookie (dependência e clientes browser/server/admin implementados; login/logout e sessão ainda não conectados às páginas).
-- [ ] Autorização centralizada, usuário ativo e senha provisória (helpers `requireUser`, `requireRole`, `requirePermission` criados; ainda não aplicados às rotas).
+- [x] Supabase SSR e autenticação por cookie (login/logout conectados via Server Actions; fluxo real do Preview ainda pendente).
+- [x] Gate server-side de sessão, conta ativa e senha provisória nas rotas raiz/legadas; [ ] autorização por papel para cada domínio.
 - [ ] Usuários e hierarquia.
 - [ ] NCs e fluxos (criar, editar, avaliar, feedback, aceitar, medidas, recorrência).
 - [ ] Timeline e histórico.
@@ -103,8 +103,7 @@ Chamadas ainda dependentes da API estão centralizadas em `src/services/api.js` 
 
 ## Estado da dependência externa
 
-A configuração atual contém `VITE_API_URL` e fallback `https://sgnc-web-api.onrender.com`; existem ainda chamadas do frontend para rotas FastAPI. Migração não concluída. API antiga permanece como referência e não foi alterada. A fundação ainda tem o fallback legado ativo em `src/legacy/services/config.js`.
-
+A API FastAPI continua ativa como dependência transitória para troca de senha provisória e demais domínios ainda não migrados. O browser chama `/api/legacy/*`; o Route Handler valida a sessão Supabase e encaminha a chamada ao `LEGACY_API_URL` configurado no servidor, com fallback para Render. A API antiga e a branch `main` não foram alteradas.
 
 ## Próximos passos detalhados
 
@@ -121,16 +120,16 @@ A sequência abaixo mantém a produção atual operante enquanto cada domínio g
 - Corrigir avisos lint quando o código legado relacionado for tocado.
 - Critério: preview compila, entrega rotas legadas existentes, configurações de build são reproduzíveis e documentação descreve corretamente o estado.
 
-### PR seguinte — Autenticação, autorização e roteamento Next
+### PR #22 — Autenticação SSR e ponte same-origin (em revisão)
 
-1. Configurar as variáveis Supabase no ambiente Preview Vercel sem copiar valores secretos para o Git ou logs.
-2. Implementar login/logout com `@supabase/ssr`, cookies seguros e validação no servidor; buscar o perfil `usuarios` por RLS.
-3. Preservar mensagens e condições para usuário sem cadastro, inativo e com senha provisória; a troca de senha permanece acessível antes da liberação das funções.
-4. Aplicar helpers de autorização a cada rota/action/handler; não confiar apenas no client-side nem chamar service role antes da autorização.
-5. Criar rotas App Router individuais equivalentes às dez rotas existentes e adaptar `Link`, navegação, parâmetros e query strings.
-6. Adicionar testes para sessão ausente/expirada, perfil ativo/inativo, papéis e senha provisória.
-- Critério: login, logout, redirecionamentos e papéis são validados no Preview; nenhum token fica em localStorage; cada rota bloqueada no servidor.
-
+- Implementados: login/logout com Supabase SSR e sessão por cookies; leitura do perfil próprio sob RLS; mensagens para perfil ausente/inativo e redirecionamento para troca de senha provisória.
+- Implementados: gates server-side na raiz e no catch-all legado, refresh de sessão no `proxy.ts`, páginas Next `/login` e `/trocar-senha`, e Route Handler autenticado `/api/legacy/*`.
+- O browser não armazena bearer token em `localStorage` e não chama Render diretamente. A troca de senha provisória e os módulos ainda não migrados seguem no FastAPI por meio do proxy.
+- Diagnóstico do Preview em 2026-09-30: logs Vercel identificaram HTTP 500 com `Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY` (digest `1121011086`); as variáveis públicas Supabase não estão disponíveis nessa implantação Preview.
+- Pendente: configurar `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no ambiente Preview Vercel. O cliente também aceita a chave legada por `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Após salvar, gerar novo deploy e testar login/logout, usuário inativo e senha provisória com contas de teste.
+- Pendente: migrar autorização detalhada por papel e criar rotas App Router específicas junto com cada domínio. A API ainda atende os dados de NC, usuários, evidências, métricas, onboarding e relatórios.
+- Validação local: `npm run typecheck` e `npm run build` passam; `npm run lint` passa com três avisos legados sem erros.
+- Critério para concluir: validar fluxos reais de sessão no Preview com conta de teste e registrar os resultados.
 ### PR — Usuários e hierarquia
 
 - Migrar listagem global/equipe/próprio perfil, opções de colaboradores, criação, edição, desativação, reativação e troca de senha.
