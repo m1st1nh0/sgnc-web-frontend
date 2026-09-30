@@ -125,7 +125,8 @@ A sequência abaixo mantém a produção atual operante enquanto cada domínio g
 - Implementados: login/logout com Supabase SSR e sessão por cookies; leitura do perfil próprio sob RLS; mensagens para perfil ausente/inativo e redirecionamento para troca de senha provisória.
 - Implementados: gates server-side na raiz e no catch-all legado, refresh de sessão no `proxy.ts`, páginas Next `/login` e `/trocar-senha`, e Route Handler autenticado `/api/legacy/*`.
 - O browser não armazena bearer token em `localStorage` e não chama Render diretamente. A troca de senha provisória e os módulos ainda não migrados seguem no FastAPI por meio do proxy.
-- Pendente: confirmar `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` no Preview e testar login/logout, usuário inativo e senha provisória com contas de teste.
+- Diagnóstico do Preview em 2026-09-30: logs Vercel identificaram HTTP 500 com `Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY` (digest `1121011086`); as variáveis públicas Supabase não estão disponíveis nessa implantação Preview.
+- Pendente: configurar `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no ambiente Preview Vercel. O cliente também aceita a chave legada por `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Após salvar, gerar novo deploy e testar login/logout, usuário inativo e senha provisória com contas de teste.
 - Pendente: migrar autorização detalhada por papel e criar rotas App Router específicas junto com cada domínio. A API ainda atende os dados de NC, usuários, evidências, métricas, onboarding e relatórios.
 - Validação local: `npm run typecheck` e `npm run build` passam; `npm run lint` passa com três avisos legados sem erros.
 - Critério para concluir: validar fluxos reais de sessão no Preview com conta de teste e registrar os resultados.
