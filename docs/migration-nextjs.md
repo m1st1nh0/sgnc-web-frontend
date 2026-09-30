@@ -81,7 +81,7 @@ Chamadas ainda dependentes da API estão centralizadas em `src/services/api.js` 
 - [ ] Rotas individuais Next e remoção completa do React Router (temporariamente mantido dentro do app legado).
 - [x] Supabase SSR e autenticação por cookie (login/logout conectados via Server Actions; fluxo real do Preview ainda pendente).
 - [x] Gate server-side de sessão, conta ativa e senha provisória nas rotas raiz/legadas; [ ] autorização por papel para cada domínio.
-- [ ] Usuários e hierarquia.
+- [x] Usuários e hierarquia: handlers Next para listagem por RLS, diretório mínimo, criação, edição, ativação, desativação e troca de senha; validação funcional no Preview ainda pendente.
 - [ ] NCs e fluxos (criar, editar, avaliar, feedback, aceitar, medidas, recorrência).
 - [ ] Timeline e histórico.
 - [ ] Evidências (upload/listagem/exclusão/download e permissões).
@@ -132,9 +132,12 @@ A sequência abaixo mantém a produção atual operante enquanto cada domínio g
 - Critério para concluir: validar fluxos reais de sessão no Preview com conta de teste e registrar os resultados.
 ### PR — Usuários e hierarquia
 
-- Migrar listagem global/equipe/próprio perfil, opções de colaboradores, criação, edição, desativação, reativação e troca de senha.
-- Manter operações de Auth Admin no servidor, isoladas em `admin.ts`; validar escopo ADM/supervisor/funcionário e vínculos de supervisão.
-- Critério: testes de permissão e comparação de payloads do serviço Python; fluxos administrativos testados com contas de Preview apropriadas.
+- Implementados handlers específicos sob `/api/legacy/usuarios`: listagem por RLS, diretório mínimo global, criação, edição, desativação, reativação e troca de senha. As telas mantêm o contrato atual enquanto deixam de depender do FastAPI para essas operações.
+- Operações de Auth Admin ficam no servidor em `admin.ts` e só são executadas após validação de sessão e papel ADM. A listagem administrativa usa a sessão/RLS; o diretório mínimo retorna somente `id`, `nome` e `setor`.
+- Adicionada validação contra auto-supervisão e mantida a proteção contra autodesativação. A criação compensa falha de perfil removendo o usuário criado no Auth.
+- Configuração necessária no Preview: `SUPABASE_SERVICE_ROLE_KEY`, sem prefixo público, além das variáveis públicas já usadas pela autenticação.
+- Pendente: validar no Preview os três papéis, criação/edição, hierarquia, ativação/desativação e troca de senha provisória.
+- Critério: comparar payloads com o serviço Python e confirmar os fluxos administrativos com contas apropriadas antes de concluir o PR.
 
 ### PR — Núcleo de NCs e timeline
 
