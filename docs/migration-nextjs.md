@@ -189,3 +189,9 @@ A sequência abaixo mantém a produção atual operante enquanto cada domínio g
 - Usar dados sintéticos ou anonimizados nos testes comparativos; não inserir tokens, service role ou dados pessoais em fixtures.
 - Não alterar schema/RLS sem mapear a política e justificar necessidade. Mudanças de schema/RLS devem ser isoladas, revisáveis e acompanhadas de teste de regressão.
 - Manter feature flags/roteamento temporário apenas durante a transição e retirar cada chamada FastAPI assim que a paridade do módulo estiver comprovada.
+### Timeline, medidas e evidências
+
+- A timeline auditável e suas durações agora são servidas pelo Next.js, mantendo a ocultação de observações sensíveis para autores sem acesso ao fluxo completo.
+- O registro manual de medidas disciplinares preserva as validações de causa, ocorrência, duplicidade e dias de suspensão do backend anterior.
+- Evidências usam o bucket privado `evidencias`, URLs assinadas por 10 minutos, limite de 15 MB e compensação do upload caso o registro no banco falhe.
+- A resposta da validação de uma NC inclui novamente `medida_sugerida` conforme os gatilhos 4/7/10, 13/16/19 e 22+.
