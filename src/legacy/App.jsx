@@ -5,8 +5,6 @@ import { AuthProvider } from "./context/AuthContext";
 import { OnboardingProvider } from "./context/OnboardingContext";
 import OnboardingInicialModal from "./components/onboarding/OnboardingInicialModal";
 import RotaProtegida from "./components/RotaProtegida";
-import LoginPage from "./pages/LoginPage";
-import TrocarSenhaPage from "./pages/TrocarSenhaPage";
 import HomePage from "./pages/HomePage";
 import AbrirNcPage from "./pages/AbrirNcPage";
 import EditarNcPage from "./pages/EditarNcPage";
@@ -17,15 +15,13 @@ import EstatisticasUsuarioPage from "./pages/EstatisticasUsuarioPage";
 const InsightsPage = lazy(() => import("./pages/InsightsPage"));
 const RelatoriosPage = lazy(() => import("./pages/RelatoriosPage"));
 
-export default function App() {
+export default function App({ initialUser }) {
   return (
-    <AuthProvider>
+    <AuthProvider initialUser={initialUser}>
       <BrowserRouter>
         <OnboardingProvider>
           <OnboardingInicialModal />
           <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/trocar-senha" element={<TrocarSenhaPage />} />
           <Route path="/" element={<RotaProtegida><HomePage /></RotaProtegida>} />
           <Route path="/abrir-nc" element={<RotaProtegida><AbrirNcPage /></RotaProtegida>} />
           <Route path="/nc/:id" element={<RotaProtegida><DetalhesNcPage /></RotaProtegida>} />

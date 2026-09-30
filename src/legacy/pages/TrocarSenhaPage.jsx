@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Form from "react-bootstrap/Form";
+"use client";
 
-import { useAuth } from "../context/AuthContext";
+import { useState } from "react";
+import Form from "react-bootstrap/Form";
+import { logoutAction } from "@/app/actions/auth";
+
 import { trocarSenha } from "../services/authService";
 import { ErroApi } from "../services/api";
 import { AJUDA_SENHA_FORTE, erroSenhaForte } from "../services/senhaPolicy";
@@ -12,8 +13,6 @@ import CampoTexto from "../components/ui/CampoTexto";
 import MensagemErro from "../components/ui/MensagemErro";
 
 export default function TrocarSenhaPage() {
-  const { sair } = useAuth();
-  const navigate = useNavigate();
 
   const [senhaAtual, setSenhaAtual] = useState("");
   const [senhaNova, setSenhaNova] = useState("");
@@ -39,13 +38,7 @@ export default function TrocarSenhaPage() {
     setCarregando(true);
     try {
       await trocarSenha(senhaAtual, senhaNova);
-      sair();
-      navigate("/login", {
-        replace: true,
-        state: {
-          mensagem: "Senha alterada com sucesso. Faça login novamente.",
-        },
-      });
+      await logoutAction(true);
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível trocar a senha.");
     } finally {
