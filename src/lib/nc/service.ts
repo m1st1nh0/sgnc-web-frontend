@@ -1,5 +1,6 @@
 import { filterSensitive } from "@/lib/permissions/nc";
 import { buildNcReadScopeFilter } from "@/lib/permissions/nc-scope";
+import { listarPessoasAbaixo, validarAcessoPessoa } from "@/lib/permissions/team-scope";
 import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
@@ -156,9 +157,7 @@ export async function listarNcs() {
   if (user.papel !== "adm") {
     let teamIds: string[] = [];
     if (user.papel === "supervisor") {
-      const { data: team, error: teamError } = await admin.from("usuarios").select("id").eq("supervisor_id", user.id);
-      if (teamError) throw new ApiError("Não foi possível carregar a equipe.", 500);
-      teamIds = (team ?? []).map((member) => member.id);
+      teamIds = (await listarPessoasAbaixo(user.id)).map((member) => member.id);
     }
     const scope = buildNcReadScopeFilter(user, teamIds);
     if (scope) query = query.or(scope);
@@ -171,11 +170,13 @@ export async function listarNcs() {
 
 export async function listarMinhasNcs() {
   const user = await requireUser();
-  const { data, error } = await createAdminClient()
-    .from("nao_conformidades")
-    .select("*")
-    .or(`aberto_por.eq.${user.id},colaborador_id.eq.${user.id}`)
-    .order("criado_em", { ascending: false });
+  const admin = createAdminClient();
+  let query = admin.from("nao_conformidades").select("*");
+  if (user.papel !== "adm") {
+    const scope = buildNcReadScopeFilter(user, []);
+    if (scope) query = query.or(scope);
+  }
+  const { data, error } = await query.order("criado_em", { ascending: false });
   if (error) throw new ApiError("Não foi possível carregar suas não conformidades.", 500);
   const rows = await addCauses((data ?? []) as Array<{ id: number }>);
   return rows.map((nc) => filterSensitive(nc, user));
@@ -188,9 +189,7 @@ export async function buscarNc(id: number) {
   if (user.papel !== "adm") {
     let teamIds: string[] = [];
     if (user.papel === "supervisor") {
-      const { data: team, error: teamError } = await admin.from("usuarios").select("id").eq("supervisor_id", user.id);
-      if (teamError) throw new ApiError("Não foi possível carregar a equipe.", 500);
-      teamIds = (team ?? []).map((member) => member.id);
+      teamIds = (await listarPessoasAbaixo(user.id)).map((member) => member.id);
     }
     const scope = buildNcReadScopeFilter(user, teamIds);
     if (scope) query = query.or(scope);
@@ -200,6 +199,48 @@ export async function buscarNc(id: number) {
   const [withCauses] = await addCauses([data]);
   const filtered = filterSensitive(withCauses, user);
   return { ...filtered, duracoes: durations(filtered) };
+}
+
+export async function listarNcsDaPessoa(
+  pessoaId: string,
+  options: { pagina?: number; status?: string | null; inicio?: string | null; fim?: string | null } = {},
+) {
+  const user = await requireUser();
+  await validarAcessoPessoa(user, pessoaId);
+  const paginaInformada = Number(options.pagina ?? 0);
+  const pagina = Number.isFinite(paginaInformada) ? Math.max(0, Math.min(10_000, Math.floor(paginaInformada))) : 0;
+  const pageSize = 25;
+  const status = options.status?.trim() || null;
+  const inicio = options.inicio?.trim() || null;
+  const fim = options.fim?.trim() || null;
+  const validStatuses = ["aberta", "aguardando_feedback", "aguardando_analise", "validada", "aguardando_aceite", "concluida", "invalidada"];
+  if (status && !validStatuses.includes(status)) throw new ApiError("O status selecionado é inválido.", 422);
+  const isDate = (value: string | null) => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+  if ((inicio || fim) && (!isDate(inicio) || !isDate(fim))) throw new ApiError("Informe o período completo para filtrar as NCs.", 422);
+  if (inicio && fim && inicio > fim) throw new ApiError("A data inicial não pode ser posterior à data final.", 422);
+
+  const admin = createAdminClient();
+  let query = admin.from("nao_conformidades").select("*", { count: "exact" }).eq("colaborador_id", pessoaId);
+  if (user.papel !== "adm") {
+    const teamIds = user.papel === "supervisor" ? (await listarPessoasAbaixo(user.id)).map((member) => member.id) : [];
+    const scope = buildNcReadScopeFilter(user, teamIds);
+    if (scope) query = query.or(scope);
+  }
+  if (status) query = query.eq("status", status);
+  if (inicio && fim) query = query.gte("data", inicio).lte("data", fim);
+
+  const { data, count, error } = await query
+    .order("criado_em", { ascending: false })
+    .order("id", { ascending: false })
+    .range(pagina * pageSize, pagina * pageSize + pageSize - 1);
+  if (error) throw new ApiError("Não foi possível carregar as NCs deste colaborador.", 500);
+  const rows = await addCauses((data ?? []) as Array<{ id: number }>);
+  return {
+    items: rows.map((nc) => filterSensitive(nc, user)),
+    total: count ?? rows.length,
+    pagina,
+    por_pagina: pageSize,
+  };
 }
 
 export async function listarCausas() {
