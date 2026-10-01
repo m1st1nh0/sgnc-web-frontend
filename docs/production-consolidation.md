@@ -49,3 +49,7 @@ Testes locais: 26 verificações unitárias de sessão/autorização/privacidade
 ## Estado dos goals
 
 Goals 1–4 implementados localmente, com a remediação de banco e UAT ainda pendentes. Goal 5 tem cobertura unitária/HTTP automatizada e CI configurado, mas aguarda execução remota e E2E autenticado. Goals 6–7 (RC, release/cutover) permanecem bloqueados pelos itens acima e não devem avançar até os gates serem aprovados.
+
+## Revisão adicional do mapa operacional
+
+O anexo trouxe melhorias de desempenho, governança de causas, acompanhamento de NC, mensagens de erro, hierarquia/equipe, acesso ao histórico individual, período de relatório de 30 dias e controles de navegação. A revisão técnica, estado atual, critérios de aceite e ordem de implementação estão em [`backlog-melhorias-operacionais.md`](./backlog-melhorias-operacionais.md). O candidato mensurável para lentidão é a consulta sem limite de NCs/causas antes do filtro temporal em `obterInsights`; o módulo Relatórios é somente de exportação e usa 12 meses por padrão. As observações numeradas sobre navegação não identificam a tela/controle e precisam ser mapeadas em UAT antes de alterar a interface.
