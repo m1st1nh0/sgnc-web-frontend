@@ -63,9 +63,9 @@ const CHECKLIST_COMUM = [
   },
   {
     chave: "checklist_visualizar_nc",
-    titulo: "Visualize os detalhes de uma NC",
-    descricao: "Entenda status, histórico, responsáveis e evidências.",
-    destino: "/#prioridades",
+    titulo: "Localize e abra uma NC",
+    descricao: "Use a lista do painel para escolher um registro e consultar status, histórico e evidências.",
+    destino: "/#lista-ncs-home",
   },
   {
     chave: "checklist_dossie",

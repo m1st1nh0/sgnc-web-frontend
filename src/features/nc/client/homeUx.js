@@ -16,6 +16,19 @@ export function normalizarStatusHome(status) {
   return STATUS_FEEDBACK.has(status) ? "aguardando_feedback" : status;
 }
 
+export function filtrarNcsPorCardHome(ncs, rotulo, usuarioId) {
+  const feedback = ["aguardando_feedback", "validada", "aguardando_analise"];
+  if (rotulo === "Aguardando avaliação") return ncs.filter((nc) => nc.status === "aberta");
+  if (rotulo === "Aguardando feedback") return ncs.filter((nc) => feedback.includes(nc.status));
+  if (["Aguardando aceite", "Aguardando meu aceite"].includes(rotulo)) return ncs.filter((nc) => nc.status === "aguardando_aceite");
+  if (rotulo === "Concluídas") return ncs.filter((nc) => nc.status === "concluida");
+  if (rotulo === "Abertas por mim") return ncs.filter((nc) => nc.aberto_por === usuarioId);
+  if (rotulo === "Minhas NCs ativas") {
+    return ncs.filter((nc) => (nc.colaborador_id === usuarioId || nc.aberto_por === usuarioId) && STATUS_ATIVOS.has(nc.status));
+  }
+  return [...ncs];
+}
+
 function contar(ncs, status) {
   return ncs.filter((nc) => normalizarStatusHome(nc.status) === status).length;
 }

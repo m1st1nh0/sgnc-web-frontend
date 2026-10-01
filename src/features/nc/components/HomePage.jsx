@@ -10,7 +10,7 @@ import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import { listarNcs } from "../client/ncService.js";
 import { listarOpcoesNc, listarUsuarios } from "../../users/client/usuarioService.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
-import { criarVisaoHome } from "../client/homeUx.js";
+import { criarVisaoHome, filtrarNcsPorCardHome } from "../client/homeUx.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
 import OnboardingChecklist from "../../onboarding/components/OnboardingChecklist.jsx";
@@ -48,6 +48,7 @@ export default function HomePage() {
   const [erro, setErro] = useState("");
   const [atualizando, setAtualizando] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState("todas");
+  const [filtroCardAtivo, setFiltroCardAtivo] = useState(null);
 
   async function carregar() {
     try {
@@ -115,13 +116,16 @@ export default function HomePage() {
   );
 
   const ncsFiltradas = useMemo(() => {
+    if (filtroCardAtivo) {
+      return filtrarNcsPorCardHome(ncs, filtroCardAtivo, usuario?.id);
+    }
     const filtro = ABAS_FILTRO.find((a) => a.chave === abaAtiva);
     if (!filtro || !filtro.status) return ncs;
     const statusAlvo = Array.isArray(filtro.status)
       ? filtro.status
       : [filtro.status];
     return ncs.filter((nc) => statusAlvo.includes(nc.status));
-  }, [ncs, abaAtiva]);
+  }, [ncs, abaAtiva, filtroCardAtivo, usuario?.id]);
 
   const contagemPorAba = useMemo(() => {
     const contagem = {};
@@ -145,6 +149,14 @@ export default function HomePage() {
     if (nc.aberto_por === usuario?.id) return usuario.nome;
     const pessoa = pessoas.find((item) => item.id === nc.aberto_por);
     return pessoa?.nome || "Usuário não disponível";
+  }
+
+  function filtrarPeloCard(rotulo) {
+    setAbaAtiva("todas");
+    setFiltroCardAtivo((atual) => atual === rotulo ? null : rotulo);
+    requestAnimationFrame(() => {
+      document.getElementById("lista-ncs-home")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
 
@@ -202,12 +214,23 @@ export default function HomePage() {
             <div className="row g-3 mb-4">
               {visao.cards.map((card) => (
                 <div className="col-sm-6 col-lg-3" key={card.rotulo}>
-                  <CardMetrica
-                    rotulo={card.rotulo}
-                    valor={card.valor}
-                    descricao={card.descricao}
-                    cor={card.cor}
-                  />
+                  <button
+                    type="button"
+                    className="sg-metrica-interativa"
+                    onClick={() => filtrarPeloCard(card.rotulo)}
+                    aria-pressed={filtroCardAtivo === card.rotulo}
+                    aria-label={`Filtrar lista de NCs: ${card.rotulo}, ${card.valor}`}
+                  >
+                    <CardMetrica
+                      rotulo={card.rotulo}
+                      valor={card.valor}
+                      descricao={card.descricao}
+                      cor={card.cor}
+                    />
+                    <span className="sg-metrica-interativa__acao">
+                      {filtroCardAtivo === card.rotulo ? "Filtro ativo · clique para limpar" : "Filtrar lista de NCs"}
+                    </span>
+                  </button>
                 </div>
               ))}
             </div>
@@ -249,11 +272,16 @@ export default function HomePage() {
               </div>
             )}
 
-            <h2 className="h5 mb-3">{visao.tituloLista}</h2>
+            <section id="lista-ncs-home" className="sg-ancora-secao" aria-labelledby="lista-ncs-home-titulo">
+            <div className="d-flex justify-content-between align-items-end gap-3 mb-3">
+              <h2 id="lista-ncs-home-titulo" className="h5 mb-0">{visao.tituloLista}</h2>
+              {filtroCardAtivo && <button type="button" className="btn btn-link p-0" onClick={() => setFiltroCardAtivo(null)}>Limpar filtro: {filtroCardAtivo}</button>}
+            </div>
+            {filtroCardAtivo && <p className="texto-sm texto-suave" role="status">Lista filtrada pelo indicador “{filtroCardAtivo}”. Selecione o card novamente ou limpe o filtro para ver todas as NCs.</p>}
             <Nav
               variant="tabs"
               activeKey={abaAtiva}
-              onSelect={setAbaAtiva}
+              onSelect={(chave) => { if (chave) { setFiltroCardAtivo(null); setAbaAtiva(chave); } }}
               className="mb-3"
             >
               {ABAS_FILTRO.map((aba) => (
@@ -285,6 +313,7 @@ export default function HomePage() {
                 ))}
               </div>
             )}
+            </section>
           </>
         )}
       </Container>

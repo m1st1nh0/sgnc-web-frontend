@@ -489,6 +489,11 @@ textarea:focus-visible {
   border-radius: 10px;
 }
 
+.sg-metrica-interativa[aria-pressed="true"] .sg-metrica {
+  outline: 2px solid var(--cor-norma);
+  outline-offset: 2px;
+}
+
 .sg-metrica-interativa__acao {
   display: block;
   padding: 0 1rem .75rem;

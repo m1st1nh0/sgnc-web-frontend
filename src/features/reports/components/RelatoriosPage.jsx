@@ -10,6 +10,7 @@ import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
 import CardMetrica from "../../../components/ui/CardMetrica.jsx";
+import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
@@ -45,6 +46,23 @@ const STATUS_RAW_LABEL = {
   validada: "Aguardando feedback",
   aguardando_analise: "Aguardando feedback",
 };
+const CORES_STATUS = {
+  aberta: CORES_GRAFICO.amarelo,
+  aguardando_feedback: CORES_GRAFICO.laranja,
+  aguardando_aceite: CORES_GRAFICO.violeta,
+  concluida: CORES_GRAFICO.verde,
+  invalidada: CORES_GRAFICO.vermelho,
+};
+const PALETA_CATEGORIAS = [
+  CORES_GRAFICO.azul,
+  CORES_GRAFICO.ciano,
+  CORES_GRAFICO.verde,
+  CORES_GRAFICO.violeta,
+  CORES_GRAFICO.laranja,
+  CORES_GRAFICO.amarelo,
+  CORES_GRAFICO.vermelho,
+  CORES_GRAFICO.cinza,
+];
 const DATA = (value) => value ? new Date(value).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—";
 
 function periodoDozeMeses() {
@@ -117,15 +135,21 @@ export default function RelatoriosPage() {
     [pessoas],
   );
   const statusData = useMemo(
-    () => (dados?.ncs_por_status || []).map((item) => ({ ...item, rotulo: STATUS_RAW_LABEL[item.status] || item.status })),
+    () => (dados?.ncs_por_status || []).map((item) => ({ ...item, rotulo: STATUS_RAW_LABEL[item.status] || item.status, cor: CORES_STATUS[item.status] || CORES_GRAFICO.cinza })),
     [dados],
   );
   const criticidadeData = useMemo(
-    () => (dados?.ncs_por_criticidade || []).map((item) => ({ nome: item.criticidade, valor: item.total, cor: CORES_GRAFICO.azul })),
+    () => (dados?.ncs_por_criticidade || []).map((item) => {
+      const criticidade = String(item.criticidade || "").toLocaleLowerCase("pt-BR");
+      const cor = criticidade === "alta" ? CORES_GRAFICO.vermelho
+        : ["média", "media"].includes(criticidade) ? CORES_GRAFICO.amarelo
+          : criticidade === "baixa" ? CORES_GRAFICO.verde : CORES_GRAFICO.cinza;
+      return { nome: item.criticidade, valor: item.total, cor };
+    }),
     [dados],
   );
-  const setoresData = useMemo(() => (dados?.ncs_por_setor || []).slice(0, 10), [dados]);
-  const colaboradoresData = useMemo(() => (dados?.ncs_por_colaborador || []).slice(0, 10), [dados]);
+  const setoresData = useMemo(() => (dados?.ncs_por_setor || []).slice(0, 10).map((item, index) => ({ ...item, cor: PALETA_CATEGORIAS[index % PALETA_CATEGORIAS.length] })), [dados]);
+  const colaboradoresData = useMemo(() => (dados?.ncs_por_colaborador || []).slice(0, 10).map((item, index) => ({ ...item, cor: PALETA_CATEGORIAS[index % PALETA_CATEGORIAS.length] })), [dados]);
   const mesesData = useMemo(() => dados?.ncs_por_mes || [], [dados]);
   const kpis = dados?.kpis || {};
   const totalPaginas = Math.max(1, Math.ceil((ncs.total || 0) / (ncs.por_pagina || 25)));
@@ -271,17 +295,17 @@ export default function RelatoriosPage() {
             <div className="row g-3 mb-4">
               <div className="col-lg-6">
                 <PainelGrafico titulo="NCs por status" descricao="Selecione um status para filtrar a lista de NCs" vazio={!statusData.length}>
-                  <GraficoBarrasHorizontais dados={statusData} categoriaChave="rotulo" series={[{ chave: "quantidade", cor: CORES_GRAFICO.azul, nome: "NCs" }]} altura={250} onCategoryClick={(row) => abrirDetalhe(`NCs: ${row.rotulo}`, { tipo: "period", filtro_status: row.status })} />
+                  <GraficoBarrasHorizontais dados={statusData} categoriaChave="rotulo" corChave="cor" series={[{ chave: "quantidade", cor: CORES_GRAFICO.azul, nome: "NCs" }]} altura={250} onCategoryClick={(row) => abrirDetalhe(`NCs: ${row.rotulo}`, { tipo: "period", filtro_status: row.status })} />
                 </PainelGrafico>
               </div>
               <div className="col-lg-6">
                 <PainelGrafico titulo="NCs por setor" descricao="Selecione um setor para ver as NCs correspondentes" vazio={!setoresData.length}>
-                  <GraficoBarrasHorizontais dados={setoresData} categoriaChave="setor" series={[{ chave: "total", cor: CORES_GRAFICO.ciano, nome: "NCs" }]} altura={250} onCategoryClick={(row) => abrirDetalhe(`NCs do setor ${row.setor}`, { tipo: "dimension", dimensao: "setor", setor: row.setor })} />
+                  <GraficoBarrasHorizontais dados={setoresData} categoriaChave="setor" corChave="cor" series={[{ chave: "total", cor: CORES_GRAFICO.ciano, nome: "NCs" }]} altura={250} onCategoryClick={(row) => abrirDetalhe(`NCs do setor ${row.setor}`, { tipo: "dimension", dimensao: "setor", setor: row.setor })} />
                 </PainelGrafico>
               </div>
               <div className="col-lg-6">
                 <PainelGrafico titulo="NCs por colaborador" descricao="Selecione um colaborador para abrir suas NCs" vazio={!colaboradoresData.length}>
-                  <GraficoBarrasHorizontais dados={colaboradoresData} categoriaChave="colaborador" series={[{ chave: "total", cor: CORES_GRAFICO.azul, nome: "NCs" }]} altura={280} onCategoryClick={(row) => row.colaborador_id && abrirDetalhe(`NCs de ${row.colaborador}`, { tipo: "dimension", dimensao: "colaborador", colaborador_id: row.colaborador_id })} />
+                  <GraficoBarrasHorizontais dados={colaboradoresData} categoriaChave="colaborador" corChave="cor" series={[{ chave: "total", cor: CORES_GRAFICO.azul, nome: "NCs" }]} altura={280} onCategoryClick={(row) => row.colaborador_id && abrirDetalhe(`NCs de ${row.colaborador}`, { tipo: "dimension", dimensao: "colaborador", colaborador_id: row.colaborador_id })} />
                 </PainelGrafico>
               </div>
               <div className="col-lg-6">
@@ -315,7 +339,7 @@ export default function RelatoriosPage() {
                           <td>{DATA(nc.data || nc.criado_em)}</td>
                           <td>{nc.colaborador || "—"}</td>
                           <td>{nc.setor || "—"}</td>
-                          <td>{STATUS_RAW_LABEL[nc.status] || nc.status}</td>
+                          <td><BadgeStatus status={nc.status} /></td>
                           <td>{nc.criticidade || "—"}</td>
                           <td><Botao as={Link} href={`/nc/${nc.id}`} variante="secundario" size="sm">Abrir</Botao></td>
                         </tr>

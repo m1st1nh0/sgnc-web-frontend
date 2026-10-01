@@ -44,6 +44,8 @@ const service = readFileSync("src/features/reports/client/relatoriosService.js",
 const pagina = readFileSync("src/features/reports/components/RelatoriosPage.jsx", "utf8");
 const app = readFileSync("src/app/(app)/relatorios/page.tsx", "utf8");
 const nav = readFileSync("src/components/navigation/BarraNavegacao.jsx", "utf8");
+const reportPage = readFileSync("src/features/reports/components/RelatoriosPage.jsx", "utf8");
+const barChart = readFileSync("src/components/graficos/GraficoBarrasHorizontais.jsx", "utf8");
 
 assert.match(api, /export async function baixarArquivoApi/);
 assert.match(api, /credentials: "same-origin"/);
@@ -63,6 +65,10 @@ assert.match(pagina, /Visão na tela/);
 assert.match(pagina, /Últimos 30 dias/);
 assert.match(pagina, /NCs do período/);
 assert.match(pagina, /ModalNcsIndicador/);
+assert.match(reportPage, /CORES_STATUS/);
+assert.match(reportPage, /PALETA_CATEGORIAS/);
+assert.match(reportPage, /<BadgeStatus status=\{nc\.status\}/);
+assert.match(barChart, /corChave/);
 
 assert.match(app, /RelatoriosPage/);
 assert.match(app, /requireRole\(\["adm", "supervisor"\]\)/);
