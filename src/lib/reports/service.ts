@@ -8,7 +8,7 @@ import { obterEstatisticasUsuario, obterInsights } from "@/lib/analytics/service
 
 import { buscarNc, obterTimeline } from "@/lib/nc/service";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
+import { buildNcReadScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
 
 type Row = Record<string, any>;
 const A4: [number, number] = [595.28, 841.89];
@@ -102,8 +102,9 @@ async function reportScope() {
 
 export async function gerarCsvNcs(params: URLSearchParams) {
   const {admin,teamIds}=await reportScope(); const end=params.get("fim")||new Date().toISOString().slice(0,10);const endDate=new Date(`${end}T12:00:00Z`);endDate.setUTCFullYear(endDate.getUTCFullYear()-1);const start=params.get("inicio")||endDate.toISOString().slice(0,10);if(start>end)throw new ApiError("A data de início não pode ser posterior à data de fim.");
+  const requester=await requireUser();
   let query=admin.from("nao_conformidades").select("id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, descricao, criado_em, validado_em, feedback_aplicado_em, aceito_em");
-  if(teamIds)query=query.in("colaborador_id",teamIds.length?teamIds:["00000000-0000-0000-0000-000000000000"]).in("status",[...SUPERVISOR_VISIBLE_NC_STATUSES]);
+  if(teamIds){const scope=buildNcReadScopeFilter(requester,teamIds);if(scope)query=query.or(scope);}
   const {data,error}=await query;if(error)throw new ApiError("Não foi possível gerar o CSV.",500);
   const status=params.get("status")?canonical(params.get("status")):null,employee=params.get("colaborador_id"),sector=params.get("setor")?.trim().toLocaleLowerCase();const rows=(data??[]).filter(nc=>{const date=dateOnly(nc.data||nc.criado_em);return date>=start&&date<=end&&(!status||canonical(nc.status)===status)&&(!employee||nc.colaborador_id===employee)&&(!sector||String(nc.setor||"").trim().toLocaleLowerCase()===sector);}).sort((a,b)=>String(b.data||b.criado_em).localeCompare(String(a.data||a.criado_em))||b.id-a.id);
   const ids=rows.map(item=>item.id);const {data:relations}=ids.length?await admin.from("nc_causas").select("nc_id, ocorrencia_numero, causas(descricao)").in("nc_id",ids):{data:[]};const byNc=new Map<number,Row[]>();for(const relation of relations??[]){const joined=relation.causas as unknown as {descricao?:string}|null;byNc.set(relation.nc_id,[...(byNc.get(relation.nc_id)??[]),{descricao:joined?.descricao,ocorrencia_numero:relation.ocorrencia_numero}]);}

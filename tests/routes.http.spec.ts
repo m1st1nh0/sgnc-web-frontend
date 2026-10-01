@@ -3,7 +3,7 @@ const paths=['/','/abrir-nc','/nc/1','/nc/1/editar','/usuarios','/insights','/re
 for(const path of paths) test(`anonymous page ${path} redirects to login`,async({request})=>{
  const r=await request.get(path,{maxRedirects:0});expect(r.status()).toBe(307);expect(r.headers().location).toBe('/login');
 });
-for(const path of ['/api/nc','/api/nc/1','/api/usuarios','/api/insights','/api/onboarding/me','/api/relatorios/ncs.csv','/api/relatorios/nc/1.pdf','/api/nc/1/evidencias']) test(`anonymous API ${path} denied`,async({request})=>{
+for(const path of ['/api/nc','/api/nc/1','/api/usuarios','/api/insights','/api/insights/ncs','/api/onboarding/me','/api/relatorios/ncs.csv','/api/relatorios/nc/1.pdf','/api/nc/1/evidencias']) test(`anonymous API ${path} denied`,async({request})=>{
  const r=await request.get(path);expect(r.status()).toBe(401);expect(await r.json()).toEqual({detail:'Sessão inválida ou expirada. Faça login novamente.'});
 });
 test('mutation without session denied',async({request})=>expect((await request.post('/api/nc',{data:{}})).status()).toBe(401));

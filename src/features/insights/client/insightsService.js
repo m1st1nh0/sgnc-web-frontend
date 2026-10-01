@@ -16,3 +16,8 @@ export function buscarInsights({ inicio, fim } = {}) {
   const query = params.toString();
   return chamarApi(`/insights${query ? `?${query}` : ""}`);
 }
+
+export function buscarNcsDoIndicador(filtro, pagina = 0) {
+  const params = new URLSearchParams({ ...filtro, pagina: String(pagina) });
+  return chamarApi(`/insights/ncs?${params.toString()}`);
+}

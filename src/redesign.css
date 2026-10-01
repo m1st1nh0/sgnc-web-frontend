@@ -471,6 +471,32 @@ textarea:focus-visible {
   background: #fbfcfb;
 }
 
+.sg-metrica-interativa {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sg-metrica-interativa:focus-visible {
+  outline: 3px solid var(--cor-norma);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+.sg-metrica-interativa__acao {
+  display: block;
+  padding: 0 1rem .75rem;
+  color: var(--cor-norma);
+  font-size: .8rem;
+  font-weight: 600;
+}
+
 .sg-metrica__faixa {
   display: none;
 }

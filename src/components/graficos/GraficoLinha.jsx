@@ -15,10 +15,17 @@ const TICK = {
   fill: "var(--texto-secundario)",
 };
 
-export default function GraficoLinha({ dados, eixoChave, series, altura = 300 }) {
+export default function GraficoLinha({ dados, eixoChave, series, altura = 300, onPointClick }) {
   return (
     <ResponsiveContainer width="100%" height={altura}>
-      <LineChart data={dados} margin={{ top: 8, right: 20, bottom: 4, left: 0 }}>
+      <LineChart
+        data={dados}
+        margin={{ top: 8, right: 20, bottom: 4, left: 0 }}
+        onClick={onPointClick ? (state) => {
+          const point = state?.activePayload?.[0];
+          if (point?.payload) onPointClick(point.payload, point.dataKey);
+        } : undefined}
+      >
         <CartesianGrid vertical={false} stroke="var(--borda)" />
         <XAxis
           dataKey={eixoChave}

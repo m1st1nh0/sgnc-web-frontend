@@ -9,7 +9,7 @@ const ESTILO_TOOLTIP = {
   color: "var(--texto-primario)",
 };
 
-export default function GraficoDonut({ dados, altura = 280 }) {
+export default function GraficoDonut({ dados, altura = 280, onCategoryClick }) {
   return (
     <ResponsiveContainer width="100%" height={altura}>
       <PieChart>
@@ -24,7 +24,12 @@ export default function GraficoDonut({ dados, altura = 280 }) {
           strokeWidth={3}
         >
           {dados.map((item) => (
-            <Cell key={item.nome} fill={item.cor} />
+            <Cell
+              key={item.nome}
+              fill={item.cor}
+              onClick={onCategoryClick ? () => onCategoryClick(item) : undefined}
+              cursor={onCategoryClick ? "pointer" : undefined}
+            />
           ))}
         </Pie>
         <Tooltip contentStyle={ESTILO_TOOLTIP} />

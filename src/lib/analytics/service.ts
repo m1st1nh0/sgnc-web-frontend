@@ -4,7 +4,7 @@ import "server-only";
 import { ApiError } from "@/lib/api/error";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
+import { buildNcReadScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
 
 const ACTIVE = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "validada", "aguardando_analise"]);
 const COUNTABLE = new Set(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "concluida"]);
@@ -122,8 +122,8 @@ export async function obterInsights(startInput?: string | null, endInput?: strin
   }
   let query = admin.from("nao_conformidades").select("id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, criado_em, atualizado_em, validado_em, feedback_aplicado_em, aceito_em, decidido_em, enviado_em");
   if (teamIds) {
-    query = query.in("colaborador_id", teamIds.length ? teamIds : ["00000000-0000-0000-0000-000000000000"])
-      .in("status", [...SUPERVISOR_VISIBLE_NC_STATUSES]);
+    const scope = buildNcReadScopeFilter(user, teamIds);
+    if (scope) query = query.or(scope);
   }
   const { data, error } = await query;
   if (error) throw new ApiError("Não foi possível carregar os insights.", 500);
@@ -135,8 +135,7 @@ export async function obterInsights(startInput?: string | null, endInput?: strin
   if (teamIds === null || all.length) {
     let measuresQuery = admin.from("medidas_disciplinares").select("causa_id, colaborador_id, nc_id, ocorrencia_gatilho, tipo, status, data_aplicacao, criado_em");
     if (teamIds) {
-      measuresQuery = measuresQuery.in("colaborador_id", teamIds)
-        .in("nc_id", all.map((nc) => nc.id));
+      measuresQuery = measuresQuery.in("nc_id", all.map((nc) => nc.id));
     }
     const { data, error: measureError } = await measuresQuery;
     if (measureError) throw new ApiError("Não foi possível carregar os indicadores disciplinares.", 500);
@@ -145,7 +144,7 @@ export async function obterInsights(startInput?: string | null, endInput?: strin
   const periodStatus = new Map<string, number>(), backlogStatus = new Map<string, number>();
   period.forEach((nc) => inc(periodStatus, canonicalStatus(nc.status))); active.forEach((nc) => inc(backlogStatus, canonicalStatus(nc.status)));
   const inPeriod = (value: unknown) => { const date = isoDate(value); return !!date && date >= start && date <= end; };
-  const kpis = { total_ncs: period.length, ncs_abertas: count(periodStatus, "aberta"), ncs_pendentes: count(periodStatus, "aguardando_feedback") + count(periodStatus, "aguardando_aceite"), ncs_concluidas: count(periodStatus, "concluida"), ncs_invalidadas: count(periodStatus, "invalidada"), taxa_invalidacao: period.length ? Math.round(count(periodStatus, "invalidada") / period.length * 10000) / 10000 : null, ncs_sem_chamado: period.filter((nc) => !String(nc.chamado ?? "").trim()).length, backlog_ativo_atual: active.length, abertas_atuais: count(backlogStatus, "aberta"), aguardando_feedback_atual: count(backlogStatus, "aguardando_feedback"), aguardando_aceite_atual: count(backlogStatus, "aguardando_aceite"), concluidas_no_periodo: all.filter((nc) => inPeriod(nc.aceito_em)).length, invalidadas_no_periodo: all.filter((nc) => nc.status === "invalidada" && inPeriod(nc.decidido_em)).length };
+  const kpis = { total_ncs: period.length, ncs_abertas: count(periodStatus, "aberta"), ncs_pendentes: count(periodStatus, "aguardando_feedback") + count(periodStatus, "aguardando_aceite"), ncs_concluidas: count(periodStatus, "concluida"), ncs_invalidadas: count(periodStatus, "invalidada"), taxa_invalidacao: period.length ? Math.round(count(periodStatus, "invalidada") / period.length * 10000) / 10000 : null, ncs_sem_chamado: period.filter((nc) => !String(nc.chamado ?? "").trim()).length, backlog_ativo_atual: active.length, abertas_atuais: count(backlogStatus, "aberta"), aguardando_feedback_atual: count(backlogStatus, "aguardando_feedback"), aguardando_aceite_atual: count(backlogStatus, "aguardando_aceite"), concluidas_no_periodo: all.filter((nc) => nc.status === "concluida" && inPeriod(nc.aceito_em)).length, invalidadas_no_periodo: all.filter((nc) => nc.status === "invalidada" && inPeriod(nc.decidido_em)).length };
   const durations = { criacao_ate_validacao: timeSummary(all.filter((nc) => inPeriod(nc.validado_em)).map((nc) => seconds(nc.criado_em, nc.validado_em))), validacao_ate_feedback: timeSummary(all.filter((nc) => inPeriod(nc.feedback_aplicado_em)).map((nc) => seconds(nc.validado_em, nc.feedback_aplicado_em))), feedback_ate_aceite: timeSummary(all.filter((nc) => inPeriod(nc.aceito_em)).map((nc) => seconds(nc.feedback_aplicado_em, nc.aceito_em))), ciclo_total: timeSummary(all.filter((nc) => inPeriod(nc.aceito_em)).map((nc) => seconds(nc.criado_em, nc.aceito_em))), criacao_ate_decisao: timeSummary(all.filter((nc) => inPeriod(nc.decidido_em)).map((nc) => seconds(nc.criado_em, nc.decidido_em))) };
   const ranges = new Map([['0-1d',0],['2-3d',0],['4-7d',0],['8+d',0]]); let oldest: Row | null = null; const now = Date.now();
   for (const nc of active) { const since = nc.status === 'aberta' ? nc.criado_em : nc.status === 'aguardando_aceite' ? (nc.feedback_aplicado_em || nc.validado_em || nc.criado_em) : (nc.validado_em || nc.enviado_em || nc.criado_em); const days = Math.floor((now - Date.parse(since)) / 86400000); const range = days < 2 ? '0-1d' : days < 4 ? '2-3d' : days < 8 ? '4-7d' : '8+d'; ranges.set(range, (ranges.get(range) ?? 0) + 1); if (!oldest || days > oldest.dias_na_etapa) oldest = { nc_id:nc.id,status:canonicalStatus(nc.status),dias_na_etapa:days,desde:new Date(since).toISOString() }; }

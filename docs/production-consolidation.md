@@ -41,8 +41,8 @@ Testes locais: 26 verificações unitárias de sessão/autorização/privacidade
 ## Bloqueios de release encontrados
 
 - A consulta somente leitura confirmou que `authenticated` pode executar SELECT direto em `public.nao_conformidades` e `public.historico_nc`. As leituras da aplicação foram movidas para os serviços server-only com escopo por perfil; a migração `supabase/migrations/20261001000000_revoke_direct_nc_reads.sql` revoga o acesso Data API de `anon` e `authenticated`. Aplicar somente depois de implantar a versão que usa as rotas Next; a migração ainda não foi aplicada ao banco compartilhado.
-- O Security Advisor do Supabase relata proteção contra senhas vazadas desativada. Alterar essa configuração pode afetar cadastro e troca de senha; permanece pendente de decisão do responsável pelo produto.
-- Sem credenciais de usuários de teste, não foi possível validar fluxo autenticado por papel, upload/download ou documentos gerados. Não solicitar nem guardar credenciais em chat.
+- O Security Advisor do Supabase relata proteção contra senhas vazadas desativada. O responsável aceitou temporariamente seguir sem esse controle; registrar a exceção, revisar após o lançamento e manter os demais controles de autenticação ativos.
+- O UAT autenticado dos perfis supervisor e funcionário foi concluído. Ainda faltam administrador, abertura/edição, feedback/aceite, PDF/CSV e upload/download.
 - PR #29 aberta em rascunho, empilhada sobre a branch da PR #28. Os workflows remotos Frontend checks e Security checks passaram; Vercel criou Preview READY para o commit `45cae83` (`dpl_cTq9hKPULvyYUYPey7g1k2EtJe57`).
 - O Preview de `94e98eb` está READY após a correção das variáveis de ambiente. `/login` responde HTTP 200 e os logs runtime recentes não registram erros. Falta repetir o smoke da raiz e executar UAT autenticado/visual quando houver sessão de teste.
 - A produção continua no deployment Vite `c19fc...`; rollback `dpl_91955HjfLrkriGttMfY89eSdXSuf` foi preservado. Nenhum deployment foi promovido.
@@ -59,7 +59,14 @@ Goals 1–4 implementados e CI remoto aprovado; código de remediação de privi
 - Nenhum registro de NC foi criado, editado ou excluído durante o UAT. Ambos os perfis foram desconectados ao final.
 - Ainda faltam UAT com administrador, fluxos de abertura/feedback/aceite, PDF/CSV, anexos e verificação visual mobile.
 
-Correção preparada na branch: consultas administrativas de Insights, estatísticas e CSV agora aplicam o escopo de leitura do banco para supervisor/funcionário; relações disciplinares também são limitadas aos IDs de NC acessíveis. A reconciliação numérica deve ser confirmada no próximo Preview antes de implementar o drill-down.
+Correção de escopo implementada na branch e ampliada para respeitar também NCs abertas pelo próprio supervisor. O drill-down foi iniciado; após publicar no Preview, confirmar se painel e Insights reconciliam e se listas/modal apresentam os mesmos registros dos indicadores.
+
+## Drill-down de indicadores (implementação local)
+
+- Cards de backlog/volume e gráficos de etapa, aging, mês, causa, colaborador, setor e criticidade agora abrem um modal paginado com as NCs correspondentes e link para o detalhe.
+- O endpoint novo `/api/insights/ncs` exige papel administrador/supervisor e reaplica o escopo de leitura do servidor. As rotas de Insights e CSV usam também a regra de autoria da política.
+- Typecheck, lint (sem erros; warnings históricos), build, regressões, 23 testes unitários e 24 testes HTTP passaram localmente. `npm run test:e2e` não executou porque Chromium não está instalado neste ambiente; precisa de smoke visual no Preview/CI.
+- A implementação ainda está apenas na árvore de trabalho local; publicar na branch do PR #29, aguardar Preview e conferir por UAT que contagens e listas batem, especialmente barras empilhadas e períodos personalizados.
 
 ## Revisão adicional do mapa operacional
 

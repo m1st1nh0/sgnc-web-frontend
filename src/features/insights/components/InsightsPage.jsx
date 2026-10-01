@@ -33,6 +33,7 @@ import GraficoBarrasHorizontais from "../../../components/graficos/GraficoBarras
 import GraficoDonut from "../../../components/graficos/GraficoDonut.jsx";
 import GraficoLinha from "../../../components/graficos/GraficoLinha.jsx";
 import { CORES_GRAFICO } from "../../../components/graficos/cores.js";
+import ModalNcsIndicador from "./ModalNcsIndicador.jsx";
 
 const CORES_CRITICIDADE = {
   baixa: CORES_GRAFICO.verde,
@@ -40,6 +41,13 @@ const CORES_CRITICIDADE = {
   média: CORES_GRAFICO.amarelo,
   alta: CORES_GRAFICO.vermelho,
 };
+const ROTULOS_SERIE = {
+  total: "registradas",
+  concluidas: "concluídas",
+  invalidadas: "invalidadas",
+  reincidentes: "reincidentes",
+};
+const seriesLabel = (serie) => ROTULOS_SERIE[String(serie)] || "registradas";
 
 function taxaPercentual(valor) {
   if (valor === null || valor === undefined) return "—";
@@ -63,6 +71,7 @@ export default function InsightsPage() {
   const [dados, setDados] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [detalheIndicador, setDetalheIndicador] = useState(null);
   const [filtros, setFiltros] = useState({ inicio: "", fim: "" });
 
   async function carregar(opcoes = {}) {
@@ -112,6 +121,38 @@ export default function InsightsPage() {
   const kpis = useMemo(() => dados?.kpis || {}, [dados]);
   const tempos = useMemo(() => dados?.tempos || {}, [dados]);
   const metodologia = resumoMetodologia(dados);
+
+  function abrirDetalhe(titulo, filtro) {
+    const inicio = filtros.inicio || dados?.periodo?.inicio;
+    const fim = filtros.fim || dados?.periodo?.fim;
+    if (!inicio || !fim) return;
+    setDetalheIndicador({ titulo, filtro: { ...filtro, inicio, fim } });
+  }
+
+  function abrirDimensao(dim, row, label = row?.causa || row?.colaborador || row?.setor || row?.criticidade, serie) {
+    if (!row || !label) return;
+    if (dim === "colaborador" && row.colaborador_id) {
+      abrirDetalhe(`NCs de ${label}`, { tipo: "dimension", dimensao: dim, colaborador_id: row.colaborador_id });
+    } else if (dim === "setor") {
+      abrirDetalhe(`NCs do setor ${label}`, { tipo: "dimension", dimensao: dim, setor: label });
+    } else if (dim === "criticidade") {
+      abrirDetalhe(`NCs de criticidade ${label}`, { tipo: "dimension", dimensao: dim, criticidade: label });
+    } else if (dim === "causa" && row.causa_id) {
+      abrirDetalhe(`NCs relacionadas à causa: ${label}`, {
+        tipo: "dimension",
+        dimensao: dim,
+        causa_id: String(row.causa_id),
+        ...(serie ? { serie } : {}),
+      });
+    }
+  }
+
+  const cardInterativo = (titulo, filtro, props) => (
+    <button type="button" className="sg-metrica-interativa" onClick={() => abrirDetalhe(titulo, filtro)} aria-label={`Ver NCs: ${titulo}`}>
+      <CardMetrica {...props} />
+      <span className="sg-metrica-interativa__acao">Ver NCs</span>
+    </button>
+  );
 
   const backlogStatus = useMemo(
     () => prepararBacklogStatus(kpis),
@@ -343,36 +384,36 @@ export default function InsightsPage() {
 
               <div className="row g-3 mb-3">
                 <div className="col-sm-6 col-xl-3">
-                  <CardMetrica
-                    rotulo="Backlog ativo"
-                    valor={kpis.backlog_ativo_atual ?? 0}
-                    descricao="Todas as NCs ativas agora"
-                    cor="azul"
-                  />
+                  {cardInterativo("Backlog ativo", { tipo: "backlog" }, {
+                    rotulo: "Backlog ativo",
+                    valor: kpis.backlog_ativo_atual ?? 0,
+                    descricao: "Todas as NCs ativas agora",
+                    cor: "azul",
+                  })}
                 </div>
                 <div className="col-sm-6 col-xl-3">
-                  <CardMetrica
-                    rotulo="Aguardando avaliação"
-                    valor={kpis.abertas_atuais ?? 0}
-                    descricao="Ainda sem decisão administrativa"
-                    cor="amarela"
-                  />
+                  {cardInterativo("NCs aguardando avaliação", { tipo: "backlog", status: "aberta" }, {
+                    rotulo: "Aguardando avaliação",
+                    valor: kpis.abertas_atuais ?? 0,
+                    descricao: "Ainda sem decisão administrativa",
+                    cor: "amarela",
+                  })}
                 </div>
                 <div className="col-sm-6 col-xl-3">
-                  <CardMetrica
-                    rotulo="Aguardando feedback"
-                    valor={kpis.aguardando_feedback_atual ?? 0}
-                    descricao="Procedentes aguardando tratamento"
-                    cor="laranja"
-                  />
+                  {cardInterativo("NCs aguardando feedback", { tipo: "backlog", status: "aguardando_feedback" }, {
+                    rotulo: "Aguardando feedback",
+                    valor: kpis.aguardando_feedback_atual ?? 0,
+                    descricao: "Procedentes aguardando tratamento",
+                    cor: "laranja",
+                  })}
                 </div>
                 <div className="col-sm-6 col-xl-3">
-                  <CardMetrica
-                    rotulo="Aguardando aceite"
-                    valor={kpis.aguardando_aceite_atual ?? 0}
-                    descricao="Feedback aplicado, confirmação pendente"
-                    cor="verde"
-                  />
+                  {cardInterativo("NCs aguardando aceite", { tipo: "backlog", status: "aguardando_aceite" }, {
+                    rotulo: "Aguardando aceite",
+                    valor: kpis.aguardando_aceite_atual ?? 0,
+                    descricao: "Feedback aplicado, confirmação pendente",
+                    cor: "verde",
+                  })}
                 </div>
               </div>
 
@@ -380,7 +421,7 @@ export default function InsightsPage() {
                 <div className="col-lg-6">
                   <PainelGrafico
                     titulo="Backlog por etapa"
-                    descricao="Onde as NCs ativas estão paradas neste momento"
+                    descricao="Clique em uma etapa para ver as NCs ativas correspondentes"
                     vazio={(kpis.backlog_ativo_atual ?? 0) === 0}
                   >
                     <GraficoBarrasHorizontais
@@ -394,13 +435,21 @@ export default function InsightsPage() {
                         },
                       ]}
                       altura={230}
+                      onCategoryClick={(row) => {
+                        const status = {
+                          "Aguardando avaliação": "aberta",
+                          "Aguardando feedback": "aguardando_feedback",
+                          "Aguardando aceite": "aguardando_aceite",
+                        }[row?.status];
+                        if (status) abrirDetalhe(`NCs: ${row.status}`, { tipo: "backlog", status });
+                      }}
                     />
                   </PainelGrafico>
                 </div>
                 <div className="col-lg-6">
                   <PainelGrafico
                     titulo="Aging do backlog"
-                    descricao="Tempo já acumulado na etapa atual"
+                    descricao="Clique em uma faixa para ver as NCs correspondentes"
                     vazio={(dados.aged_backlog?.total ?? 0) === 0}
                   >
                     <GraficoBarrasHorizontais
@@ -414,6 +463,7 @@ export default function InsightsPage() {
                         },
                       ]}
                       altura={230}
+                      onCategoryClick={(row) => row?.faixa && abrirDetalhe(`NCs no aging ${row.faixa}`, { tipo: "aging", faixa: row.faixa })}
                     />
                   </PainelGrafico>
                 </div>
@@ -469,28 +519,28 @@ export default function InsightsPage() {
               </div>
               <div className="row g-3 mb-3">
                 <div className="col-sm-6 col-xl-3">
-                  <CardMetrica
-                    rotulo="NCs registradas"
-                    valor={kpis.total_ncs ?? 0}
-                    descricao="Abertas no período"
-                    cor="azul"
-                  />
+                  {cardInterativo("NCs registradas no período", { tipo: "period" }, {
+                    rotulo: "NCs registradas",
+                    valor: kpis.total_ncs ?? 0,
+                    descricao: "Abertas no período",
+                    cor: "azul",
+                  })}
                 </div>
                 <div className="col-sm-6 col-xl-3">
-                  <CardMetrica
-                    rotulo="Concluídas no período"
-                    valor={kpis.concluidas_no_periodo ?? 0}
-                    descricao="Aceites registrados no intervalo"
-                    cor="verde"
-                  />
+                  {cardInterativo("NCs concluídas no período", { tipo: "concluded" }, {
+                    rotulo: "Concluídas no período",
+                    valor: kpis.concluidas_no_periodo ?? 0,
+                    descricao: "Aceites registrados no intervalo",
+                    cor: "verde",
+                  })}
                 </div>
                 <div className="col-sm-6 col-xl-3">
-                  <CardMetrica
-                    rotulo="Invalidadas no período"
-                    valor={kpis.invalidadas_no_periodo ?? 0}
-                    descricao="Decisões de invalidação no intervalo"
-                    cor="vermelha"
-                  />
+                  {cardInterativo("NCs invalidadas no período", { tipo: "invalidated" }, {
+                    rotulo: "Invalidadas no período",
+                    valor: kpis.invalidadas_no_periodo ?? 0,
+                    descricao: "Decisões de invalidação no intervalo",
+                    cor: "vermelha",
+                  })}
                 </div>
                 <div className="col-sm-6 col-xl-3">
                   <CardMetrica
@@ -504,7 +554,7 @@ export default function InsightsPage() {
 
               <PainelGrafico
                 titulo="Evolução mensal"
-                descricao="Registros, conclusões, invalidações e reincidências por mês de abertura"
+                descricao="Clique em um ponto para listar as NCs do mês e da série selecionada"
                 vazio={ncsPorMes.length === 0}
               >
                 <GraficoLinha
@@ -533,6 +583,10 @@ export default function InsightsPage() {
                     },
                   ]}
                   altura={300}
+                  onPointClick={(row, serie) => row?.mes && abrirDetalhe(
+                    `NCs de ${row.rotuloMes} · ${seriesLabel(serie)}`,
+                    { tipo: "mensal", mes: row.mes, serie: String(serie || "total") },
+                  )}
                 />
               </PainelGrafico>
             </section>
@@ -548,7 +602,7 @@ export default function InsightsPage() {
                 <div className="col-lg-6">
                   <PainelGrafico
                     titulo="Principais causas"
-                    descricao="Volume total com a parcela reincidente destacada"
+                    descricao="Clique em uma barra para ver as NCs relacionadas à causa"
                     vazio={porCausa.length === 0}
                   >
                     <GraficoBarrasHorizontais
@@ -567,13 +621,14 @@ export default function InsightsPage() {
                           nome: "Reincidentes",
                         },
                       ]}
+                      onCategoryClick={(row, serie) => abrirDimensao("causa", row, undefined, serie)}
                     />
                   </PainelGrafico>
                 </div>
                 <div className="col-lg-6">
                   <PainelGrafico
                     titulo="Reincidência por causa"
-                    descricao="Ocorrências procedentes na janela móvel de 12 meses"
+                    descricao="Clique em uma barra para ver as NCs relacionadas à causa"
                     vazio={porReincidenciaCausa.length === 0}
                   >
                     <GraficoBarrasHorizontais
@@ -592,13 +647,14 @@ export default function InsightsPage() {
                           nome: "Reincidências 12m",
                         },
                       ]}
+                      onCategoryClick={(row, serie) => abrirDimensao("causa", row, undefined, serie)}
                     />
                   </PainelGrafico>
                 </div>
                 <div className="col-lg-6">
                   <PainelGrafico
                     titulo="Reincidência por colaborador"
-                    descricao="Colaboradores com ocorrências reincidentes no período"
+                    descricao="Clique em uma barra para ver as NCs do colaborador"
                     vazio={porReincidenciaColaborador.length === 0}
                   >
                     <GraficoBarrasHorizontais
@@ -611,16 +667,20 @@ export default function InsightsPage() {
                           nome: "Reincidências 12m",
                         },
                       ]}
+                      onCategoryClick={(row) => abrirDimensao("colaborador", row)}
                     />
                   </PainelGrafico>
                 </div>
                 <div className="col-lg-6">
                   <PainelGrafico
                     titulo="NCs por criticidade"
-                    descricao="Severidade das NCs abertas no período"
+                    descricao="Clique em uma categoria para ver as NCs correspondentes"
                     vazio={porCriticidade.length === 0}
                   >
-                    <GraficoDonut dados={porCriticidade} />
+                    <GraficoDonut
+                      dados={porCriticidade}
+                      onCategoryClick={(row) => abrirDimensao("criticidade", row, row.nome)}
+                    />
                   </PainelGrafico>
                 </div>
               </div>
@@ -638,7 +698,7 @@ export default function InsightsPage() {
                 <div className="col-lg-6">
                   <PainelGrafico
                     titulo="NCs por colaborador"
-                    descricao="Volume e backlog dos colaboradores no escopo"
+                    descricao="Clique em uma barra para ver as NCs do colaborador"
                     vazio={porColaborador.length === 0}
                   >
                     <GraficoBarrasHorizontais
@@ -651,13 +711,14 @@ export default function InsightsPage() {
                           nome: "NCs no período",
                         },
                       ]}
+                      onCategoryClick={(row) => abrirDimensao("colaborador", row)}
                     />
                   </PainelGrafico>
                 </div>
                 <div className="col-lg-6">
                   <PainelGrafico
                     titulo="NCs por setor"
-                    descricao="Distribuição de registros entre os setores"
+                    descricao="Clique em uma barra para ver as NCs do setor"
                     vazio={porSetor.length === 0}
                   >
                     <GraficoBarrasHorizontais
@@ -670,6 +731,7 @@ export default function InsightsPage() {
                           nome: "NCs no período",
                         },
                       ]}
+                      onCategoryClick={(row) => abrirDimensao("setor", row)}
                     />
                   </PainelGrafico>
                 </div>
@@ -778,6 +840,13 @@ export default function InsightsPage() {
           </>
         )}
       </Container>
+      {detalheIndicador && (
+        <ModalNcsIndicador
+          titulo={detalheIndicador.titulo}
+          filtro={detalheIndicador.filtro}
+          aoFechar={() => setDetalheIndicador(null)}
+        />
+      )}
     </div>
   );
 }
