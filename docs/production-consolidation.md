@@ -20,7 +20,7 @@ Next App Router hospeda páginas autenticadas, APIs em `/api/*` e serviços serv
 
 ## Critérios de release ainda a comprovar
 
-E2E autenticado e UAT desktop/mobile, inspeção de CSV/PDF/upload/download, Preview do commit final, CI remoto e inventário das variáveis por ambiente. Nenhum resultado autenticado é presumido a partir do build.
+E2E autenticado e UAT desktop/mobile, inspeção de CSV/PDF/upload/download, correção da configuração do Preview e inventário das variáveis por ambiente. Nenhum resultado autenticado é presumido a partir do build.
 
 ## Goal 2 — rotas nativas (implementação local)
 
@@ -43,12 +43,13 @@ Testes locais: 26 verificações unitárias de sessão/autorização/privacidade
 - A consulta somente leitura de privilégios confirmou que `authenticated` pode executar SELECT direto em `public.nao_conformidades` e `public.historico_nc`. Como as políticas de linha não ocultam colunas, a supressão feita pela API Next não protege contra Data API direta. É necessária uma migração explícita de privilégios/visões, revisada com compatibilidade e UAT antes do corte.
 - O Security Advisor do Supabase relata proteção contra senhas vazadas desativada. Alterar essa configuração pode afetar cadastro e troca de senha; permanece pendente de decisão do responsável pelo produto.
 - Sem credenciais de usuários de teste, não foi possível validar fluxo autenticado por papel, upload/download ou documentos gerados. Não solicitar nem guardar credenciais em chat.
-- Não há Preview ou execução de CI para o commit final porque as alterações ainda estão somente no clone local. O revisor automático bloqueou o `git push` por considerar o envio de código-fonte a um destino externo não verificado uma divulgação de dados sem autorização explícita nesta conversa. Não foi feita nova tentativa.
+- PR #29 aberta em rascunho, empilhada sobre a branch da PR #28. Os workflows remotos Frontend checks e Security checks passaram; Vercel criou Preview READY para o commit `45cae83` (`dpl_cTq9hKPULvyYUYPey7g1k2EtJe57`).
+- O smoke HTTP pelo conector Vercel encontrou `/` retornando 500. Logs runtime apontam ausência de `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (ou `NEXT_PUBLIC_SUPABASE_ANON_KEY`) no ambiente do Preview. A rota protegida de login não pôde ser aberta pelo fetch devido à proteção Vercel SSO. Corrigir as variáveis no Vercel e repetir smoke do Preview; o conector disponível não expõe inventário nem edição das variáveis.
 - A produção continua no deployment Vite `c19fc...`; rollback `dpl_91955HjfLrkriGttMfY89eSdXSuf` foi preservado. Nenhum deployment foi promovido.
 
 ## Estado dos goals
 
-Goals 1–4 implementados localmente, com a remediação de banco e UAT ainda pendentes. Goal 5 tem cobertura unitária/HTTP automatizada e CI configurado, mas aguarda execução remota e E2E autenticado. Goals 6–7 (RC, release/cutover) permanecem bloqueados pelos itens acima e não devem avançar até os gates serem aprovados.
+Goals 1–4 implementados e CI remoto aprovado; remediação de banco, variáveis do Preview, UAT autenticado e verificação visual continuam pendentes. Goal 5 tem cobertura unitária/HTTP automatizada, CI completo e smoke remoto do Preview bloqueado pelas variáveis ausentes. Goals 6–7 (RC, release/cutover) permanecem bloqueados pelos gates acima e não devem avançar até aprovação.
 
 ## Revisão adicional do mapa operacional
 
