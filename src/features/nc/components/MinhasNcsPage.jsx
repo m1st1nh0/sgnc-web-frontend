@@ -12,7 +12,7 @@ import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
 import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
-import { listarNcs } from "../client/ncService.js";
+import { listarMinhasNcs } from "../client/ncService.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { ErroApi } from "../../../lib/api/client/api.js";
 
@@ -53,7 +53,7 @@ export default function MinhasNcsPage() {
 
   useEffect(() => {
     let ativo = true;
-    listarNcs()
+    listarMinhasNcs()
       .then((resultado) => { if (ativo) setNcs(resultado); })
       .catch((e) => { if (ativo) setErro(e instanceof ErroApi ? e.message : "Não foi possível carregar suas NCs."); })
       .finally(() => { if (ativo) setCarregando(false); });

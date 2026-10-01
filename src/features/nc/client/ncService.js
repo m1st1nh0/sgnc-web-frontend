@@ -4,6 +4,10 @@ export function listarNcs() {
   return chamarApi("/nc");
 }
 
+export function listarMinhasNcs() {
+  return chamarApi("/nc/minhas");
+}
+
 export function buscarNc(id) {
   return chamarApi(`/nc/${id}`);
 }
