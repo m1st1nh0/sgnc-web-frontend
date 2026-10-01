@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-const paths=['/','/abrir-nc','/nc/1','/nc/1/editar','/usuarios','/insights','/relatorios','/equipe','/equipe/00000000-0000-0000-0000-000000000001','/usuarios/00000000-0000-0000-0000-000000000001/dossie','/usuarios/00000000-0000-0000-0000-000000000001/estatisticas','/trocar-senha'];
+const paths=['/','/abrir-nc','/minhas-ncs','/nc/1','/nc/1/editar','/usuarios','/insights','/relatorios','/equipe','/equipe/00000000-0000-0000-0000-000000000001','/usuarios/00000000-0000-0000-0000-000000000001/dossie','/usuarios/00000000-0000-0000-0000-000000000001/estatisticas','/trocar-senha'];
 for(const path of paths) test(`anonymous page ${path} redirects to login`,async({request})=>{
  const r=await request.get(path,{maxRedirects:0});expect(r.status()).toBe(307);expect(r.headers().location).toBe('/login');
 });

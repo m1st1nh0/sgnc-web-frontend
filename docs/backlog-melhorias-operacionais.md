@@ -39,6 +39,6 @@ Concluir as correções e melhorias do mapa, integrar a navegação hierárquica
 3. Desenhar catálogo e solicitação de causas com aprovação administrativa, normalização, unicidade e transição concorrente atômica.
 4. Medir consultas e payloads com planos de execução e volumes representativos; paginar listagens e definir os limites/agregações antes de alterar índices.
 5. Validar no Preview o acesso hierárquico implementado: equipe → liderado → NCs/indicadores/histórico individual, com filtros por pessoa e período; conferir autorização e transferências entre lideranças.
-6. Implementado nesta rodada: informar próxima ação/responsável no detalhe e recuperar falhas parciais de upload sem induzir duplicação. Pendente: lista “Minhas NCs”, matriz de erros e UAT por papel em desktop/mobile.
+6. Implementado nesta rodada: informar próxima ação/responsável no detalhe e recuperar falhas parciais de upload sem induzir duplicação. Implementada nesta rodada: lista “Minhas NCs” filtrável por status, período e texto, além da confirmação de próxima ação no detalhe. Pendente: completar a matriz de erros e UAT por papel em desktop/mobile.
 7. Desenhar e migrar a solicitação de causas em ambiente Supabase isolado; testar concorrência, autorização, catálogo aprovado e dados legados antes do Preview.
 8. Após fechar os gates, coordenar o cutover Next.js, migração de revogação no Supabase e rollback. Manter registrada a exceção temporária de proteção contra senhas vazadas.

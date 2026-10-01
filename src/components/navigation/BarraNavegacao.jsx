@@ -73,6 +73,7 @@ export default function BarraNavegacao() {
             <Nav.Link as={Link} href="/" onClick={aoNavegar} active={pathname === "/"}>
               {ROTULO_HOME[usuario?.papel] || "Não Conformidades"}
             </Nav.Link>
+            {usuario && <Nav.Link as={Link} href="/minhas-ncs" onClick={aoNavegar} active={pathname === "/minhas-ncs"}>Acompanhar minhas NCs</Nav.Link>}
             <Nav.Link as={Link} href="/abrir-nc" onClick={aoNavegar} active={pathname === "/abrir-nc"}>
               Abrir NC
             </Nav.Link>
