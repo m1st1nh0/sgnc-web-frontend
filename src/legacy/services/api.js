@@ -37,7 +37,7 @@ async function exigirRespostaOk(resposta) {
 
 /**
  * Função central para chamadas JSON à rota same-origin. O Route Handler
- * valida a sessão Supabase e encaminha o token ao FastAPI no servidor.
+ * valida a sessão Supabase e executa o serviço migrado no servidor Next.js.
  * Objetos viram JSON e FormData segue sem reserialização.
  */
 export async function chamarApi(caminho, { method = "GET", body } = {}) {

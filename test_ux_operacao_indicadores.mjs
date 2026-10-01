@@ -1,18 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const abertura = readFileSync("src/pages/AbrirNcPage.jsx", "utf8");
-const estatisticas = readFileSync("src/pages/EstatisticasUsuarioPage.jsx", "utf8");
-const usuarios = readFileSync("src/pages/UsuariosPage.jsx", "utf8");
-const detalhes = readFileSync("src/pages/DetalhesNcPage.jsx", "utf8");
-const navegacao = readFileSync("src/components/BarraNavegacao.jsx", "utf8");
+const abertura = readFileSync("src/legacy/pages/AbrirNcPage.jsx", "utf8");
+const estatisticas = readFileSync("src/legacy/pages/EstatisticasUsuarioPage.jsx", "utf8");
+const usuarios = readFileSync("src/legacy/pages/UsuariosPage.jsx", "utf8");
+const detalhes = readFileSync("src/legacy/pages/DetalhesNcPage.jsx", "utf8");
+const navegacao = readFileSync("src/legacy/components/BarraNavegacao.jsx", "utf8");
 const estilos = readFileSync("src/redesign.css", "utf8");
-const app = readFileSync("src/App.jsx", "utf8");
-const insights = readFileSync("src/pages/InsightsPage.jsx", "utf8");
-const home = readFileSync("src/pages/HomePage.jsx", "utf8");
-const homeUx = readFileSync("src/services/homeUx.js", "utf8");
-const api = readFileSync("src/services/api.js", "utf8");
-const auth = readFileSync("src/context/AuthContext.jsx", "utf8");
+const app = readFileSync("src/legacy/App.jsx", "utf8");
+const insights = readFileSync("src/legacy/pages/InsightsPage.jsx", "utf8");
+const home = readFileSync("src/legacy/pages/HomePage.jsx", "utf8");
+const homeUx = readFileSync("src/legacy/services/homeUx.js", "utf8");
+const api = readFileSync("src/legacy/services/api.js", "utf8");
+const auth = readFileSync("src/legacy/context/AuthContext.jsx", "utf8");
 const workflow = readFileSync(".github/workflows/frontend-checks.yml", "utf8");
 
 assert.match(abertura, /Colaborador analisado/);

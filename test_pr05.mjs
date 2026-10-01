@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   criarVisaoHome,
   normalizarStatusHome,
-} from "./src/services/homeUx.js";
+} from "./src/legacy/services/homeUx.js";
 
 assert.equal(normalizarStatusHome("validada"), "aguardando_feedback");
 assert.equal(normalizarStatusHome("aguardando_analise"), "aguardando_feedback");
@@ -89,15 +89,15 @@ assert.ok(
   )
 );
 
-const app = readFileSync("src/App.jsx", "utf8");
+const app = readFileSync("src/legacy/App.jsx", "utf8");
 assert.match(app, /papeis=\{\["adm"\]\}/);
 assert.match(app, /papeis=\{\["adm", "supervisor"\]\}/);
 
-const home = readFileSync("src/pages/HomePage.jsx", "utf8");
+const home = readFileSync("src/legacy/pages/HomePage.jsx", "utf8");
 assert.match(home, /listarOpcoesNc/);
 assert.match(home, /listarUsuarios/);
 
-const detalhes = readFileSync("src/pages/DetalhesNcPage.jsx", "utf8");
+const detalhes = readFileSync("src/legacy/pages/DetalhesNcPage.jsx", "utf8");
 assert.match(detalhes, /Tentar novamente/);
 assert.match(detalhes, /bloqueado=\{enviandoArquivo\}/);
 assert.match(detalhes, /await anexarEvidencia/);

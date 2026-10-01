@@ -5,7 +5,7 @@ import {
   apresentacaoDoPapel,
   checklistDoPapel,
   DICAS_ONBOARDING,
-} from "./src/data/onboardingConteudo.js";
+} from "./src/legacy/data/onboardingConteudo.js";
 
 const papeis = ["adm", "supervisor", "funcionario"];
 const esperados = {
@@ -48,25 +48,25 @@ assert(DICAS_ONBOARDING.dica_abertura_evidencias);
 assert(DICAS_ONBOARDING.dica_nc_pdf);
 assert(DICAS_ONBOARDING.dica_nc_aceite);
 
-const app = readFileSync("src/App.jsx", "utf8");
-const contexto = readFileSync("src/context/OnboardingContext.jsx", "utf8");
+const app = readFileSync("src/legacy/App.jsx", "utf8");
+const contexto = readFileSync("src/legacy/context/OnboardingContext.jsx", "utf8");
 const modal = readFileSync(
-  "src/components/onboarding/OnboardingInicialModal.jsx",
+  "src/legacy/components/onboarding/OnboardingInicialModal.jsx",
   "utf8"
 );
 const checklist = readFileSync(
-  "src/components/onboarding/OnboardingChecklist.jsx",
+  "src/legacy/components/onboarding/OnboardingChecklist.jsx",
   "utf8"
 );
 const dica = readFileSync(
-  "src/components/onboarding/DicaContextual.jsx",
+  "src/legacy/components/onboarding/DicaContextual.jsx",
   "utf8"
 );
-const home = readFileSync("src/pages/HomePage.jsx", "utf8");
-const abertura = readFileSync("src/pages/AbrirNcPage.jsx", "utf8");
-const detalhes = readFileSync("src/pages/DetalhesNcPage.jsx", "utf8");
-const dossie = readFileSync("src/pages/EstatisticasUsuarioPage.jsx", "utf8");
-const navbar = readFileSync("src/components/BarraNavegacao.jsx", "utf8");
+const home = readFileSync("src/legacy/pages/HomePage.jsx", "utf8");
+const abertura = readFileSync("src/legacy/pages/AbrirNcPage.jsx", "utf8");
+const detalhes = readFileSync("src/legacy/pages/DetalhesNcPage.jsx", "utf8");
+const dossie = readFileSync("src/legacy/pages/EstatisticasUsuarioPage.jsx", "utf8");
+const navbar = readFileSync("src/legacy/components/BarraNavegacao.jsx", "utf8");
 const estilos = readFileSync("src/redesign.css", "utf8");
 
 assert.match(app, /<OnboardingProvider>/);

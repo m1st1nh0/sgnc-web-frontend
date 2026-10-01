@@ -2,9 +2,7 @@ name: Frontend checks
 
 on:
   pull_request:
-    branches: [main]
   push:
-    branches: [main]
 
 permissions:
   contents: read
@@ -22,6 +20,8 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
       - name: PR05 role-aware UX regression
         run: node test_pr05.mjs
       - name: PR08 frontend security regression

@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   montarQueryRelatorio,
   nomeArquivoRelatorio,
-} from "./src/services/relatoriosQuery.js";
+} from "./src/legacy/services/relatoriosQuery.js";
 
 const filtros = {
   inicio: "2026-01-01",
@@ -38,14 +38,16 @@ assert.equal(
   "sgnc-ncs-2026-01-01-2026-08-29.csv"
 );
 
-const api = readFileSync("src/services/api.js", "utf8");
-const service = readFileSync("src/services/relatoriosService.js", "utf8");
-const pagina = readFileSync("src/pages/RelatoriosPage.jsx", "utf8");
-const app = readFileSync("src/App.jsx", "utf8");
-const nav = readFileSync("src/components/BarraNavegacao.jsx", "utf8");
+const api = readFileSync("src/legacy/services/api.js", "utf8");
+const config = readFileSync("src/legacy/services/config.js", "utf8");
+const service = readFileSync("src/legacy/services/relatoriosService.js", "utf8");
+const pagina = readFileSync("src/legacy/pages/RelatoriosPage.jsx", "utf8");
+const app = readFileSync("src/legacy/App.jsx", "utf8");
+const nav = readFileSync("src/legacy/components/BarraNavegacao.jsx", "utf8");
 
 assert.match(api, /export async function baixarArquivoApi/);
-assert.match(api, /Authorization/);
+assert.match(api, /credentials: "same-origin"/);
+assert.match(config, /API_BASE_URL = "\/api\/legacy"/);
 assert.match(api, /resposta\.blob\(\)/);
 assert.doesNotMatch(api, /sgnc_token.*URLSearchParams/);
 assert.match(service, /\/relatorios\/ncs\.csv/);
