@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 
-import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
 import { buscarInsights } from "../client/insightsService.js";
@@ -261,7 +260,6 @@ export default function InsightsPage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container">
         <CabecalhoPagina
           titulo="Insights operacionais"

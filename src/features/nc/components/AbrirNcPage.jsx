@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 
-import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import CampoCausas from "./CampoCausas.jsx";
 import { listarOpcoesNc } from "../../users/client/usuarioService.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
@@ -190,7 +189,6 @@ export default function AbrirNcPage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container" style={{ maxWidth: "820px" }}>
         <CabecalhoPagina
           titulo="Abrir Não Conformidade"

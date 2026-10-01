@@ -7,7 +7,6 @@ import Container from "react-bootstrap/Container";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
 
-import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import PainelAvaliar from "./PainelAvaliar.jsx";
 import PainelFeedback from "./PainelFeedback.jsx";
 import PainelAceite from "./PainelAceite.jsx";
@@ -279,7 +278,6 @@ export default function DetalhesNcPage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container" style={{ maxWidth: "900px" }}>
         <CabecalhoPagina
           titulo={`NC #${id}`}

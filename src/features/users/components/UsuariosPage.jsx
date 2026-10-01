@@ -9,7 +9,6 @@ import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 
-import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import {
   listarUsuarios,
   cadastrarUsuario,
@@ -278,7 +277,6 @@ export default function UsuariosPage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container">
         <CabecalhoPagina
           titulo="Usuários"

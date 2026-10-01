@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Nav from "react-bootstrap/Nav";
 
-import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import { listarNcs } from "../client/ncService.js";
 import { listarEquipe, listarOpcoesNc } from "../../users/client/usuarioService.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
@@ -162,7 +161,6 @@ export default function HomePage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container">
         <CabecalhoPagina
           titulo={visao.titulo}

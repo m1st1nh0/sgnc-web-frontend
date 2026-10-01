@@ -6,7 +6,6 @@ import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
 
-import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
@@ -46,7 +45,6 @@ export default function EquipePage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container">
         <CabecalhoPagina
           titulo={usuario?.papel === "adm" ? "Pessoas e equipes" : "Minha equipe"}

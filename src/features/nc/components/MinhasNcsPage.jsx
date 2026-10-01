@@ -5,7 +5,6 @@ import Link from "next/link";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 
-import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
@@ -75,7 +74,6 @@ export default function MinhasNcsPage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container">
         <CabecalhoPagina titulo="Minhas NCs" subtitulo="Acompanhe ocorrências abertas por você ou associadas ao seu nome, com status e próximos passos." />
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}

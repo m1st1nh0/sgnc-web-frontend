@@ -8,7 +8,6 @@ import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
 import Button from "react-bootstrap/Button";
 
-import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
@@ -79,7 +78,6 @@ export default function PessoaEquipePage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container">
         <Link href="/equipe" className="sg-voltar mb-3 d-inline-flex">&larr; Voltar para a equipe</Link>
         <CabecalhoPagina

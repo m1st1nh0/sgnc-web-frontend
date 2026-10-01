@@ -6,7 +6,6 @@ import { useParams } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Table from "react-bootstrap/Table";
 
-import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
@@ -164,7 +163,6 @@ export default function EstatisticasUsuarioPage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container" style={{ maxWidth: "1100px" }}>
         <Link href="/" className="sg-voltar mb-3 d-inline-flex">
           &larr; Voltar

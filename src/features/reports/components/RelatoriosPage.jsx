@@ -6,7 +6,6 @@ import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
 import Link from "next/link";
 
-import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
 import CardMetrica from "../../../components/ui/CardMetrica.jsx";
@@ -212,7 +211,6 @@ export default function RelatoriosPage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container" style={{ maxWidth: "1280px" }}>
         <CabecalhoPagina
           titulo="Relatório operacional"

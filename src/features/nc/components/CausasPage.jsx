@@ -6,7 +6,6 @@ import Button from "react-bootstrap/Button";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 
-import BarraNavegacao from "@/components/navigation/BarraNavegacao.jsx";
 import CabecalhoPagina from "@/components/ui/CabecalhoPagina.jsx";
 import EstadoCarregamento from "@/components/ui/EstadoCarregamento.jsx";
 import {
@@ -66,7 +65,6 @@ export default function CausasPage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container sg-governanca">
         <div className="sg-governanca__intro">
           <span className="sg-governanca__eyebrow">QUALIDADE · CATÁLOGO</span>

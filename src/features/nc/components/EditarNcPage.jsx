@@ -8,7 +8,6 @@ import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Alert from "react-bootstrap/Alert";
 
-import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import CampoCausas from "./CampoCausas.jsx";
 import { buscarNc, editarNc, listarCausasConhecidas, solicitarCausa } from "../client/ncService.js";
 import { listarUsuarios } from "../../users/client/usuarioService.js";
@@ -124,7 +123,6 @@ export default function EditarNcPage() {
 
   return (
     <div>
-      <BarraNavegacao />
       <Container className="sg-container" style={{ maxWidth: "820px" }}>
         <CabecalhoPagina
           titulo={`Editar NC #${id}`}
