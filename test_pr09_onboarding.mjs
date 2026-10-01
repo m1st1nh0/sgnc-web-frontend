@@ -48,7 +48,7 @@ assert(DICAS_ONBOARDING.dica_abertura_evidencias);
 assert(DICAS_ONBOARDING.dica_nc_pdf);
 assert(DICAS_ONBOARDING.dica_nc_aceite);
 
-const app = readFileSync("src/legacy/App.jsx", "utf8");
+const app = readFileSync("src/app/(app)/providers.jsx", "utf8");
 const contexto = readFileSync("src/legacy/context/OnboardingContext.jsx", "utf8");
 const modal = readFileSync(
   "src/legacy/components/onboarding/OnboardingInicialModal.jsx",

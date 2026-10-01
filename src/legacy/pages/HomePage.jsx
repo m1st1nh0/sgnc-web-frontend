@@ -1,5 +1,8 @@
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Nav from "react-bootstrap/Nav";
 
@@ -35,7 +38,7 @@ const ABAS_FILTRO = [
 ];
 
 export default function HomePage() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { usuario } = useAuth();
   const { concluirEtapa } = useOnboarding();
   const [ncs, setNcs] = useState([]);
@@ -153,7 +156,7 @@ export default function HomePage() {
           titulo={visao.titulo}
           subtitulo={visao.subtitulo}
           acoes={
-            <Link to="/abrir-nc" className="sg-btn sg-btn--primario">
+            <Link href="/abrir-nc" className="sg-btn sg-btn--primario">
               + Abrir NC
             </Link>
           }
@@ -180,7 +183,7 @@ export default function HomePage() {
                     {visao.destaque.acao.rotulo}
                   </a>
                 ) : (
-                  <Link to={visao.destaque.acao.destino} className="sg-btn sg-btn--claro">
+                  <Link href={visao.destaque.acao.destino} className="sg-btn sg-btn--claro">
                     {visao.destaque.acao.rotulo}
                   </Link>
                 )}
@@ -218,7 +221,7 @@ export default function HomePage() {
               </div>
               <div className="sg-atalhos-papel">
                 {visao.atalhos.map((atalho) => (
-                  <Link to={atalho.destino} className="sg-atalho-papel" key={atalho.rotulo}>
+                  <Link href={atalho.destino} className="sg-atalho-papel" key={atalho.rotulo}>
                     <span className="sg-atalho-papel__icone" aria-hidden="true">{atalho.icone}</span>
                     <span><strong>{atalho.rotulo}</strong><small>{atalho.descricao}</small></span>
                     <span className="sg-atalho-papel__seta" aria-hidden="true">→</span>
@@ -240,7 +243,7 @@ export default function HomePage() {
                     key={nc.id}
                     nc={nc}
                     abertoPorNome={obterNomeAbertoPor(nc)}
-                    aoClicar={() => navigate(`/nc/${nc.id}`)}
+                    aoClicar={() => router.push(`/nc/${nc.id}`)}
                   />
                 ))}
               </div>
@@ -277,7 +280,7 @@ export default function HomePage() {
                     key={nc.id}
                     nc={nc}
                     abertoPorNome={obterNomeAbertoPor(nc)}
-                    aoClicar={() => navigate(`/nc/${nc.id}`)}
+                    aoClicar={() => router.push(`/nc/${nc.id}`)}
                   />
                 ))}
               </div>

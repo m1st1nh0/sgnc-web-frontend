@@ -2,7 +2,8 @@ import { useState } from "react";
 import Navbar from "react-bootstrap/Navbar";
 import Container from "react-bootstrap/Container";
 import Nav from "react-bootstrap/Nav";
-import { NavLink, useNavigate } from "react-router-dom";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { useAuth } from "../context/AuthContext";
 import { useOnboarding } from "../context/OnboardingContext";
@@ -21,14 +22,10 @@ const ROTULO_HOME = {
   funcionario: "Minhas NCs",
 };
 
-function isRotaAtiva({ isActive }) {
-  return isActive ? "nav-link active" : "nav-link";
-}
-
 export default function BarraNavegacao() {
   const { usuario, sair } = useAuth();
   const { progresso, restaurar, abrirRevisao } = useOnboarding();
-  const navigate = useNavigate();
+  const pathname = usePathname();
   const [expandido, setExpandido] = useState(false);
 
   async function aoAbrirGuia() {
@@ -39,9 +36,8 @@ export default function BarraNavegacao() {
     setExpandido(false);
   }
 
-  function aoSair() {
-    sair();
-    navigate("/login");
+  async function aoSair() {
+    await sair();
   }
 
   function aoNavegar() {
@@ -62,7 +58,7 @@ export default function BarraNavegacao() {
   return (
     <Navbar className="sg-navbar" expand="lg" expanded={expandido}>
       <Container className="sg-navbar__container">
-        <Navbar.Brand as={NavLink} to="/" onClick={aoNavegar}>
+        <Navbar.Brand as={Link} href="/" onClick={aoNavegar}>
           <MarcaSgnc />
         </Navbar.Brand>
 
@@ -74,34 +70,34 @@ export default function BarraNavegacao() {
 
         <Navbar.Collapse id="sgnc-navbar-nav">
           <Nav className="me-auto">
-            <Nav.Link as={NavLink} to="/" end onClick={aoNavegar} className={isRotaAtiva}>
+            <Nav.Link as={Link} href="/" onClick={aoNavegar} active={pathname === "/"}>
               {ROTULO_HOME[usuario?.papel] || "Não Conformidades"}
             </Nav.Link>
-            <Nav.Link as={NavLink} to="/abrir-nc" onClick={aoNavegar} className={isRotaAtiva}>
+            <Nav.Link as={Link} href="/abrir-nc" onClick={aoNavegar} active={pathname === "/abrir-nc"}>
               Abrir NC
             </Nav.Link>
             {ehGestao && (
-              <Nav.Link as={NavLink} to="/insights" onClick={aoNavegar} className={isRotaAtiva}>
+              <Nav.Link as={Link} href="/insights" onClick={aoNavegar} active={pathname === "/insights"}>
                 Insights
               </Nav.Link>
             )}
             {ehGestao && (
-              <Nav.Link as={NavLink} to="/relatorios" onClick={aoNavegar} className={isRotaAtiva}>
+              <Nav.Link as={Link} href="/relatorios" onClick={aoNavegar} active={pathname === "/relatorios"}>
                 Relatórios
               </Nav.Link>
             )}
             {usuario && (
               <Nav.Link
-                as={NavLink}
-                to={`/usuarios/${usuario.id}/dossie`}
+                as={Link}
+                href={`/usuarios/${usuario.id}/dossie`}
                 onClick={aoNavegar}
-                className={isRotaAtiva}
+                active={pathname === `/usuarios/${usuario.id}/dossie`}
               >
                 Meu dossiê
               </Nav.Link>
             )}
             {usuario?.papel === "adm" && (
-              <Nav.Link as={NavLink} to="/usuarios" end onClick={aoNavegar} className={isRotaAtiva}>
+              <Nav.Link as={Link} href="/usuarios" onClick={aoNavegar} active={pathname === "/usuarios"}>
                 Usuários
               </Nav.Link>
             )}

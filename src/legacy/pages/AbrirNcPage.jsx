@@ -1,5 +1,7 @@
+"use client";
+
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 
@@ -49,7 +51,7 @@ function formatarTamanho(bytes) {
 }
 
 export default function AbrirNcPage() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { concluirEtapa } = useOnboarding();
 
   const [chamado, setChamado] = useState("");
@@ -161,7 +163,7 @@ export default function AbrirNcPage() {
           arquivosEvidencias.map((arquivo) => anexarEvidencia(nc.id, arquivo))
         );
       }
-      navigate(`/nc/${nc.id}`);
+      router.push(`/nc/${nc.id}`);
     } catch (e) {
       setErro(
         e instanceof ErroApi ? e.message : "Não foi possível abrir a Não Conformidade."
@@ -378,7 +380,7 @@ export default function AbrirNcPage() {
                 <Botao
                   variante="secundario"
                   tamanho="lg"
-                  onClick={() => navigate("/")}
+                  onClick={() => router.push("/")}
                   disabled={enviando}
                 >
                   Cancelar

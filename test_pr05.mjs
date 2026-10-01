@@ -89,9 +89,9 @@ assert.ok(
   )
 );
 
-const app = readFileSync("src/legacy/App.jsx", "utf8");
-assert.match(app, /papeis=\{\["adm"\]\}/);
-assert.match(app, /papeis=\{\["adm", "supervisor"\]\}/);
+const app = readFileSync("src/app/(app)/usuarios/page.tsx", "utf8") + readFileSync("src/app/(app)/insights/page.tsx", "utf8");
+assert.match(app, /requireRole\(\["adm"\]\)/);
+assert.match(app, /requireRole\(\["adm", "supervisor"\]\)/);
 
 const home = readFileSync("src/legacy/pages/HomePage.jsx", "utf8");
 assert.match(home, /listarOpcoesNc/);

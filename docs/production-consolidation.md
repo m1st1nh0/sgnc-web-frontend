@@ -21,3 +21,9 @@ Next App Router hospeda autenticação SSR e serviços server-only de NC, usuár
 ## Critérios de release ainda a comprovar
 
 Rotas nativas, suíte de autorização por papel, E2E autenticado, UAT desktop/mobile, inspeção de CSV/PDF/upload/download, Preview do commit final, CI remoto e inventário das variáveis por ambiente. Nenhum resultado autenticado é presumido a partir do build.
+
+## Goal 2 — rotas nativas (implementação local)
+
+As nove rotas autenticadas agora possuem page.tsx e layout compartilhado com providers. Login e troca de senha permanecem nativos. React Router, LegacyApplication e catch-all de SPA foram removidos. Next Link/useRouter/useParams substituem navegação anterior; guards por papel executam no servidor. Build, typecheck e seis regressões passam.
+
+Verificação visual ainda bloqueada no ambiente: agent-browser não inicia o daemon; download Chromium retorna arquivo inválido; navegador cloud não permite localhost (ERR_BLOCKED_BY_CLIENT). Portanto esta etapa não possui aprovação de UAT.

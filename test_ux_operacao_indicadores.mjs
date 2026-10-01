@@ -7,7 +7,7 @@ const usuarios = readFileSync("src/legacy/pages/UsuariosPage.jsx", "utf8");
 const detalhes = readFileSync("src/legacy/pages/DetalhesNcPage.jsx", "utf8");
 const navegacao = readFileSync("src/legacy/components/BarraNavegacao.jsx", "utf8");
 const estilos = readFileSync("src/redesign.css", "utf8");
-const app = readFileSync("src/legacy/App.jsx", "utf8");
+const app = readFileSync("src/app/(app)/usuarios/[usuarioId]/dossie/page.tsx", "utf8");
 const insights = readFileSync("src/legacy/pages/InsightsPage.jsx", "utf8");
 const home = readFileSync("src/legacy/pages/HomePage.jsx", "utf8");
 const homeUx = readFileSync("src/legacy/services/homeUx.js", "utf8");
@@ -39,7 +39,7 @@ assert.doesNotMatch(estatisticas, /bg-primary/);
 assert.match(usuarios, /Dossiê/);
 assert.doesNotMatch(usuarios, /react-bootstrap\/Badge/);
 assert.match(navegacao, /Meu dossiê/);
-assert.match(app, /\/usuarios\/:usuarioId\/dossie/);
+assert.match(app, /EstatisticasUsuarioPage/);
 
 assert.match(detalhes, /Baixar relatório PDF/);
 assert.match(detalhes, /baixarPdfNc/);

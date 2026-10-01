@@ -1,5 +1,8 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
@@ -56,7 +59,7 @@ export default function DetalhesNcPage() {
   const { id } = useParams();
   const { usuario } = useAuth();
   const { concluirEtapa } = useOnboarding();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const [nc, setNc] = useState(null);
   const [erro, setErro] = useState("");
@@ -150,7 +153,7 @@ export default function DetalhesNcPage() {
     setExcluindoNc(true);
     try {
       await chamarApi(`/nc/${id}`, { method: "DELETE" });
-      navigate("/");
+      router.push("/");
     } catch (e) {
       setErro(
         e instanceof ErroApi ? e.message : "Não foi possível excluir a NC."
@@ -281,7 +284,7 @@ export default function DetalhesNcPage() {
                     variante="secundario"
                     tamanho="sm"
                     disabled={enviandoArquivo}
-                    onClick={() => navigate(`/nc/${id}/editar`)}
+                    onClick={() => router.push(`/nc/${id}/editar`)}
                   >
                     Editar
                   </Botao>
@@ -303,7 +306,7 @@ export default function DetalhesNcPage() {
 
         <DicaContextual chave="dica_nc_pdf" className="mb-3" />
 
-        <Link to="/" className="sg-voltar mb-3 d-inline-flex">
+        <Link href="/" className="sg-voltar mb-3 d-inline-flex">
           &larr; Voltar para a lista
         </Link>
         {carregando && (

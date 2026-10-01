@@ -1,5 +1,8 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Table from "react-bootstrap/Table";
 
@@ -163,7 +166,7 @@ export default function EstatisticasUsuarioPage() {
     <div>
       <BarraNavegacao />
       <Container className="sg-container" style={{ maxWidth: "1100px" }}>
-        <Link to="/" className="sg-voltar mb-3 d-inline-flex">
+        <Link href="/" className="sg-voltar mb-3 d-inline-flex">
           &larr; Voltar
         </Link>
 
@@ -291,7 +294,7 @@ export default function EstatisticasUsuarioPage() {
                       </span>
                       {causa.ultima_ocorrencia_nc_id && (
                         <Link
-                          to={`/nc/${causa.ultima_ocorrencia_nc_id}`}
+                          href={`/nc/${causa.ultima_ocorrencia_nc_id}`}
                           className="sg-dossie__link-nc"
                         >
                           Abrir NC #{causa.ultima_ocorrencia_nc_id}

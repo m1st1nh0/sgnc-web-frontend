@@ -1,5 +1,7 @@
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 
@@ -200,7 +202,7 @@ export default function InsightsPage() {
 
   const podeVer =
     usuario && (usuario.papel === "adm" || usuario.papel === "supervisor");
-  if (!podeVer) return <Navigate to="/" replace />;
+  if (!podeVer) return null; // O gate server-side da rota valida o papel.
 
   const maisAntiga = dados?.aged_backlog?.mais_antiga;
   const disciplina = dados?.disciplina || {};

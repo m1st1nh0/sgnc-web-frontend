@@ -1,5 +1,7 @@
+"use client";
+
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useRouter, useParams } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 import Row from "react-bootstrap/Row";
@@ -24,7 +26,7 @@ const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
 
 export default function EditarNcPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const router = useRouter();
   const { usuario } = useAuth();
 
   const [chamado, setChamado] = useState("");
@@ -107,7 +109,7 @@ export default function EditarNcPage() {
         descricao,
         causas,
       });
-      navigate(`/nc/${id}`);
+      router.push(`/nc/${id}`);
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível salvar as alterações.");
     } finally {
@@ -232,7 +234,7 @@ export default function EditarNcPage() {
                 <Botao
                   variante="secundario"
                   tamanho="lg"
-                  onClick={() => navigate(`/nc/${id}`)}
+                  onClick={() => router.push(`/nc/${id}`)}
                   disabled={enviando}
                 >
                   Cancelar

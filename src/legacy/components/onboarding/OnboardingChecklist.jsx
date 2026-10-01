@@ -1,4 +1,6 @@
-import { Link } from "react-router-dom";
+"use client";
+
+import Link from "next/link";
 
 import { useAuth } from "../../context/AuthContext";
 import { useOnboarding } from "../../context/OnboardingContext";
@@ -68,7 +70,7 @@ export default function OnboardingChecklist() {
           return (
             <Link
               key={item.chave}
-              to={item.destino}
+              href={item.destino}
               className={
                 "sg-onboarding-tarefa" +
                 (concluido ? " sg-onboarding-tarefa--concluida" : "")

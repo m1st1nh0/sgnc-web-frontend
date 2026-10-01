@@ -42,7 +42,7 @@ const api = readFileSync("src/legacy/services/api.js", "utf8");
 const config = readFileSync("src/legacy/services/config.js", "utf8");
 const service = readFileSync("src/legacy/services/relatoriosService.js", "utf8");
 const pagina = readFileSync("src/legacy/pages/RelatoriosPage.jsx", "utf8");
-const app = readFileSync("src/legacy/App.jsx", "utf8");
+const app = readFileSync("src/app/(app)/relatorios/page.tsx", "utf8");
 const nav = readFileSync("src/legacy/components/BarraNavegacao.jsx", "utf8");
 
 assert.match(api, /export async function baixarArquivoApi/);
@@ -62,9 +62,9 @@ assert.match(pagina, /listarUsuarios/);
 assert.match(pagina, /ocorrência canônica de 12 meses/);
 assert.match(pagina, /somente sua equipe direta/);
 
-assert.match(app, /path="\/relatorios"/);
-assert.match(app, /RotaProtegida papeis=\{\["adm", "supervisor"\]\}/);
-assert.match(nav, /to="\/relatorios"/);
+assert.match(app, /RelatoriosPage/);
+assert.match(app, /requireRole\(\["adm", "supervisor"\]\)/);
+assert.match(nav, /href="\/relatorios"/);
 assert.match(nav, /const ehGestao/);
 
 console.log("PR07 REPORT UI TESTS PASSED");

@@ -1,5 +1,7 @@
+"use client";
+
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Table from "react-bootstrap/Table";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
@@ -195,7 +197,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
 export default function UsuariosPage() {
   const { usuario: usuarioLogado } = useAuth();
   const { concluirEtapa } = useOnboarding();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const [usuarios, setUsuarios] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -342,7 +344,7 @@ export default function UsuariosPage() {
                             variante="secundario"
                             tamanho="sm"
                             onClick={() =>
-                              navigate(`/usuarios/${u.id}/dossie`)
+                              router.push(`/usuarios/${u.id}/dossie`)
                             }
                           >
                             Dossiê
