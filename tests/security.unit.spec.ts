@@ -5,6 +5,7 @@ import { filterSensitive } from '../src/lib/permissions/nc';
 import { csvCell } from '../src/lib/reports/csv';
 import { readJson } from '../src/lib/api/request';
 import { ApiError, apiErrorResponse } from '../src/lib/api/error';
+import { chamarApi } from '../src/lib/api/client/api.js';
 const user: UsuarioAutenticado = { id:'author', nome:'Teste', email:'test@example.invalid', papel:'funcionario', ativo:true, senha_provisoria:false };
 for (const [label,invalid] of [['missing',null],['inactive',{...user,ativo:false}],['unknown role',{...user,papel:'other'}]] as const) {
  test(`invalid session denied: ${label}`,()=>{
@@ -41,5 +42,20 @@ for(const body of ['{','null','[]','"text"']) {
 }
 test('API error exposes only safe messages',async()=>{
  expect((await apiErrorResponse(new ApiError('Conflito',409)).json()).detail).toBe('Conflito');
- expect((await apiErrorResponse(new Error('secret token')).json()).detail).toBe('Erro interno do servidor.');
+ const response=apiErrorResponse(new Error('secret token'));
+ const body=await response.json();
+ expect(response.status).toBe(500);
+ expect(body.detail).toBe('Serviço temporariamente indisponível.');
+ expect(body.request_id).toMatch(/^[0-9a-f-]{36}$/i);
+ expect(JSON.stringify(body)).not.toContain('secret token');
+});
+test('client shows a support reference for internal API failures',async()=>{
+ const originalFetch=globalThis.fetch;
+ const requestId='a2f5e268-0b22-4e62-9634-4698bd74f004';
+ globalThis.fetch=async()=>new Response(JSON.stringify({detail:'Serviço temporariamente indisponível.',request_id:requestId}),{status:500,headers:{'content-type':'application/json'}});
+ try {
+  await expect(chamarApi('/falha')).rejects.toMatchObject({status:500,message:`Serviço temporariamente indisponível. Referência de suporte: ${requestId}.`});
+ } finally {
+  globalThis.fetch=originalFetch;
+ }
 });

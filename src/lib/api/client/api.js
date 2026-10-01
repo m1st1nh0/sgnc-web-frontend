@@ -21,15 +21,21 @@ async function exigirRespostaOk(resposta) {
   if (resposta.ok) return;
 
   let mensagem = `Erro ${resposta.status}`;
+  let requestId = null;
   try {
     const dadosErro = await resposta.json();
     mensagem = dadosErro.detail || mensagem;
+    requestId = dadosErro.request_id || null;
   } catch {
     // resposta sem corpo JSON; mantém a mensagem genérica
   }
 
   if (resposta.status === 401) {
     encerrarSessaoLocal();
+  }
+
+  if (resposta.status >= 500 && requestId) {
+    mensagem = `${mensagem} Referência de suporte: ${requestId}.`;
   }
 
   throw new ErroApi(mensagem, resposta.status);
