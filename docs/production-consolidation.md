@@ -76,6 +76,10 @@ O responsável validou o Preview atualizado e confirmou que está tudo OK, liber
 
 O Supabase Advisor foi consultado em 01/10/2026. Reporta 14 índices sem uso e a proteção contra senhas vazadas desativada; não foi criado nem removido índice sem plano de execução. Foi iniciada otimização de baixo risco em `obterInsights`: restringe a busca de causas às NCs do período e aplica a janela temporal às medidas no banco. Ainda falta medir `EXPLAIN (ANALYZE, BUFFERS)` e p50/p95 em ambiente seguro; a consulta das NCs e a montagem do backlog continuam lendo o escopo completo. A exceção de proteção de senha segue registrada.
 
+## Relatórios: período inicial (01/10/2026)
+
+Os filtros de PDF/CSV agora iniciam com os últimos 30 dias, calculados como 30 datas locais inclusivas. As datas preenchidas são enviadas às exportações e aparecem no nome/escopo do arquivo. O backend mantém o padrão antigo de 12 meses quando chamado sem datas, para compatibilidade com consumidores atuais. Não foi criada uma tela de relatório navegável; isso permanece uma decisão de produto separada.
+
 ## Revisão adicional do mapa operacional
 
 O anexo trouxe melhorias de desempenho, governança de causas, acompanhamento de NC, mensagens de erro, hierarquia/equipe, acesso ao histórico individual, período de relatório de 30 dias e controles de navegação. A revisão técnica, estado atual, critérios de aceite e ordem de implementação estão em [`backlog-melhorias-operacionais.md`](./backlog-melhorias-operacionais.md). O candidato mensurável para lentidão é a consulta sem limite de NCs/causas antes do filtro temporal em `obterInsights`; o módulo Relatórios é somente de exportação e usa 12 meses por padrão. As observações numeradas sobre navegação não identificam a tela/controle e precisam ser mapeadas em UAT antes de alterar a interface.

@@ -18,6 +18,7 @@ import {
   nomeArquivoRelatorio,
 } from "../client/relatoriosService.js";
 import { salvarArquivoLocal } from "../../../lib/utils/arquivoLocal.js";
+import { periodoPadraoRelatorio } from "../client/period.js";
 
 const STATUS = [
   ["", "Todos os status"],
@@ -30,13 +31,12 @@ const STATUS = [
 
 export default function RelatoriosPage() {
   const { usuario } = useAuth();
-  const [filtros, setFiltros] = useState({
-    inicio: "",
-    fim: "",
+  const [filtros, setFiltros] = useState(() => ({
+    ...periodoPadraoRelatorio(),
     status: "",
     colaboradorId: "",
     setor: "",
-  });
+  }));
   const [pessoas, setPessoas] = useState([]);
   const [carregandoPessoas, setCarregandoPessoas] = useState(true);
   const [baixando, setBaixando] = useState("");
@@ -88,7 +88,7 @@ export default function RelatoriosPage() {
       <Container className="sg-container" style={{ maxWidth: "1050px" }}>
         <CabecalhoPagina
           titulo="Relatórios"
-          subtitulo={`Escopo: ${escopo}. Datas em branco usam os últimos 12 meses.`}
+          subtitulo={`Escopo: ${escopo}. O período inicial cobre os últimos 30 dias; ajuste as datas para ampliar ou reduzir a exportação.`}
         />
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
