@@ -103,6 +103,11 @@ export default function BarraNavegacao() {
               </Nav.Link>
             )}
             {usuario?.papel === "adm" && (
+              <Nav.Link as={Link} href="/causas" onClick={aoNavegar} active={pathname === "/causas"}>
+                Causas
+              </Nav.Link>
+            )}
+            {usuario?.papel === "adm" && (
               <Nav.Link as={Link} href="/usuarios" onClick={aoNavegar} active={pathname === "/usuarios"}>
                 Usuários
               </Nav.Link>

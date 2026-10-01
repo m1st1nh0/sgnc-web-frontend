@@ -66,25 +66,39 @@ function parseInput(input: NcInput) {
   };
 }
 
-async function causeIds(causas: string[], userId: string) {
-  const admin = createAdminClient();
+async function causeIds(
+  causas: string[],
+  user: Awaited<ReturnType<typeof requireUser>>,
+  options: { allowCreate?: boolean; allowInactive?: boolean } = {},
+) {
+  const admin = createAdminClient() as any;
   const ids: number[] = [];
   for (const descricao of causas) {
-    const { data: existing } = await admin
-      .from("causas")
-      .select("id")
-      .ilike("descricao", descricao)
-      .limit(1)
-      .maybeSingle();
+    const normalized = descricao.trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
+    const { data: existing, error: lookupError } = await admin.from("causas")
+      .select("id, ativo").eq("descricao_normalizada", normalized).maybeSingle();
+    if (lookupError) throw new ApiError("Não foi possível validar o catálogo de causas.", 500);
     if (existing) {
+      if (!existing.ativo && !options.allowInactive) {
+        throw new ApiError("Esta causa está arquivada. Solicite sua reativação ao administrador.", 422);
+      }
+      if (!existing.ativo && options.allowCreate) await admin.from("causas").update({ ativo: true }).eq("id", existing.id);
       ids.push(existing.id);
       continue;
     }
+    if (!options.allowCreate) {
+      throw new ApiError("Esta causa não está no catálogo aprovado. Solicite sua inclusão ao administrador.", 422);
+    }
     const { data, error } = await admin
       .from("causas")
-      .insert({ descricao, criado_por: userId })
+      .insert({ descricao, criado_por: user.id, ativo: true })
       .select("id")
       .single();
+    if (error?.code === "23505") {
+      const { data: concurrent } = await admin.from("causas").select("id, ativo")
+        .eq("descricao_normalizada", normalized).maybeSingle();
+      if (concurrent && (concurrent.ativo || options.allowInactive)) { ids.push(concurrent.id); continue; }
+    }
     if (error || !data) throw new ApiError("Não foi possível cadastrar a causa.", 500);
     ids.push(data.id);
   }
@@ -245,17 +259,77 @@ export async function listarNcsDaPessoa(
 
 export async function listarCausas() {
   await requireUser();
-  const { data, error } = await createClient().then((client) =>
-    client.from("causas").select("descricao").order("descricao"),
-  );
+  const client = await createClient();
+  const { data, error } = await (client as any)
+    .from("causas").select("descricao").eq("ativo", true).order("descricao");
   if (error) throw new ApiError("Não foi possível carregar as causas.", 500);
   return (data ?? []).map((item) => item.descricao);
+}
+
+export async function solicitarCausa(input: { descricao?: unknown; justificativa?: unknown }) {
+  const user = await requireUser();
+  if (user.papel === "adm") throw new ApiError("Administradores podem cadastrar causas diretamente.", 403);
+  const descricao = String(input.descricao ?? "").trim().replace(/\s+/g, " ");
+  const justificativa = String(input.justificativa ?? "").trim();
+  if (descricao.length < 3 || descricao.length > 120) throw new ApiError("A causa deve ter entre 3 e 120 caracteres.", 422);
+  if (justificativa.length < 10 || justificativa.length > 1000) throw new ApiError("A justificativa deve ter entre 10 e 1.000 caracteres.", 422);
+  const admin = createAdminClient() as any;
+  const normalized = descricao.toLocaleLowerCase("pt-BR");
+  const { data: cause, error: causeError } = await admin.from("causas").select("id, ativo").eq("descricao_normalizada", normalized).maybeSingle();
+  if (causeError) throw new ApiError("Não foi possível validar o catálogo de causas.", 500);
+  if (cause?.ativo) throw new ApiError("Esta causa já está aprovada no catálogo.", 409);
+  const { data: pending, error: pendingError } = await admin.from("solicitacoes_causa")
+    .select("id").eq("descricao_normalizada", normalized).eq("status", "pendente").maybeSingle();
+  if (pendingError) throw new ApiError("Não foi possível validar solicitações existentes.", 500);
+  if (pending) throw new ApiError("Já existe uma solicitação pendente para esta causa.", 409);
+  const { data, error } = await admin.from("solicitacoes_causa")
+    .insert({ descricao, justificativa, solicitado_por: user.id }).select("id, status, solicitado_em").single();
+  if (error?.code === "23505") throw new ApiError("Já existe uma solicitação pendente para esta causa.", 409);
+  if (error || !data) throw new ApiError("Não foi possível enviar a solicitação da causa.", 500);
+  return data;
+}
+
+export async function listarSolicitacoesCausa() {
+  await requireAdmin();
+  const admin = createAdminClient() as any;
+  const [{ data: requests, error }, { data: causes, error: causesError }] = await Promise.all([
+    admin.from("solicitacoes_causa").select("id, descricao, justificativa, solicitado_por, solicitado_em")
+      .eq("status", "pendente").order("solicitado_em", { ascending: true }),
+    admin.from("causas").select("id, descricao").eq("ativo", true).order("descricao"),
+  ]);
+  if (error || causesError) throw new ApiError("Não foi possível carregar a fila de causas.", 500);
+  const ids = [...new Set((requests ?? []).map((item: { solicitado_por: string }) => item.solicitado_por))];
+  const { data: people, error: peopleError } = ids.length
+    ? await admin.from("usuarios").select("id, nome").in("id", ids) : { data: [], error: null };
+  if (peopleError) throw new ApiError("Não foi possível identificar os solicitantes.", 500);
+  const names = new Map((people ?? []).map((item: { id: string; nome: string }) => [item.id, item.nome]));
+  return { solicitacoes: (requests ?? []).map((item: Record<string, unknown>) => ({
+    ...item, solicitante_nome: names.get(item.solicitado_por as string) ?? "Usuário",
+  })), causas: causes ?? [] };
+}
+
+export async function decidirSolicitacaoCausa(id: number, input: { decisao?: unknown; observacao?: unknown; causa_existente_id?: unknown }) {
+  const user = await requireAdmin();
+  const decisao = String(input.decisao ?? "");
+  if (!["aprovar", "rejeitar"].includes(decisao)) throw new ApiError("Decisão inválida.", 422);
+  const observacao = String(input.observacao ?? "").trim() || null;
+  if (decisao === "rejeitar" && (!observacao || observacao.length < 3)) throw new ApiError("Informe o motivo da rejeição.", 422);
+  const causeId = input.causa_existente_id == null || input.causa_existente_id === "" ? null : Number(input.causa_existente_id);
+  if (causeId !== null && (!Number.isSafeInteger(causeId) || causeId < 1)) throw new ApiError("A causa existente selecionada é inválida.", 422);
+  const { data, error } = await (createAdminClient() as any).rpc("decidir_solicitacao_causa", {
+    p_solicitacao_id: id, p_decisor_id: user.id, p_decisao: decisao,
+    p_observacao: observacao, p_causa_existente_id: causeId,
+  });
+  if (error) throw new ApiError("Não foi possível decidir a solicitação da causa.", 500);
+  const result = normalizeRpc(data);
+  if (!result.ok) throw new ApiError("A solicitação já foi decidida ou os dados não são válidos.", result.erro === "solicitacao_ja_decidida" ? 409 : 422);
+  return result;
 }
 
 export async function criarNc(input: NcInput) {
   const user = await requireUser();
   const data = parseInput(input);
-  const [ids, employee] = await Promise.all([causeIds(data.causas, user.id), collaborator(data.colaborador_id)]);
+  const [ids, employee] = await Promise.all([causeIds(data.causas, user, { allowCreate: user.papel === "adm" }), collaborator(data.colaborador_id)]);
   const admin = createAdminClient();
   const { data: rpcData, error } = await admin.rpc("criar_nc_com_historico_v3", {
     p_data: data.data,
@@ -278,7 +352,7 @@ export async function criarNc(input: NcInput) {
 export async function editarNc(id: number, input: NcInput) {
   const user = await requireAdmin();
   const data = parseInput(input);
-  const [ids, employee] = await Promise.all([causeIds(data.causas, user.id), collaborator(data.colaborador_id)]);
+  const [ids, employee] = await Promise.all([causeIds(data.causas, user, { allowCreate: true, allowInactive: true }), collaborator(data.colaborador_id)]);
   const admin = createAdminClient();
   const { data: updated, error } = await admin
     .from("nao_conformidades")

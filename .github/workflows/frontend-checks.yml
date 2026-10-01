@@ -36,6 +36,8 @@ jobs:
         run: node test_pr09_onboarding.mjs
       - name: PR10 hierarchical team access regression
         run: node test_pr10_hierarchy.mjs
+      - name: PR11 cause catalog governance regression
+        run: node test_pr11_cause_governance.mjs
       - name: Playwright browser setup
         run: npx playwright install --with-deps chromium
       - name: Build

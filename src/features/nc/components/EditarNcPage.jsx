@@ -10,7 +10,7 @@ import Alert from "react-bootstrap/Alert";
 
 import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import CampoCausas from "./CampoCausas.jsx";
-import { buscarNc, editarNc, listarCausasConhecidas } from "../client/ncService.js";
+import { buscarNc, editarNc, listarCausasConhecidas, solicitarCausa } from "../client/ncService.js";
 import { listarUsuarios } from "../../users/client/usuarioService.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { ErroApi } from "../../../lib/api/client/api.js";
@@ -42,6 +42,7 @@ export default function EditarNcPage() {
 
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+  const [avisoCausa, setAvisoCausa] = useState("");
   const [errosCampo, setErrosCampo] = useState({});
 
   useEffect(() => {
@@ -81,6 +82,10 @@ export default function EditarNcPage() {
   }, [id, usuario]);
 
   const colaboradorSelecionado = usuarios.find((u) => u.id === colaboradorId);
+  async function solicitarNovaCausa(dados) {
+    await solicitarCausa(dados);
+    setAvisoCausa("Solicitação enviada. A causa ficará disponível após aprovação da Qualidade.");
+  }
 
   async function aoEnviar(evento) {
     evento.preventDefault();
@@ -134,6 +139,7 @@ export default function EditarNcPage() {
         )}
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
+        {avisoCausa && <Alert variant="success" role="status">{avisoCausa}</Alert>}
 
         {carregandoDados ? (
           <EstadoCarregamento mensagem="Carregando não conformidade..." />
@@ -220,9 +226,11 @@ export default function EditarNcPage() {
                     valor={causas}
                     aoMudar={setCausas}
                     sugestoes={causasConhecidas}
+                    aoSolicitarCausa={solicitarNovaCausa}
+                    permitirCriacaoDireta={usuario?.papel === "adm"}
                   />
                   <Form.Text className="sg-helper">
-                    Digite e pressione Enter.
+                    Selecione uma causa aprovada ou solicite a inclusão de uma nova.
                   </Form.Text>
                 </Form.Group>
               </div>

@@ -9,7 +9,7 @@ import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import CampoCausas from "./CampoCausas.jsx";
 import { listarOpcoesNc } from "../../users/client/usuarioService.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
-import { abrirNc, listarCausasConhecidas, anexarEvidencia } from "../client/ncService.js";
+import { abrirNc, listarCausasConhecidas, anexarEvidencia, solicitarCausa } from "../client/ncService.js";
 import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
@@ -19,6 +19,7 @@ import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
+import { useAuth } from "../../auth/components/AuthContext.jsx";
 
 const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
 const FORMATOS_EVIDENCIA =
@@ -53,6 +54,7 @@ function formatarTamanho(bytes) {
 export default function AbrirNcPage() {
   const router = useRouter();
   const { concluirEtapa } = useOnboarding();
+  const { usuario } = useAuth();
 
   const [chamado, setChamado] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
@@ -64,6 +66,7 @@ export default function AbrirNcPage() {
   const [carregandoDados, setCarregandoDados] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+  const [avisoCausa, setAvisoCausa] = useState("");
   const [errosCampo, setErrosCampo] = useState({});
   const [arquivosEvidencias, setArquivosEvidencias] = useState([]);
   const [buscaColaborador, setBuscaColaborador] = useState("");
@@ -96,6 +99,10 @@ export default function AbrirNcPage() {
   }, []);
 
   const colaboradorSelecionado = usuarios.find((u) => u.id === colaboradorId);
+  async function solicitarNovaCausa(dados) {
+    await solicitarCausa(dados);
+    setAvisoCausa("Solicitação enviada. A causa ficará disponível após aprovação da Qualidade.");
+  }
   const usuariosFiltrados = useMemo(() => {
     const termo = buscaColaborador.trim().toLocaleLowerCase("pt-BR");
     if (!termo) return usuarios;
@@ -191,6 +198,7 @@ export default function AbrirNcPage() {
         />
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
+        {avisoCausa && <div className="alert alert-success" role="status">{avisoCausa}</div>}
 
         {carregandoDados ? (
           <EstadoCarregamento mensagem="Carregando dados do formulário..." />
@@ -310,9 +318,11 @@ export default function AbrirNcPage() {
                     valor={causas}
                     aoMudar={setCausas}
                     sugestoes={causasConhecidas}
+                    aoSolicitarCausa={solicitarNovaCausa}
+                    permitirCriacaoDireta={usuario?.papel === "adm"}
                   />
                   <Form.Text className="sg-helper">
-                    Digite e pressione Enter. Causas novas são adicionadas à lista automaticamente.
+                    Selecione uma causa aprovada ou solicite a inclusão de uma nova.
                   </Form.Text>
                 </Form.Group>
               </div>

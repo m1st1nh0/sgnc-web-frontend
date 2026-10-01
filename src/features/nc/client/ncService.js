@@ -49,6 +49,18 @@ export function listarCausasConhecidas() {
   return chamarApi("/nc/causas");
 }
 
+export function solicitarCausa(dados) {
+  return chamarApi("/nc/causas/solicitacoes", { method: "POST", body: dados });
+}
+
+export function listarSolicitacoesCausa() {
+  return chamarApi("/nc/causas/solicitacoes");
+}
+
+export function decidirSolicitacaoCausa(id, dados) {
+  return chamarApi("/nc/causas/solicitacoes/decidir", { method: "POST", body: { id, ...dados } });
+}
+
 export function listarEvidencias(ncId) {
   return chamarApi(`/nc/${ncId}/evidencias`);
 }
