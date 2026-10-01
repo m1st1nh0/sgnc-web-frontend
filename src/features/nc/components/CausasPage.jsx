@@ -67,41 +67,62 @@ export default function CausasPage() {
   return (
     <div>
       <BarraNavegacao />
-      <Container className="sg-container">
-        <CabecalhoPagina
-          titulo="Governança de causas"
-          subtitulo="Revise solicitações e mantenha o catálogo consistente."
-        />
+      <Container className="sg-container sg-governanca">
+        <div className="sg-governanca__intro">
+          <span className="sg-governanca__eyebrow">QUALIDADE · CATÁLOGO</span>
+          <CabecalhoPagina
+            titulo="Governança de causas"
+            subtitulo="Revise as sugestões da equipe e mantenha o catálogo consistente."
+          />
+        </div>
 
-        {erro && <Alert variant="danger" role="alert">{erro}</Alert>}
-        {aviso && <Alert variant="success" role="status">{aviso}</Alert>}
+        {erro && <Alert variant="danger" className="sg-governanca__feedback" role="alert" dismissible onClose={() => setErro("")}>{erro}</Alert>}
+        {aviso && <Alert variant="success" className="sg-governanca__feedback" role="status" dismissible onClose={() => setAviso("")}>{aviso}</Alert>}
 
-        <section className="sg-card mb-4" aria-labelledby="causas-pendentes-titulo">
-          <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-            <div>
-              <h2 id="causas-pendentes-titulo" className="sg-secao-form__titulo">Solicitações pendentes</h2>
-              <p className="sg-secao-form__descricao">A aprovação cria uma causa nova ou associa a uma existente. Rejeições exigem motivo.</p>
+        <section className="sg-card sg-governanca__panel" aria-labelledby="causas-pendentes-titulo">
+          <header className="sg-governanca__panel-head">
+            <div className="sg-governanca__section-mark sg-governanca__section-mark--pending" aria-hidden="true">↗</div>
+            <div className="sg-governanca__panel-title">
+              <div className="sg-governanca__title-line">
+                <h2 id="causas-pendentes-titulo">Solicitações pendentes</h2>
+                <span className="sg-governanca__count" aria-label={`${dados.solicitacoes.length} solicitações pendentes`}>{dados.solicitacoes.length}</span>
+              </div>
+              <p>Aprove uma nova causa ou associe a uma já existente. Rejeições exigem justificativa.</p>
             </div>
-            <Button type="button" variant="outline-secondary" size="sm" onClick={carregar} disabled={carregando}>Atualizar fila</Button>
-          </div>
+            <Button type="button" className="sg-governanca__refresh" variant="outline-secondary" onClick={carregar} disabled={carregando}>
+              <span aria-hidden="true">↻</span>{carregando ? "Atualizando…" : "Atualizar fila"}
+            </Button>
+          </header>
 
           {carregando ? (
-            <EstadoCarregamento mensagem="Carregando solicitações..." />
+            <div className="sg-governanca__empty sg-governanca__empty--loading"><EstadoCarregamento mensagem="Carregando solicitações..." /></div>
           ) : dados.solicitacoes.length === 0 ? (
-            <div className="text-muted py-3">Não há solicitações pendentes.</div>
+            <div className="sg-governanca__empty">
+              <span className="sg-governanca__empty-icon" aria-hidden="true">✓</span>
+              <div>
+                <h3>Fila em dia</h3>
+                <p>Quando a equipe sugerir uma causa, ela aparecerá aqui para análise.</p>
+              </div>
+            </div>
           ) : (
-            <div className="d-grid gap-3">
+            <div className="sg-governanca__requests">
               {dados.solicitacoes.map((solicitacao) => (
-                <article className="border rounded p-3" key={solicitacao.id} aria-labelledby={`solicitacao-causa-${solicitacao.id}`}>
-                  <div className="d-flex justify-content-between flex-wrap gap-2">
-                    <h3 id={`solicitacao-causa-${solicitacao.id}`} className="h5 mb-1">{solicitacao.descricao}</h3>
-                    <small className="text-muted">{new Date(solicitacao.solicitado_em).toLocaleString("pt-BR")}</small>
+                <article className="sg-governanca__request" key={solicitacao.id} aria-labelledby={`solicitacao-causa-${solicitacao.id}`}>
+                  <div className="sg-governanca__request-heading">
+                    <div>
+                      <span className="sg-governanca__request-label">Causa sugerida</span>
+                      <h3 id={`solicitacao-causa-${solicitacao.id}`}>{solicitacao.descricao}</h3>
+                    </div>
+                    <time dateTime={solicitacao.solicitado_em} className="sg-governanca__date">
+                      {new Date(solicitacao.solicitado_em).toLocaleString("pt-BR", { dateStyle: "medium", timeStyle: "short" })}
+                    </time>
                   </div>
-                  <p className="mb-1"><strong>Solicitante:</strong> {solicitacao.solicitante_nome}</p>
-                  <p className="mb-3"><strong>Justificativa:</strong> {solicitacao.justificativa}</p>
+                  <div className="sg-governanca__request-meta"><span>Solicitada por</span><strong>{solicitacao.solicitante_nome}</strong></div>
+                  <div className="sg-governanca__reason"><span>Justificativa</span><p>{solicitacao.justificativa}</p></div>
 
-                  <Form.Group className="mb-2">
-                    <Form.Label htmlFor={`associar-causa-${solicitacao.id}`}>Aprovar como nova ou associar a uma causa existente</Form.Label>
+                  <div className="sg-governanca__decision-grid">
+                    <Form.Group>
+                    <Form.Label htmlFor={`associar-causa-${solicitacao.id}`}>Destino da aprovação</Form.Label>
                     <Form.Select
                       id={`associar-causa-${solicitacao.id}`}
                       value={causasExistentes[solicitacao.id] || ""}
@@ -110,39 +131,57 @@ export default function CausasPage() {
                       <option value="">Criar nova ou localizar equivalente automaticamente</option>
                       {dados.causas.map((causa) => <option key={causa.id} value={causa.id}>{causa.descricao}</option>)}
                     </Form.Select>
-                  </Form.Group>
+                    </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label htmlFor={`motivo-causa-${solicitacao.id}`}>Motivo da rejeição (obrigatório para rejeitar)</Form.Label>
+                    <Form.Group>
+                    <Form.Label htmlFor={`motivo-causa-${solicitacao.id}`}>Motivo da rejeição <span>(obrigatório ao rejeitar)</span></Form.Label>
                     <Form.Control
                       as="textarea"
-                      rows={2}
+                      rows={1}
                       id={`motivo-causa-${solicitacao.id}`}
                       value={motivosRejeicao[solicitacao.id] || ""}
                       onChange={(event) => setMotivosRejeicao((atual) => ({ ...atual, [solicitacao.id]: event.target.value }))}
                     />
-                  </Form.Group>
+                    </Form.Group>
+                  </div>
 
-                  <div className="d-flex flex-wrap gap-2">
-                    <Button type="button" onClick={() => decidir(solicitacao, "aprovar")} disabled={solicitacaoEmDecisao === solicitacao.id}>
-                      {solicitacaoEmDecisao === solicitacao.id ? "Salvando..." : "Aprovar / associar"}
-                    </Button>
-                    <Button type="button" variant="outline-danger" onClick={() => decidir(solicitacao, "rejeitar")} disabled={solicitacaoEmDecisao === solicitacao.id}>
+                  <footer className="sg-governanca__request-actions">
+                    <span>A decisão será registrada no histórico.</span>
+                    <div>
+                    <Button type="button" variant="outline-danger" onClick={() => decidir(solicitacao, "rejeitar")} disabled={Boolean(solicitacaoEmDecisao)}>
                       Rejeitar
                     </Button>
-                  </div>
+                    <Button type="button" className="sg-governanca__approve" onClick={() => decidir(solicitacao, "aprovar")} disabled={Boolean(solicitacaoEmDecisao)}>
+                      {solicitacaoEmDecisao === solicitacao.id ? "Salvando..." : "Aprovar / associar"}
+                    </Button>
+                    </div>
+                  </footer>
                 </article>
               ))}
             </div>
           )}
         </section>
 
-        <section className="sg-card" aria-labelledby="causas-ativas-titulo">
-          <h2 id="causas-ativas-titulo" className="sg-secao-form__titulo">Catálogo ativo</h2>
-          <p className="sg-secao-form__descricao">Causas disponíveis no formulário de abertura e edição de NC.</p>
-          <ul className="mb-0">
-            {dados.causas.map((causa) => <li key={causa.id}>{causa.descricao}</li>)}
-          </ul>
+        <section className="sg-card sg-governanca__panel sg-governanca__catalog" aria-labelledby="causas-ativas-titulo">
+          <header className="sg-governanca__panel-head">
+            <div className="sg-governanca__section-mark sg-governanca__section-mark--catalog" aria-hidden="true">✓</div>
+            <div className="sg-governanca__panel-title">
+              <div className="sg-governanca__title-line">
+                <h2 id="causas-ativas-titulo">Catálogo aprovado</h2>
+                <span className="sg-governanca__catalog-count">{dados.causas.length} {dados.causas.length === 1 ? "causa" : "causas"}</span>
+              </div>
+              <p>Disponíveis para abertura e edição de não conformidades.</p>
+            </div>
+          </header>
+          {dados.causas.length ? (
+            <ul className="sg-governanca__catalog-list">
+              {dados.causas.map((causa) => (
+                <li key={causa.id}><span aria-hidden="true">✓</span>{causa.descricao}</li>
+              ))}
+            </ul>
+          ) : (
+            <div className="sg-governanca__catalog-empty">Ainda não há causas aprovadas no catálogo.</div>
+          )}
         </section>
       </Container>
     </div>

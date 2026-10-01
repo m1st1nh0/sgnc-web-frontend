@@ -56,7 +56,7 @@ export default function BarraNavegacao() {
   const ehGestao = usuario?.papel === "adm" || usuario?.papel === "supervisor";
 
   return (
-    <Navbar className="sg-navbar" expand="lg" expanded={expandido}>
+    <Navbar className="sg-navbar" expand="xxl" expanded={expandido}>
       <Container className="sg-navbar__container">
         <Navbar.Brand as={Link} href="/" onClick={aoNavegar}>
           <MarcaSgnc />
