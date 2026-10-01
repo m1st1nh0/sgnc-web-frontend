@@ -2,6 +2,14 @@
 
 Fontes: “Mapa de possíveis melhorias e incidentes” e a revisão reenviada em 01/10/2026, junto das capturas anotadas pelo CEO. Esta revisão cruza cada relato com o estado do código e separa o que já está implementado do que ainda exige desenho de processo, mudança de dados ou validação em Preview.
 
+## Goal do ciclo: consolidar a aplicação e entregar o mapa do CEO
+
+Concluir as correções e melhorias do mapa, integrar a navegação hierárquica de NCs por liderado e finalizar a refatoração Next.js com segurança e operação verificadas, deixando a aplicação pronta para o cutover de produção. O ciclo só será considerado concluído quando cada item P0/P1 abaixo tiver implementação, testes relevantes e evidência de aceite em Preview; os itens P2 de navegação também devem ter destino e comportamento validados. Nenhuma frente será marcada como entregue apenas por existir no backlog ou compilar.
+
+**Já implementado nesta branch e validado pelo responsável no Preview:** relatório em tela com recorte inicial de 30 dias e drill-down; cores de distinção nos gráficos; cards do painel filtráveis; modal de NCs por indicadores de Insights; destino do checklist para a lista de NCs; otimização inicial de consultas de Insights. A validação mais recente confirmou o Preview, mas não substitui UAT individual de todos os fluxos/papéis.
+
+**Definição de concluído:** (1) fluxos de catálogo de causas e feedback rastreável definidos e implementados sem perder histórico; (2) usuário identifica status, responsável e próxima ação após abrir/receber feedback de NC; (3) erros de validação, conflito e indisponibilidade são claros e preservam o formulário; (4) líderes navegam equipe → liderado → NCs/indicadores/histórico com filtros por pessoa/período e autorização por escopo; (5) desempenho é medido antes/depois em consultas representativas; (6) administrador, supervisor e funcionário passam UAT de seus fluxos, incluindo transferência, exportação e anexos; (7) a migração Next.js tem rollback, variáveis e migração de revogação direta preparados e verificados; (8) merge e promoção só ocorrem após gates documentados e autorização de produção. A exceção temporária de proteção contra senhas vazadas permanece visível como risco aceito, não como controle concluído.
+
 ## Achados priorizados
 
 | Prioridade | Tema | Estado observado | Recomendação e critério de aceite |
