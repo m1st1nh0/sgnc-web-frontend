@@ -40,16 +40,16 @@ Testes locais: 26 verificações unitárias de sessão/autorização/privacidade
 
 ## Bloqueios de release encontrados
 
-- A consulta somente leitura de privilégios confirmou que `authenticated` pode executar SELECT direto em `public.nao_conformidades` e `public.historico_nc`. Como as políticas de linha não ocultam colunas, a supressão feita pela API Next não protege contra Data API direta. É necessária uma migração explícita de privilégios/visões, revisada com compatibilidade e UAT antes do corte.
+- A consulta somente leitura confirmou que `authenticated` pode executar SELECT direto em `public.nao_conformidades` e `public.historico_nc`. As leituras da aplicação foram movidas para os serviços server-only com escopo por perfil; a migração `supabase/migrations/20261001000000_revoke_direct_nc_reads.sql` revoga o acesso Data API de `anon` e `authenticated`. Aplicar somente depois de implantar a versão que usa as rotas Next; a migração ainda não foi aplicada ao banco compartilhado.
 - O Security Advisor do Supabase relata proteção contra senhas vazadas desativada. Alterar essa configuração pode afetar cadastro e troca de senha; permanece pendente de decisão do responsável pelo produto.
 - Sem credenciais de usuários de teste, não foi possível validar fluxo autenticado por papel, upload/download ou documentos gerados. Não solicitar nem guardar credenciais em chat.
 - PR #29 aberta em rascunho, empilhada sobre a branch da PR #28. Os workflows remotos Frontend checks e Security checks passaram; Vercel criou Preview READY para o commit `45cae83` (`dpl_cTq9hKPULvyYUYPey7g1k2EtJe57`).
-- O smoke HTTP pelo conector Vercel encontrou `/` retornando 500. Logs runtime apontam ausência de `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (ou `NEXT_PUBLIC_SUPABASE_ANON_KEY`) no ambiente do Preview. A rota protegida de login não pôde ser aberta pelo fetch devido à proteção Vercel SSO. Corrigir as variáveis no Vercel e repetir smoke do Preview; o conector disponível não expõe inventário nem edição das variáveis.
+- O Preview de `94e98eb` está READY após a correção das variáveis de ambiente. `/login` responde HTTP 200 e os logs runtime recentes não registram erros. Falta repetir o smoke da raiz e executar UAT autenticado/visual quando houver sessão de teste.
 - A produção continua no deployment Vite `c19fc...`; rollback `dpl_91955HjfLrkriGttMfY89eSdXSuf` foi preservado. Nenhum deployment foi promovido.
 
 ## Estado dos goals
 
-Goals 1–4 implementados e CI remoto aprovado; remediação de banco, variáveis do Preview, UAT autenticado e verificação visual continuam pendentes. Goal 5 tem cobertura unitária/HTTP automatizada, CI completo e smoke remoto do Preview bloqueado pelas variáveis ausentes. Goals 6–7 (RC, release/cutover) permanecem bloqueados pelos gates acima e não devem avançar até aprovação.
+Goals 1–4 implementados e CI remoto aprovado; código de remediação de privilégios preparado, mas migração pendente de aplicação coordenada após a versão Next. Variáveis do Preview corrigidas pelo usuário e `/login` verificado HTTP 200. UAT autenticado e verificação visual continuam pendentes. Goal 5 tem cobertura unitária/HTTP automatizada e CI completo. Goals 6–7 (RC, release/cutover) permanecem bloqueados pelos gates acima e não devem avançar até aprovação.
 
 ## Revisão adicional do mapa operacional
 

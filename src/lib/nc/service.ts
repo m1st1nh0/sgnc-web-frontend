@@ -150,8 +150,20 @@ function durations(nc: Record<string, unknown>) {
 
 export async function listarNcs() {
   const user = await requireUser();
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("nao_conformidades").select("*").order("criado_em", { ascending: false });
+  const admin = createAdminClient();
+  let query = admin.from("nao_conformidades").select("*");
+  if (user.papel !== "adm") {
+    let teamIds: string[] = [];
+    if (user.papel === "supervisor") {
+      const { data: team, error: teamError } = await admin.from("usuarios").select("id").eq("supervisor_id", user.id);
+      if (teamError) throw new ApiError("Não foi possível carregar a equipe.", 500);
+      teamIds = (team ?? []).map((member) => member.id);
+    }
+    const scopes = [`aberto_por.eq.${user.id}`, `and(status.in.(aguardando_feedback,aguardando_analise,aguardando_aceite,concluida),colaborador_id.eq.${user.id})`];
+    if (teamIds.length) scopes.push(`and(status.in.(aguardando_feedback,aguardando_analise,aguardando_aceite,concluida),colaborador_id.in.(${teamIds.join(",")}))`);
+    query = query.or(scopes.join(","));
+  }
+  const { data, error } = await query.order("criado_em", { ascending: false });
   if (error) throw new ApiError("Não foi possível carregar as não conformidades.", 500);
   const rows = await addCauses((data ?? []) as Array<{ id: number }>);
   return rows.map((nc) => filterSensitive(nc, user));
@@ -159,8 +171,20 @@ export async function listarNcs() {
 
 export async function buscarNc(id: number) {
   const user = await requireUser();
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("nao_conformidades").select("*").eq("id", id).maybeSingle();
+  const admin = createAdminClient();
+  let query = admin.from("nao_conformidades").select("*").eq("id", id);
+  if (user.papel !== "adm") {
+    let teamIds: string[] = [];
+    if (user.papel === "supervisor") {
+      const { data: team, error: teamError } = await admin.from("usuarios").select("id").eq("supervisor_id", user.id);
+      if (teamError) throw new ApiError("Não foi possível carregar a equipe.", 500);
+      teamIds = (team ?? []).map((member) => member.id);
+    }
+    const scopes = [`aberto_por.eq.${user.id}`, `and(status.in.(aguardando_feedback,aguardando_analise,aguardando_aceite,concluida),colaborador_id.eq.${user.id})`];
+    if (teamIds.length) scopes.push(`and(status.in.(aguardando_feedback,aguardando_analise,aguardando_aceite,concluida),colaborador_id.in.(${teamIds.join(",")}))`);
+    query = query.or(scopes.join(","));
+  }
+  const { data, error } = await query.maybeSingle();
   if (error || !data) throw new ApiError("NC não encontrada.", 404);
   const [withCauses] = await addCauses([data]);
   const filtered = filterSensitive(withCauses, user);
