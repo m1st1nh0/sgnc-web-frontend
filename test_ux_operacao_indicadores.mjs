@@ -1,18 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const abertura = readFileSync("src/legacy/pages/AbrirNcPage.jsx", "utf8");
-const estatisticas = readFileSync("src/legacy/pages/EstatisticasUsuarioPage.jsx", "utf8");
-const usuarios = readFileSync("src/legacy/pages/UsuariosPage.jsx", "utf8");
-const detalhes = readFileSync("src/legacy/pages/DetalhesNcPage.jsx", "utf8");
-const navegacao = readFileSync("src/legacy/components/BarraNavegacao.jsx", "utf8");
+const abertura = readFileSync("src/features/nc/components/AbrirNcPage.jsx", "utf8");
+const estatisticas = readFileSync("src/features/users/components/EstatisticasUsuarioPage.jsx", "utf8");
+const usuarios = readFileSync("src/features/users/components/UsuariosPage.jsx", "utf8");
+const detalhes = readFileSync("src/features/nc/components/DetalhesNcPage.jsx", "utf8");
+const navegacao = readFileSync("src/components/navigation/BarraNavegacao.jsx", "utf8");
 const estilos = readFileSync("src/redesign.css", "utf8");
 const app = readFileSync("src/app/(app)/usuarios/[usuarioId]/dossie/page.tsx", "utf8");
-const insights = readFileSync("src/legacy/pages/InsightsPage.jsx", "utf8");
-const home = readFileSync("src/legacy/pages/HomePage.jsx", "utf8");
-const homeUx = readFileSync("src/legacy/services/homeUx.js", "utf8");
-const api = readFileSync("src/legacy/services/api.js", "utf8");
-const auth = readFileSync("src/legacy/context/AuthContext.jsx", "utf8");
+const insights = readFileSync("src/features/insights/components/InsightsPage.jsx", "utf8");
+const home = readFileSync("src/features/nc/components/HomePage.jsx", "utf8");
+const homeUx = readFileSync("src/features/nc/client/homeUx.js", "utf8");
+const api = readFileSync("src/lib/api/client/api.js", "utf8");
+const auth = readFileSync("src/features/auth/components/AuthContext.jsx", "utf8");
 const workflow = readFileSync(".github/workflows/frontend-checks.yml", "utf8");
 
 assert.match(abertura, /Colaborador analisado/);

@@ -1,7 +1,6 @@
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../index.css";
 import "../redesign.css";
-import "../App.css";
 
 export const metadata = {
   title: "SGNC | Arquem Sistemas",

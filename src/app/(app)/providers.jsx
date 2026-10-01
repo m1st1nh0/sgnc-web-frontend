@@ -1,7 +1,7 @@
 "use client";
-import { AuthProvider } from "@/legacy/context/AuthContext";
-import { OnboardingProvider } from "@/legacy/context/OnboardingContext";
-import OnboardingInicialModal from "@/legacy/components/onboarding/OnboardingInicialModal";
+import { AuthProvider } from "../../features/auth/components/AuthContext.jsx";
+import { OnboardingProvider } from "../../features/onboarding/components/OnboardingContext.jsx";
+import OnboardingInicialModal from "../../features/onboarding/components/OnboardingInicialModal.jsx";
 export default function Providers({ initialUser, children }) {
   return <AuthProvider initialUser={initialUser}><OnboardingProvider><OnboardingInicialModal />{children}</OnboardingProvider></AuthProvider>;
 }

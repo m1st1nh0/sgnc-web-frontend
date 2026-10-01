@@ -1,4 +1,4 @@
-import Page from "@/legacy/pages/InsightsPage";
+import Page from "../../../features/insights/components/InsightsPage.jsx";
 import { requireRole } from "@/lib/auth/session";
 export default async function Route() {
   await requireRole(["adm", "supervisor"]);

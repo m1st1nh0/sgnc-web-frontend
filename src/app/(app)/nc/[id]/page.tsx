@@ -1,4 +1,4 @@
-import Page from "@/legacy/pages/DetalhesNcPage";
+import Page from "../../../../features/nc/components/DetalhesNcPage.jsx";
 import { requireUser } from "@/lib/auth/session";
 export default async function Route() {
   await requireUser();

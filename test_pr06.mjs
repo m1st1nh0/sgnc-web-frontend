@@ -10,7 +10,7 @@ import {
   prepararCausas,
   prepararReincidenciaCausa,
   rotuloEscopo,
-} from "./src/legacy/services/insightsUx.js";
+} from "./src/features/insights/client/insightsUx.js";
 
 assert.equal(formatarMesInsights("2026-08"), "ago/26");
 assert.equal(formatarDuracao(45), "45s");
@@ -77,7 +77,7 @@ const reincidencia = prepararReincidenciaCausa([
 assert.equal(reincidencia[0].demais_ocorrencias, 4);
 assert.equal(reincidencia[0].reincidencias_12m, 2);
 
-const pagina = readFileSync("src/legacy/pages/InsightsPage.jsx", "utf8");
+const pagina = readFileSync("src/features/insights/components/InsightsPage.jsx", "utf8");
 assert.match(pagina, /versao_contrato !== "insights-v2"/);
 assert.match(pagina, /backlog_ativo_atual/);
 assert.match(pagina, /mediana_segundos/);

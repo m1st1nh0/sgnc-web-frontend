@@ -5,7 +5,7 @@ import {
   apresentacaoDoPapel,
   checklistDoPapel,
   DICAS_ONBOARDING,
-} from "./src/legacy/data/onboardingConteudo.js";
+} from "./src/features/onboarding/onboardingConteudo.js";
 
 const papeis = ["adm", "supervisor", "funcionario"];
 const esperados = {
@@ -49,24 +49,24 @@ assert(DICAS_ONBOARDING.dica_nc_pdf);
 assert(DICAS_ONBOARDING.dica_nc_aceite);
 
 const app = readFileSync("src/app/(app)/providers.jsx", "utf8");
-const contexto = readFileSync("src/legacy/context/OnboardingContext.jsx", "utf8");
+const contexto = readFileSync("src/features/onboarding/components/OnboardingContext.jsx", "utf8");
 const modal = readFileSync(
-  "src/legacy/components/onboarding/OnboardingInicialModal.jsx",
+  "src/features/onboarding/components/OnboardingInicialModal.jsx",
   "utf8"
 );
 const checklist = readFileSync(
-  "src/legacy/components/onboarding/OnboardingChecklist.jsx",
+  "src/features/onboarding/components/OnboardingChecklist.jsx",
   "utf8"
 );
 const dica = readFileSync(
-  "src/legacy/components/onboarding/DicaContextual.jsx",
+  "src/features/onboarding/components/DicaContextual.jsx",
   "utf8"
 );
-const home = readFileSync("src/legacy/pages/HomePage.jsx", "utf8");
-const abertura = readFileSync("src/legacy/pages/AbrirNcPage.jsx", "utf8");
-const detalhes = readFileSync("src/legacy/pages/DetalhesNcPage.jsx", "utf8");
-const dossie = readFileSync("src/legacy/pages/EstatisticasUsuarioPage.jsx", "utf8");
-const navbar = readFileSync("src/legacy/components/BarraNavegacao.jsx", "utf8");
+const home = readFileSync("src/features/nc/components/HomePage.jsx", "utf8");
+const abertura = readFileSync("src/features/nc/components/AbrirNcPage.jsx", "utf8");
+const detalhes = readFileSync("src/features/nc/components/DetalhesNcPage.jsx", "utf8");
+const dossie = readFileSync("src/features/users/components/EstatisticasUsuarioPage.jsx", "utf8");
+const navbar = readFileSync("src/components/navigation/BarraNavegacao.jsx", "utf8");
 const estilos = readFileSync("src/redesign.css", "utf8");
 
 assert.match(app, /<OnboardingProvider>/);

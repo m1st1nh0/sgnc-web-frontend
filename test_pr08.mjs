@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   AJUDA_SENHA_FORTE,
   erroSenhaForte,
-} from "./src/legacy/services/senhaPolicy.js";
+} from "./src/features/auth/client/senhaPolicy.js";
 
 assert.equal(erroSenhaForte("SenhaForte1!"), "");
 assert.match(erroSenhaForte("fraca"), /10 caracteres/);
@@ -32,8 +32,8 @@ assert.match(adminClient, /import "server-only"/);
 assert.match(adminClient, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
 assert.doesNotMatch(adminClient, /process\.env\.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY/);
 
-const trocar = readFileSync("src/legacy/pages/TrocarSenhaPage.jsx", "utf8");
-const usuarios = readFileSync("src/legacy/pages/UsuariosPage.jsx", "utf8");
+const trocar = readFileSync("src/features/auth/components/TrocarSenhaPage.jsx", "utf8");
+const usuarios = readFileSync("src/features/users/components/UsuariosPage.jsx", "utf8");
 const srcFiles = [trocar, usuarios];
 assert(srcFiles.every((fonte) => fonte.includes("erroSenhaForte")));
 assert(srcFiles.every((fonte) => !fonte.includes("ao menos 6 caracteres")));
@@ -41,17 +41,17 @@ assert.match(trocar, /autoComplete="new-password"/);
 assert.match(usuarios, /type="password"/);
 
 const arquivosCriticos = [
-  "src/legacy/pages/HomePage.jsx",
-  "src/legacy/pages/DetalhesNcPage.jsx",
-  "src/legacy/pages/UsuariosPage.jsx",
-  "src/legacy/pages/TrocarSenhaPage.jsx",
+  "src/features/nc/components/HomePage.jsx",
+  "src/features/nc/components/DetalhesNcPage.jsx",
+  "src/features/users/components/UsuariosPage.jsx",
+  "src/features/auth/components/TrocarSenhaPage.jsx",
 ];
 for (const caminho of arquivosCriticos) {
   const fonte = readFileSync(caminho, "utf8");
   assert.doesNotMatch(fonte, /dangerouslySetInnerHTML/);
 }
 
-const authLayout = readFileSync("src/legacy/components/ui/AuthLayout.jsx", "utf8");
+const authLayout = readFileSync("src/components/ui/AuthLayout.jsx", "utf8");
 assert.doesNotMatch(
   authLayout,
   /\\n/,

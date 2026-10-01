@@ -27,3 +27,7 @@ Rotas nativas, suíte de autorização por papel, E2E autenticado, UAT desktop/m
 As nove rotas autenticadas agora possuem page.tsx e layout compartilhado com providers. Login e troca de senha permanecem nativos. React Router, LegacyApplication e catch-all de SPA foram removidos. Next Link/useRouter/useParams substituem navegação anterior; guards por papel executam no servidor. Build, typecheck e seis regressões passam.
 
 Verificação visual ainda bloqueada no ambiente: agent-browser não inicia o daemon; download Chromium retorna arquivo inválido; navegador cloud não permite localhost (ERR_BLOCKED_BY_CLIENT). Portanto esta etapa não possui aprovação de UAT.
+
+## Goal 3 — organização
+
+Componentes e clientes de auth, NC, users, onboarding, insights e reports separados em `src/features`. UI reutilizável e navegação em `src/components`; helpers compartilhados em `src/lib`. `src/legacy` foi removido; os componentes preservam conteúdo e classes CSS. Removidos assets de starter sem referência e App.css contendo apenas comentários. CSS global restante preservado porque a verificação visual ainda está bloqueada.
