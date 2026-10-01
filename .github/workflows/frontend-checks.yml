@@ -34,5 +34,11 @@ jobs:
         run: node test_ux_operacao_indicadores.mjs
       - name: PR09 hybrid onboarding regression
         run: node test_pr09_onboarding.mjs
+      - name: Playwright browser setup
+        run: npx playwright install --with-deps chromium
       - name: Build
         run: npm run build
+      - name: Unit and HTTP security tests
+        run: npx playwright test --project=unit --project=http
+      - name: Desktop and mobile smoke tests
+        run: npm run test:e2e

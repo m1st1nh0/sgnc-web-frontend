@@ -1,7 +1,8 @@
+import { filterSensitive } from "@/lib/permissions/nc";
+import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
 import { ApiError } from "@/lib/api/error";
-import { getUser, type UsuarioAutenticado } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,12 +17,6 @@ type NcInput = {
   causas?: unknown;
 };
 
-async function requireUser() {
-  const user = await getUser();
-  if (!user) throw new ApiError("Sessão inválida ou expirada. Faça login novamente.", 401);
-  if (user.senha_provisoria) throw new ApiError("Troque a senha provisória antes de continuar.", 403);
-  return user;
-}
 
 async function requireAdmin() {
   const user = await requireUser();
@@ -152,33 +147,14 @@ function durations(nc: Record<string, unknown>) {
   };
 }
 
-function filterSensitive(nc: Record<string, unknown>, user: UsuarioAutenticado) {
-  const isAuthor = nc.aberto_por === user.id;
-  const complete =
-    user.papel === "adm" ||
-    user.papel === "supervisor" ||
-    nc.colaborador_id === user.id ||
-    nc.responsavel_id === user.id;
-  if (isAuthor && !complete) {
-    return {
-      ...nc,
-      motivo_invalidacao: null,
-      feedback: null,
-      texto_aceite: null,
-      validado_em: null,
-      feedback_aplicado_em: null,
-      aceito_em: null,
-    };
-  }
-  return nc;
-}
 
 export async function listarNcs() {
-  await requireUser();
+  const user = await requireUser();
   const supabase = await createClient();
   const { data, error } = await supabase.from("nao_conformidades").select("*").order("criado_em", { ascending: false });
   if (error) throw new ApiError("Não foi possível carregar as não conformidades.", 500);
-  return addCauses((data ?? []) as Array<{ id: number }>);
+  const rows = await addCauses((data ?? []) as Array<{ id: number }>);
+  return rows.map((nc) => filterSensitive(nc, user));
 }
 
 export async function buscarNc(id: number) {

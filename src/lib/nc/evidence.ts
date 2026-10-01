@@ -1,7 +1,8 @@
+import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
 import { ApiError } from "@/lib/api/error";
-import { getUser } from "@/lib/auth/session";
+
 import { buscarNc } from "@/lib/nc/service";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -9,18 +10,13 @@ const BUCKET = "evidencias";
 const MAX_SIZE = 15 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "pdf", "doc", "docx", "xlsx"]);
 
-async function requireUser() {
-  const user = await getUser();
-  if (!user) throw new ApiError("Sessão inválida ou expirada. Faça login novamente.", 401);
-  if (user.senha_provisoria) throw new ApiError("Troque a senha provisória antes de continuar.", 403);
-  return user;
-}
 
 function validateFile(file: File) {
   const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : "";
   if (!extension || !ALLOWED_EXTENSIONS.has(extension)) {
     throw new ApiError(`Tipo de arquivo não permitido. Aceitos: ${[...ALLOWED_EXTENSIONS].sort().map((item) => `.${item}`).join(", ")}`);
   }
+  if (file.size === 0) throw new ApiError("O arquivo está vazio.", 422);
   if (file.size > MAX_SIZE) throw new ApiError("Arquivo maior que 15 MB.");
 }
 

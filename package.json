@@ -8,7 +8,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "test:regression": "node test_pr05.mjs && node test_pr06.mjs && node test_pr07.mjs && node test_pr08.mjs && node test_pr09_onboarding.mjs && node test_ux_operacao_indicadores.mjs",
+    "test:unit": "playwright test --project=unit",
+    "test:api": "playwright test --project=http",
+    "test:e2e": "playwright test --project=desktop --project=mobile",
+    "test": "npm run test:regression && npm run test:unit"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

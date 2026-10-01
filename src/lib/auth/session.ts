@@ -2,16 +2,8 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export type PapelUsuario = "adm" | "supervisor" | "funcionario";
-
-export type UsuarioAutenticado = {
-  id: string;
-  nome: string;
-  email: string;
-  papel: PapelUsuario;
-  ativo: boolean;
-  senha_provisoria: boolean;
-};
+import type { PapelUsuario, UsuarioAutenticado } from "./types";
+export type { PapelUsuario, UsuarioAutenticado } from "./types";
 
 export async function getUser(): Promise<UsuarioAutenticado | null> {
   const supabase = await createClient();
@@ -24,7 +16,7 @@ export async function getUser(): Promise<UsuarioAutenticado | null> {
     .eq("id", authData.user.id)
     .maybeSingle();
 
-  if (error || !data || !data.ativo) return null;
+  if (error || !data || !data.ativo || !["adm", "supervisor", "funcionario"].includes(data.papel)) return null;
   return data as UsuarioAutenticado;
 }
 

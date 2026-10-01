@@ -1,7 +1,8 @@
+import { requireApiUser } from "@/lib/auth/api";
 import "server-only";
 
 import { ApiError } from "@/lib/api/error";
-import { getUser, type UsuarioAutenticado } from "@/lib/auth/session";
+import type { UsuarioAutenticado } from "@/lib/auth/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,14 +17,6 @@ type UsuarioInput = {
   senha_inicial?: unknown;
 };
 
-async function requireApiUser(options: { allowTemporaryPassword?: boolean } = {}) {
-  const user = await getUser();
-  if (!user) throw new ApiError("Sessão inválida ou expirada. Faça login novamente.", 401);
-  if (!options.allowTemporaryPassword && user.senha_provisoria) {
-    throw new ApiError("Troque a senha provisória antes de continuar.", 403);
-  }
-  return user;
-}
 
 async function requireAdmin() {
   const user = await requireApiUser();

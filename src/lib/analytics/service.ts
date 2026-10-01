@@ -1,7 +1,8 @@
+import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
 import { ApiError } from "@/lib/api/error";
-import { getUser } from "@/lib/auth/session";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const ACTIVE = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "validada", "aguardando_analise"]);
@@ -9,12 +10,6 @@ const COUNTABLE = new Set(["validada", "aguardando_analise", "aguardando_feedbac
 const STATUS_ORDER = ["aberta", "aguardando_feedback", "aguardando_aceite", "concluida", "invalidada"];
 type Row = Record<string, any>;
 
-async function requireUser() {
-  const user = await getUser();
-  if (!user) throw new ApiError("Sessão inválida ou expirada. Faça login novamente.", 401);
-  if (user.senha_provisoria) throw new ApiError("Troque a senha provisória antes de continuar.", 403);
-  return user;
-}
 const isoDate = (value: unknown) => String(value ?? "").slice(0, 10) || null;
 const canonicalStatus = (value: unknown) => ["validada", "aguardando_analise"].includes(String(value)) ? "aguardando_feedback" : String(value ?? "");
 const seconds = (start: unknown, end: unknown) => {

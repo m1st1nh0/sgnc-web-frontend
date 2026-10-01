@@ -10,6 +10,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async rewrites() {
+    // Compatibility for tabs opened before the API rename; remove after cutover UAT.
+    return [{ source: "/api/legacy/:path*", destination: "/api/:path*" }];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

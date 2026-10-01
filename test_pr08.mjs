@@ -14,7 +14,7 @@ assert.match(erroSenhaForte("SenhaForte!!"), /número/);
 assert.match(erroSenhaForte("SenhaForte12"), /símbolo/);
 assert.match(AJUDA_SENHA_FORTE, /10\+ caracteres/);
 
-const proxy = readFileSync("proxy.ts", "utf8");
+const proxy = readFileSync("src/proxy.ts", "utf8");
 const nextConfig = readFileSync("next.config.ts", "utf8");
 assert.match(proxy, /default-src 'self'/);
 assert.match(proxy, /script-src 'self'/);

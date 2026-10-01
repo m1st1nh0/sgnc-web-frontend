@@ -1,27 +1,23 @@
+import { csvCell } from "./csv";
+import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { ApiError } from "@/lib/api/error";
 import { obterEstatisticasUsuario, obterInsights } from "@/lib/analytics/service";
-import { getUser } from "@/lib/auth/session";
-import { buscarNc } from "@/lib/nc/service";
+
+import { buscarNc, obterTimeline } from "@/lib/nc/service";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type Row = Record<string, any>;
 const A4: [number, number] = [595.28, 841.89];
 const NAVY = rgb(0.09, 0.2, 0.3), GREEN = rgb(0.1, 0.66, 0.54), TEXT = rgb(0.13, 0.21, 0.29), MUTED = rgb(0.4, 0.46, 0.54);
 
-async function requireUser() {
-  const user = await getUser();
-  if (!user) throw new ApiError("Sessão inválida ou expirada. Faça login novamente.", 401);
-  if (user.senha_provisoria) throw new ApiError("Troque a senha provisória antes de continuar.", 403);
-  return user;
-}
 const canonical = (status: unknown) => ["validada", "aguardando_analise"].includes(String(status)) ? "aguardando_feedback" : String(status ?? "");
 const dateOnly = (value: unknown) => String(value ?? "").slice(0, 10);
 const brDate = (value: unknown) => { const date = dateOnly(value); return date ? date.split("-").reverse().join("/") : "-"; };
 const hours = (start: unknown, end: unknown) => !start || !end ? "" : Math.max(0, (Date.parse(String(end)) - Date.parse(String(start))) / 3600000).toFixed(2).replace(".", ",");
-const csvCell = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+
 
 function splitText(text: string, font: PDFFont, size: number, maxWidth: number) {
   const lines: string[] = [];
@@ -59,7 +55,7 @@ export async function gerarPdfNc(id: number) {
   writer.heading("Causas"); writer.line("Relacionadas", (nc.causas ?? []).join(" | ") || "Nenhuma");
   writer.heading("Feedback"); writer.line("Registro", nc.feedback);
   const admin = createAdminClient();
-  const { data: history } = await admin.from("historico_nc").select("status_novo, observacao, criado_em").eq("nc_id", id).order("criado_em");
+  const { eventos: history } = await obterTimeline(id);
   writer.heading("Andamento"); for(const event of history ?? []) writer.line(brDate(event.criado_em), `${canonical(event.status_novo)} - ${event.observacao || "Sem observacao"}`);
   const { data: evidence } = await admin.from("evidencias").select("nome_original, caminho_storage, criado_em").eq("nc_id", id).order("criado_em");
   writer.heading("Evidencias anexadas");

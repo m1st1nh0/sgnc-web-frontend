@@ -13,7 +13,7 @@ export function apiErrorResponse(error: unknown) {
   }
 
   console.error("[api] unhandled error", {
-    error: error instanceof Error ? error.message : String(error),
+    type: error instanceof Error ? error.name : "UnknownError",
   });
   return Response.json({ detail: "Erro interno do servidor." }, { status: 500 });
 }

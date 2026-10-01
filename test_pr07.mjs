@@ -47,7 +47,7 @@ const nav = readFileSync("src/components/navigation/BarraNavegacao.jsx", "utf8")
 
 assert.match(api, /export async function baixarArquivoApi/);
 assert.match(api, /credentials: "same-origin"/);
-assert.match(config, /API_BASE_URL = "\/api\/legacy"/);
+assert.match(config, /API_BASE_URL = "\/api"/);
 assert.match(api, /resposta\.blob\(\)/);
 assert.doesNotMatch(api, /sgnc_token.*URLSearchParams/);
 assert.match(service, /\/relatorios\/ncs\.csv/);
