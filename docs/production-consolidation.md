@@ -49,7 +49,7 @@ Testes locais: 26 verificações unitárias de sessão/autorização/privacidade
 
 ## Estado dos goals
 
-Goals 1–4 implementados e CI remoto aprovado; código de remediação de privilégios preparado, mas migração pendente de aplicação coordenada após a versão Next. Variáveis do Preview corrigidas pelo usuário e `/login` verificado HTTP 200. UAT autenticado e verificação visual continuam pendentes. Goal 5 tem cobertura unitária/HTTP automatizada e CI completo. Goals 6–7 (RC, release/cutover) permanecem bloqueados pelos gates acima e não devem avançar até aprovação.
+Goals 1–4 implementados; a migração de revogação direta continua pendente de aplicação coordenada após o cutover para as rotas Next. A branch inclui a correção de escopo e o drill-down local descritos abaixo. Build, typecheck, lint, regressões, unitários e HTTP passaram localmente; CI e Preview do commit mais recente estão em andamento. A exceção temporária de senha vazada foi aceita e registrada. Goals 6–7 (RC, release/cutover) continuam bloqueados por UAT funcional restante, revisão do Preview e coordenação da migração de banco.
 
 
 ## UAT autenticado do Preview (01/10/2026)
