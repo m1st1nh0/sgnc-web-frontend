@@ -34,6 +34,8 @@ jobs:
         run: node test_ux_operacao_indicadores.mjs
       - name: PR09 hybrid onboarding regression
         run: node test_pr09_onboarding.mjs
+      - name: PR10 hierarchical team access regression
+        run: node test_pr10_hierarchy.mjs
       - name: Playwright browser setup
         run: npx playwright install --with-deps chromium
       - name: Build
