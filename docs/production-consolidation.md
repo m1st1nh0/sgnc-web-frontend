@@ -49,7 +49,7 @@ Testes locais: 26 verificações unitárias de sessão/autorização/privacidade
 
 ## Estado dos goals
 
-Goals 1–4 implementados; a migração de revogação direta continua pendente de aplicação coordenada após o cutover para as rotas Next. A branch inclui a correção de escopo e o drill-down local descritos abaixo. Build, typecheck, lint, regressões, unitários e HTTP passaram localmente; CI e Preview do commit mais recente estão em andamento. A exceção temporária de senha vazada foi aceita e registrada. Goals 6–7 (RC, release/cutover) continuam bloqueados por UAT funcional restante, revisão do Preview e coordenação da migração de banco.
+Goals 1–4 implementados; a migração de revogação direta continua pendente de aplicação coordenada após o cutover para as rotas Next. A branch inclui a correção de escopo e o drill-down descritos abaixo. Build, typecheck, lint, regressões, unitários e HTTP passaram localmente; CI remoto passou e o Preview está READY. O smoke visual desktop/mobile passou no CI, mas ainda não cobre UAT autenticado do drill-down. A exceção temporária de senha vazada foi aceita e registrada. Goals 6–7 (RC, release/cutover) continuam bloqueados por UAT funcional restante, revisão do Preview e coordenação da migração de banco.
 
 
 ## UAT autenticado do Preview (01/10/2026)
@@ -61,12 +61,12 @@ Goals 1–4 implementados; a migração de revogação direta continua pendente 
 
 Correção de escopo implementada na branch e ampliada para respeitar também NCs abertas pelo próprio supervisor. O drill-down foi iniciado; após publicar no Preview, confirmar se painel e Insights reconciliam e se listas/modal apresentam os mesmos registros dos indicadores.
 
-## Drill-down de indicadores (implementação local)
+## Drill-down de indicadores (branch publicada; Preview READY)
 
 - Cards de backlog/volume e gráficos de etapa, aging, mês, causa, colaborador, setor e criticidade agora abrem um modal paginado com as NCs correspondentes e link para o detalhe.
 - O endpoint novo `/api/insights/ncs` exige papel administrador/supervisor e reaplica o escopo de leitura do servidor. As rotas de Insights e CSV usam também a regra de autoria da política.
 - Typecheck, lint (sem erros; warnings históricos), build, regressões, 23 testes unitários e 24 testes HTTP passaram localmente. `npm run test:e2e` não executou porque Chromium não está instalado neste ambiente; precisa de smoke visual no Preview/CI.
-- A implementação ainda está apenas na árvore de trabalho local; publicar na branch do PR #29, aguardar Preview e conferir por UAT que contagens e listas batem, especialmente barras empilhadas e períodos personalizados.
+- UAT autenticado do modal ainda precisa conferir que contagens e listas batem, especialmente barras empilhadas e períodos personalizados.
 
 ## Revisão adicional do mapa operacional
 
