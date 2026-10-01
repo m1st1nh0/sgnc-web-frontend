@@ -4,6 +4,7 @@ import "server-only";
 import { ApiError } from "@/lib/api/error";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
 
 const ACTIVE = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "validada", "aguardando_analise"]);
 const COUNTABLE = new Set(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "concluida"]);
@@ -54,8 +55,12 @@ export async function obterEstatisticasUsuario(userId: string) {
   const end = new Date();
   const endDate = end.toISOString().slice(0, 10);
   const startDate = startTwelveMonths(end);
-  const { data: ncs, error: ncsError } = await admin.from("nao_conformidades").select("id, data")
+  let ncQuery = admin.from("nao_conformidades").select("id, data")
     .eq("colaborador_id", userId).in("status", [...COUNTABLE]).gte("data", startDate).lte("data", endDate);
+  if (requester.papel !== "adm") {
+    ncQuery = ncQuery.or(`status.in.(${SUPERVISOR_VISIBLE_NC_STATUSES.join(",")}),aberto_por.eq.${requester.id}`);
+  }
+  const { data: ncs, error: ncsError } = await ncQuery;
   if (ncsError) throw new ApiError("Não foi possível carregar as estatísticas.", 500);
   const ids = (ncs ?? []).map((item) => item.id);
   const causes = await causeMap(ids);
@@ -68,10 +73,14 @@ export async function obterEstatisticasUsuario(userId: string) {
     if (key > item._last) { item._last = key; item.ultima_ocorrencia_numero = cause.ocorrencia_numero; item.ultima_ocorrencia_nc_id = ncId; }
     grouped.set(cause.causa_id, item);
   }
-  const { data: measures, error: measuresError } = await admin.from("medidas_disciplinares")
-    .select("id, causa_id, nc_id, ocorrencia_gatilho, tipo, status, dias_suspensao, data_aplicacao, observacao")
-    .eq("colaborador_id", userId).order("data_aplicacao", { ascending: false });
-  if (measuresError) throw new ApiError("Não foi possível carregar as medidas disciplinares.", 500);
+  let measures: Row[] = [];
+  if (ids.length) {
+    const { data, error: measuresError } = await admin.from("medidas_disciplinares")
+      .select("id, causa_id, nc_id, ocorrencia_gatilho, tipo, status, dias_suspensao, data_aplicacao, observacao")
+      .in("nc_id", ids).order("data_aplicacao", { ascending: false });
+    if (measuresError) throw new ApiError("Não foi possível carregar as medidas disciplinares.", 500);
+    measures = data ?? [];
+  }
   const result = [...grouped.values()].map((item) => {
     delete item._last;
     if (requester.papel === "adm" && item.ultima_ocorrencia_numero != null) item.medida_sugerida = suggestedMeasure(Number(item.ultima_ocorrencia_numero));
@@ -112,17 +121,27 @@ export async function obterInsights(startInput?: string | null, endInput?: strin
     teamIds = (data ?? []).map((item) => item.id);
   }
   let query = admin.from("nao_conformidades").select("id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, criado_em, atualizado_em, validado_em, feedback_aplicado_em, aceito_em, decidido_em, enviado_em");
-  if (teamIds) { if (!teamIds.length) query = query.in("colaborador_id", ["00000000-0000-0000-0000-000000000000"]); else query = query.in("colaborador_id", teamIds); }
+  if (teamIds) {
+    query = query.in("colaborador_id", teamIds.length ? teamIds : ["00000000-0000-0000-0000-000000000000"])
+      .in("status", [...SUPERVISOR_VISIBLE_NC_STATUSES]);
+  }
   const { data, error } = await query;
   if (error) throw new ApiError("Não foi possível carregar os insights.", 500);
   const all = (data ?? []) as Row[];
   const period = all.filter((nc) => { const date = isoDate(nc.data) || isoDate(nc.criado_em); return date && date >= start && date <= end; });
   const active = all.filter((nc) => ACTIVE.has(nc.status));
   const causes = await causeMap(all.map((nc) => nc.id));
-  let measuresQuery = admin.from("medidas_disciplinares").select("causa_id, colaborador_id, nc_id, ocorrencia_gatilho, tipo, status, data_aplicacao, criado_em");
-  if (teamIds) measuresQuery = measuresQuery.in("colaborador_id", teamIds.length ? teamIds : ["00000000-0000-0000-0000-000000000000"]);
-  const { data: measures, error: measureError } = await measuresQuery;
-  if (measureError) throw new ApiError("Não foi possível carregar os indicadores disciplinares.", 500);
+  let measures: Row[] = [];
+  if (teamIds === null || all.length) {
+    let measuresQuery = admin.from("medidas_disciplinares").select("causa_id, colaborador_id, nc_id, ocorrencia_gatilho, tipo, status, data_aplicacao, criado_em");
+    if (teamIds) {
+      measuresQuery = measuresQuery.in("colaborador_id", teamIds)
+        .in("nc_id", all.map((nc) => nc.id));
+    }
+    const { data, error: measureError } = await measuresQuery;
+    if (measureError) throw new ApiError("Não foi possível carregar os indicadores disciplinares.", 500);
+    measures = data ?? [];
+  }
   const periodStatus = new Map<string, number>(), backlogStatus = new Map<string, number>();
   period.forEach((nc) => inc(periodStatus, canonicalStatus(nc.status))); active.forEach((nc) => inc(backlogStatus, canonicalStatus(nc.status)));
   const inPeriod = (value: unknown) => { const date = isoDate(value); return !!date && date >= start && date <= end; };

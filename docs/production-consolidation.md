@@ -51,6 +51,16 @@ Testes locais: 26 verificações unitárias de sessão/autorização/privacidade
 
 Goals 1–4 implementados e CI remoto aprovado; código de remediação de privilégios preparado, mas migração pendente de aplicação coordenada após a versão Next. Variáveis do Preview corrigidas pelo usuário e `/login` verificado HTTP 200. UAT autenticado e verificação visual continuam pendentes. Goal 5 tem cobertura unitária/HTTP automatizada e CI completo. Goals 6–7 (RC, release/cutover) permanecem bloqueados pelos gates acima e não devem avançar até aprovação.
 
+
+## UAT autenticado do Preview (01/10/2026)
+
+- Supervisor: login concluído; painel da equipe, Insights, Relatórios e detalhe da NC abriram. O painel exibiu 2 NCs visíveis/1 ativa; Insights exibiu 4 registradas no período/3 no backlog ativo. A divergência pode decorrer de recortes diferentes, mas precisa ser reconciliada antes de liberar drill-down de indicadores. Os gráficos e cards do Insights não expõem ações de clique para listar as NCs correspondentes.
+- Funcionário: login concluído; painel pessoal carregou sem Insights/Relatórios no menu. Acesso direto a `/nc/9` (registro visível ao supervisor) mostrou “NC não encontrada”; navegação direta a `/insights` retornou ao painel.
+- Nenhum registro de NC foi criado, editado ou excluído durante o UAT. Ambos os perfis foram desconectados ao final.
+- Ainda faltam UAT com administrador, fluxos de abertura/feedback/aceite, PDF/CSV, anexos e verificação visual mobile.
+
+Correção preparada na branch: consultas administrativas de Insights, estatísticas e CSV agora aplicam o escopo de leitura do banco para supervisor/funcionário; relações disciplinares também são limitadas aos IDs de NC acessíveis. A reconciliação numérica deve ser confirmada no próximo Preview antes de implementar o drill-down.
+
 ## Revisão adicional do mapa operacional
 
 O anexo trouxe melhorias de desempenho, governança de causas, acompanhamento de NC, mensagens de erro, hierarquia/equipe, acesso ao histórico individual, período de relatório de 30 dias e controles de navegação. A revisão técnica, estado atual, critérios de aceite e ordem de implementação estão em [`backlog-melhorias-operacionais.md`](./backlog-melhorias-operacionais.md). O candidato mensurável para lentidão é a consulta sem limite de NCs/causas antes do filtro temporal em `obterInsights`; o módulo Relatórios é somente de exportação e usa 12 meses por padrão. As observações numeradas sobre navegação não identificam a tela/controle e precisam ser mapeadas em UAT antes de alterar a interface.

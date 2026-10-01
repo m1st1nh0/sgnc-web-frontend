@@ -8,6 +8,7 @@ import { obterEstatisticasUsuario, obterInsights } from "@/lib/analytics/service
 
 import { buscarNc, obterTimeline } from "@/lib/nc/service";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
 
 type Row = Record<string, any>;
 const A4: [number, number] = [595.28, 841.89];
@@ -78,12 +79,15 @@ export async function gerarPdfNc(id: number) {
 }
 
 export async function gerarPdfDossie(userId: string) {
+  const requester = await requireUser();
   const stats = await obterEstatisticasUsuario(userId) as Row;
   const writer = await pdfWriter("Dossie do Colaborador", stats.nome);
   writer.heading("Resumo"); writer.line("Nome", stats.nome); writer.line("Setor", stats.setor); writer.line("Periodo", "Ultimos 12 meses"); writer.line("Total de NCs", stats.total_nc_12m);
   writer.heading("Causas e recorrencia");
   for(const cause of stats.causas ?? []) { writer.line(String(cause.causa), `${cause.ocorrencias_12m} ocorrencia(s); ultima NC #${cause.ultima_ocorrencia_nc_id ?? "-"}; medida sugerida: ${cause.medida_sugerida ?? "nenhuma"}`); }
-  const admin=createAdminClient(); const {data:ncs}=await admin.from("nao_conformidades").select("id, data, status, criticidade, criado_em").eq("colaborador_id",userId).order("data",{ascending:false}).limit(12);
+  const admin=createAdminClient(); let historyQuery=admin.from("nao_conformidades").select("id, data, status, criticidade, criado_em").eq("colaborador_id",userId);
+  if(requester.papel!=="adm")historyQuery=historyQuery.or(`status.in.(${SUPERVISOR_VISIBLE_NC_STATUSES.join(",")}),aberto_por.eq.${requester.id}`);
+  const {data:ncs}=await historyQuery.order("data",{ascending:false}).limit(12);
   writer.heading("Historico recente"); for(const nc of ncs??[]) writer.line(`NC #${nc.id}`, `${brDate(nc.data||nc.criado_em)} | ${canonical(nc.status)} | ${nc.criticidade||"-"}`);
   writer.heading("Medidas disciplinares"); const measures=(stats.causas??[]).flatMap((cause:Row)=>cause.medidas??[]); if(!measures.length)writer.line("Registro","Nenhuma medida disciplinar registrada");for(const measure of measures)writer.line(measure.tipo,`ocorrencia ${measure.ocorrencia_gatilho}; ${brDate(measure.data_aplicacao)}`);
   return {bytes:await writer.doc.save(),filename:`sgnc-dossie-${userId}.pdf`};
@@ -98,7 +102,9 @@ async function reportScope() {
 
 export async function gerarCsvNcs(params: URLSearchParams) {
   const {admin,teamIds}=await reportScope(); const end=params.get("fim")||new Date().toISOString().slice(0,10);const endDate=new Date(`${end}T12:00:00Z`);endDate.setUTCFullYear(endDate.getUTCFullYear()-1);const start=params.get("inicio")||endDate.toISOString().slice(0,10);if(start>end)throw new ApiError("A data de início não pode ser posterior à data de fim.");
-  let query=admin.from("nao_conformidades").select("id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, descricao, criado_em, validado_em, feedback_aplicado_em, aceito_em");if(teamIds)query=query.in("colaborador_id",teamIds.length?teamIds:["00000000-0000-0000-0000-000000000000"]);const {data,error}=await query;if(error)throw new ApiError("Não foi possível gerar o CSV.",500);
+  let query=admin.from("nao_conformidades").select("id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, descricao, criado_em, validado_em, feedback_aplicado_em, aceito_em");
+  if(teamIds)query=query.in("colaborador_id",teamIds.length?teamIds:["00000000-0000-0000-0000-000000000000"]).in("status",[...SUPERVISOR_VISIBLE_NC_STATUSES]);
+  const {data,error}=await query;if(error)throw new ApiError("Não foi possível gerar o CSV.",500);
   const status=params.get("status")?canonical(params.get("status")):null,employee=params.get("colaborador_id"),sector=params.get("setor")?.trim().toLocaleLowerCase();const rows=(data??[]).filter(nc=>{const date=dateOnly(nc.data||nc.criado_em);return date>=start&&date<=end&&(!status||canonical(nc.status)===status)&&(!employee||nc.colaborador_id===employee)&&(!sector||String(nc.setor||"").trim().toLocaleLowerCase()===sector);}).sort((a,b)=>String(b.data||b.criado_em).localeCompare(String(a.data||a.criado_em))||b.id-a.id);
   const ids=rows.map(item=>item.id);const {data:relations}=ids.length?await admin.from("nc_causas").select("nc_id, ocorrencia_numero, causas(descricao)").in("nc_id",ids):{data:[]};const byNc=new Map<number,Row[]>();for(const relation of relations??[]){const joined=relation.causas as unknown as {descricao?:string}|null;byNc.set(relation.nc_id,[...(byNc.get(relation.nc_id)??[]),{descricao:joined?.descricao,ocorrencia_numero:relation.ocorrencia_numero}]);}
   const headers=["NC","Data","Status","Colaborador","Setor","Criticidade","Chamado","Causas","Ocorrencias por causa","Reincidente 12m","Descricao","Criado em","Validado em","Feedback aplicado em","Aceito em","Horas ate validacao","Horas validacao-feedback","Horas feedback-aceite","Horas ciclo total"];

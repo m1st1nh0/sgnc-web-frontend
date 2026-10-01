@@ -1,4 +1,5 @@
 import { filterSensitive } from "@/lib/permissions/nc";
+import { buildNcReadScopeFilter } from "@/lib/permissions/nc-scope";
 import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
@@ -159,9 +160,8 @@ export async function listarNcs() {
       if (teamError) throw new ApiError("Não foi possível carregar a equipe.", 500);
       teamIds = (team ?? []).map((member) => member.id);
     }
-    const scopes = [`aberto_por.eq.${user.id}`, `and(status.in.(aguardando_feedback,aguardando_analise,aguardando_aceite,concluida),colaborador_id.eq.${user.id})`];
-    if (teamIds.length) scopes.push(`and(status.in.(aguardando_feedback,aguardando_analise,aguardando_aceite,concluida),colaborador_id.in.(${teamIds.join(",")}))`);
-    query = query.or(scopes.join(","));
+    const scope = buildNcReadScopeFilter(user, teamIds);
+    if (scope) query = query.or(scope);
   }
   const { data, error } = await query.order("criado_em", { ascending: false });
   if (error) throw new ApiError("Não foi possível carregar as não conformidades.", 500);
@@ -180,9 +180,8 @@ export async function buscarNc(id: number) {
       if (teamError) throw new ApiError("Não foi possível carregar a equipe.", 500);
       teamIds = (team ?? []).map((member) => member.id);
     }
-    const scopes = [`aberto_por.eq.${user.id}`, `and(status.in.(aguardando_feedback,aguardando_analise,aguardando_aceite,concluida),colaborador_id.eq.${user.id})`];
-    if (teamIds.length) scopes.push(`and(status.in.(aguardando_feedback,aguardando_analise,aguardando_aceite,concluida),colaborador_id.in.(${teamIds.join(",")}))`);
-    query = query.or(scopes.join(","));
+    const scope = buildNcReadScopeFilter(user, teamIds);
+    if (scope) query = query.or(scope);
   }
   const { data, error } = await query.maybeSingle();
   if (error || !data) throw new ApiError("NC não encontrada.", 404);
