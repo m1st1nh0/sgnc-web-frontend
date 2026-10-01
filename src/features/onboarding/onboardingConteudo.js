@@ -34,7 +34,7 @@ const PAPEL = {
     chave: "apresentacao_papel_supervisor",
     titulo: "Sua jornada como supervisor",
     texto:
-      "Você acompanha apenas sua equipe direta, consulta dossiês e monitora os próximos passos das NCs dos seus colaboradores.",
+      "Você acompanha seus liderados, consulta NCs e dossiês individuais e monitora os próximos passos da sua equipe.",
     destaque: "Dados de pessoas fora da sua equipe não aparecem nas telas de gestão.",
   },
   funcionario: {
@@ -113,9 +113,9 @@ const CHECKLIST_ESPECIFICO = {
   supervisor: [
     {
       chave: "checklist_equipe",
-      titulo: "Conheça sua equipe direta",
+      titulo: "Conheça sua equipe",
       descricao: "Veja os colaboradores sob sua supervisão.",
-      destino: "/",
+      destino: "/equipe",
     },
     {
       chave: "checklist_acompanhar_nc",
@@ -126,7 +126,7 @@ const CHECKLIST_ESPECIFICO = {
     {
       chave: "checklist_insights",
       titulo: "Acesse os indicadores da equipe",
-      descricao: "Analise o desempenho somente da sua equipe direta.",
+      descricao: "Analise o desempenho dos liderados dentro da sua hierarquia.",
       destino: "/insights",
     },
   ],
@@ -175,7 +175,7 @@ export const DICAS_ONBOARDING = {
   },
   dica_equipe_direta: {
     titulo: "Escopo da equipe",
-    texto: "As prioridades e os indicadores exibidos aqui consideram somente seus subordinados diretos.",
+    texto: "As prioridades e os indicadores consideram seus liderados diretos e indiretos na hierarquia atual.",
   },
   dica_dossie_equipe: {
     titulo: "Dossiê da equipe",

@@ -8,7 +8,7 @@ import Nav from "react-bootstrap/Nav";
 
 import BarraNavegacao from "../../../components/navigation/BarraNavegacao.jsx";
 import { listarNcs } from "../client/ncService.js";
-import { listarOpcoesNc, listarUsuarios } from "../../users/client/usuarioService.js";
+import { listarEquipe, listarOpcoesNc } from "../../users/client/usuarioService.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
 import { criarVisaoHome, filtrarNcsPorCardHome } from "../client/homeUx.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
@@ -58,7 +58,7 @@ export default function HomePage() {
         await Promise.allSettled([
           listarNcs(),
           listarOpcoesNc(),
-          precisaEquipe ? listarUsuarios() : Promise.resolve([]),
+          precisaEquipe ? listarEquipe() : Promise.resolve([]),
         ]);
 
       if (resultadoNcs.status !== "fulfilled") {

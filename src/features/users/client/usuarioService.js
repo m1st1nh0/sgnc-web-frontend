@@ -4,6 +4,18 @@ export function listarUsuarios() {
   return chamarApi("/usuarios");
 }
 
+export function listarEquipe() {
+  return chamarApi("/equipe");
+}
+
+export function listarNcsDaPessoa(usuarioId, filtros = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filtros)) {
+    if (value !== null && value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return chamarApi(`/equipe/${encodeURIComponent(usuarioId)}/ncs${params.size ? `?${params}` : ""}`);
+}
+
 export function listarOpcoesNc() {
   return chamarApi("/usuarios/opcoes-nc");
 }

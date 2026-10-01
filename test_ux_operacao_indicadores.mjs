@@ -95,7 +95,7 @@ assert.doesNotMatch(insights, /<section id="[^"]+">\s*<section/);
 assert.match(home, /sg-home-destaque--/);
 assert.match(home, /Acessos importantes para você/);
 assert.match(homeUx, /Visão da Qualidade/);
-assert.match(homeUx, /Sua equipe direta/);
+assert.match(homeUx, /Sua equipe hierárquica/);
 assert.match(homeUx, /Seu próximo passo/);
 assert.match(homeUx, /Seus indicadores pessoais separados/);
 

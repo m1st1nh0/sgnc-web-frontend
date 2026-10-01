@@ -60,7 +60,7 @@ assert.match(service, /\/relatorios\/nc\/.*\.pdf/);
 
 assert.match(pagina, /baixarPdfResumo/);
 assert.match(pagina, /baixarCsvNcs/);
-assert.match(pagina, /listarUsuarios/);
+assert.match(pagina, /listarEquipe/);
 assert.match(pagina, /Visão na tela/);
 assert.match(pagina, /Últimos 30 dias/);
 assert.match(pagina, /NCs do período/);

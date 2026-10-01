@@ -102,7 +102,7 @@ assert.match(app, /requireRole\(\["adm", "supervisor"\]\)/);
 
 const home = readFileSync("src/features/nc/components/HomePage.jsx", "utf8");
 assert.match(home, /listarOpcoesNc/);
-assert.match(home, /listarUsuarios/);
+assert.match(home, /listarEquipe/);
 
 const detalhes = readFileSync("src/features/nc/components/DetalhesNcPage.jsx", "utf8");
 assert.match(detalhes, /Tentar novamente/);

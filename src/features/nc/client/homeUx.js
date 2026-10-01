@@ -82,7 +82,8 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
       atalhos: [
         { rotulo: "Analisar indicadores", descricao: "Backlog, tempos e reincidência", destino: "/insights", icone: "↗" },
         { rotulo: "Emitir relatórios", descricao: "PDF gerencial e CSV detalhado", destino: "/relatorios", icone: "⇩" },
-        { rotulo: "Gerenciar usuários", descricao: "Cadastros, papéis e equipes", destino: "/usuarios", icone: "◉" },
+        { rotulo: "Pessoas e NCs", descricao: "Consulte NCs e histórico individual", destino: "/equipe", icone: "◉" },
+        { rotulo: "Gerenciar usuários", descricao: "Cadastros, papéis e equipes", destino: "/usuarios", icone: "⚙" },
       ],
       tituloPrioridades: "Ações da Qualidade",
       vazioPrioridades: "Nenhuma ação administrativa pendente no momento.",
@@ -124,9 +125,9 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
 
     return {
       titulo: "Acompanhamento da Equipe",
-      subtitulo: "Acompanhe somente as NCs dos seus subordinados diretos.",
+      subtitulo: "Acompanhe as NCs da sua hierarquia de liderados.",
       destaque: {
-        rotulo: "Sua equipe direta",
+        rotulo: "Sua equipe hierárquica",
         titulo:
           prioridades.length > 0
             ? `${prioridades.length} NC(s) ativas em acompanhamento`
@@ -134,11 +135,12 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
         descricao:
           contar(equipe, "aguardando_aceite") > 0
             ? `${contar(equipe, "aguardando_aceite")} NC(s) aguardam confirmação após o feedback.`
-            : "Não há aceites pendentes na equipe direta.",
+            : "Não há aceites pendentes na sua equipe.",
         acao: { rotulo: "Ver equipe em acompanhamento", destino: "#prioridades" },
       },
       atalhos: [
-        { rotulo: "Insights da equipe", descricao: "Somente subordinados diretos", destino: "/insights", icone: "↗" },
+        { rotulo: "Ver pessoas e NCs", descricao: "Abra cada liderado para ver suas NCs e histórico", destino: "/equipe", icone: "◉" },
+        { rotulo: "Insights da equipe", descricao: "Indicadores da hierarquia autorizada", destino: "/insights", icone: "↗" },
         { rotulo: "Relatórios da equipe", descricao: "PDF e CSV dentro do seu escopo", destino: "/relatorios", icone: "⇩" },
         { rotulo: "Minhas estatísticas", descricao: "Seus indicadores pessoais separados", destino: `/usuarios/${usuario.id}/estatisticas`, icone: "≡" },
       ],
@@ -149,7 +151,7 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
         {
           rotulo: "NCs da equipe",
           valor: equipe.length,
-          descricao: "Registros visíveis da equipe direta",
+          descricao: "Registros visíveis da equipe hierárquica",
           cor: "azul",
         },
         {

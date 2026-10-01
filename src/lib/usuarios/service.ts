@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api/error";
 import type { UsuarioAutenticado } from "@/lib/auth/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { listarPessoasAbaixo } from "@/lib/permissions/team-scope";
 
 const PAPEIS = new Set(["adm", "supervisor", "funcionario"]);
 
@@ -56,6 +57,27 @@ function parseUsuario(data: UsuarioInput, creating: boolean) {
   };
 }
 
+async function validarResponsavel(supervisorId: string | null, usuarioId?: string) {
+  if (!supervisorId) return;
+  if (usuarioId && supervisorId === usuarioId) throw new ApiError("Um usuário não pode ser supervisor de si mesmo.");
+
+  const { data: supervisor, error } = await createAdminClient()
+    .from("usuarios")
+    .select("id, papel, ativo")
+    .eq("id", supervisorId)
+    .maybeSingle();
+  if (error || !supervisor || !supervisor.ativo || !["adm", "supervisor"].includes(supervisor.papel)) {
+    throw new ApiError("Selecione uma liderança ativa com perfil de administrador ou supervisor.");
+  }
+
+  if (usuarioId) {
+    const subordinados = await listarPessoasAbaixo(usuarioId);
+    if (subordinados.some((pessoa) => pessoa.id === supervisorId)) {
+      throw new ApiError("Essa alteração criaria um ciclo na hierarquia. Selecione uma liderança acima desta pessoa.");
+    }
+  }
+}
+
 export async function listarUsuarios() {
   await requireApiUser();
   const supabase = await createClient();
@@ -82,6 +104,7 @@ export async function listarOpcoesNc() {
 export async function criarUsuario(input: UsuarioInput) {
   await requireAdmin();
   const dados = parseUsuario(input, true);
+  await validarResponsavel(dados.supervisor_id);
   const admin = createAdminClient();
   const { data: auth, error: authError } = await admin.auth.admin.createUser({
     email: dados.email,
@@ -115,8 +138,20 @@ export async function criarUsuario(input: UsuarioInput) {
 export async function editarUsuario(usuarioId: string, input: UsuarioInput) {
   await requireAdmin();
   const dados = parseUsuario(input, false);
-  if (dados.supervisor_id === usuarioId) {
-    throw new ApiError("Um usuário não pode ser supervisor de si mesmo.");
+  await validarResponsavel(dados.supervisor_id, usuarioId);
+
+  const atual = await createAdminClient()
+    .from("usuarios")
+    .select("papel")
+    .eq("id", usuarioId)
+    .maybeSingle();
+  if (atual.error) throw new ApiError("Não foi possível validar o usuário.", 500);
+  if (!atual.data) throw new ApiError("Usuário não encontrado.", 404);
+  if (atual.data.papel === "supervisor" && dados.papel !== "supervisor") {
+    const subordinados = await listarPessoasAbaixo(usuarioId);
+    if (subordinados.length) {
+      throw new ApiError("Transfira ou reatribua os liderados antes de alterar o perfil desta liderança.");
+    }
   }
 
   const admin = createAdminClient();
@@ -135,6 +170,18 @@ export async function alterarAtivo(usuarioId: string, ativo: boolean) {
   const requester = await requireAdmin();
   if (!ativo && requester.id === usuarioId) {
     throw new ApiError("Você não pode desativar sua própria conta.");
+  }
+
+  if (!ativo) {
+    const { data: atual, error: userError } = await createAdminClient()
+      .from("usuarios")
+      .select("papel")
+      .eq("id", usuarioId)
+      .maybeSingle();
+    if (userError) throw new ApiError("Não foi possível validar o usuário.", 500);
+    if (atual?.papel === "supervisor" && (await listarPessoasAbaixo(usuarioId)).length) {
+      throw new ApiError("Reatribua os liderados antes de desativar esta liderança.");
+    }
   }
 
   const admin = createAdminClient();

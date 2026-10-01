@@ -84,7 +84,7 @@ export default function InsightsPage() {
       }
       setDados(resultado);
       await concluirEtapa("checklist_insights", "checklist", {
-        escopo: usuario?.papel === "supervisor" ? "equipe_direta" : "organizacao",
+        escopo: usuario?.papel === "supervisor" ? "equipe_hierarquica" : "organizacao",
       });
       setFiltros({
         inicio: resultado.periodo?.inicio || opcoes.inicio || "",

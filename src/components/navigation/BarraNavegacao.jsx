@@ -77,6 +77,11 @@ export default function BarraNavegacao() {
               Abrir NC
             </Nav.Link>
             {ehGestao && (
+              <Nav.Link as={Link} href="/equipe" onClick={aoNavegar} active={pathname === "/equipe" || pathname.startsWith("/equipe/")}>
+                Pessoas e NCs
+              </Nav.Link>
+            )}
+            {ehGestao && (
               <Nav.Link as={Link} href="/insights" onClick={aoNavegar} active={pathname === "/insights"}>
                 Insights
               </Nav.Link>

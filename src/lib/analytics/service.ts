@@ -4,7 +4,8 @@ import "server-only";
 import { ApiError } from "@/lib/api/error";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { buildNcReadScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
+import { buildNcReadScopeFilter, buildNcTeamScopeFilter } from "@/lib/permissions/nc-scope";
+import { listarPessoasAbaixo, validarAcessoPessoa } from "@/lib/permissions/team-scope";
 
 const ACTIVE = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "validada", "aguardando_analise"]);
 const COUNTABLE = new Set(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "concluida"]);
@@ -66,18 +67,19 @@ async function causeMap(ncIds: number[]) {
 
 export async function obterEstatisticasUsuario(userId: string) {
   const requester = await requireUser();
+  await validarAcessoPessoa(requester, userId);
   const admin = createAdminClient();
   const { data: employee, error } = await admin.from("usuarios").select("id, nome, setor, papel, supervisor_id").eq("id", userId).maybeSingle();
   if (error || !employee) throw new ApiError("Usuário não encontrado.", 404);
-  const allowed = requester.id === userId || requester.papel === "adm" || (requester.papel === "supervisor" && employee.supervisor_id === requester.id);
-  if (!allowed) throw new ApiError("Você não tem permissão para ver essas estatísticas.", 403);
   const end = new Date();
   const endDate = end.toISOString().slice(0, 10);
   const startDate = startTwelveMonths(end);
   let ncQuery = admin.from("nao_conformidades").select("id, data")
     .eq("colaborador_id", userId).in("status", [...COUNTABLE]).gte("data", startDate).lte("data", endDate);
   if (requester.papel !== "adm") {
-    ncQuery = ncQuery.or(`status.in.(${SUPERVISOR_VISIBLE_NC_STATUSES.join(",")}),aberto_por.eq.${requester.id}`);
+    const teamIds = requester.papel === "supervisor" ? (await listarPessoasAbaixo(requester.id)).map((person) => person.id) : [];
+    const scope = buildNcReadScopeFilter(requester, teamIds);
+    if (scope) ncQuery = ncQuery.or(scope);
   }
   const { data: ncs, error: ncsError } = await ncQuery;
   if (ncsError) throw new ApiError("Não foi possível carregar as estatísticas.", 500);
@@ -148,13 +150,14 @@ export async function obterInsights(
   const admin = createAdminClient();
   let teamIds: string[] | null = null;
   if (user.papel === "supervisor") {
-    const { data, error } = await admin.from("usuarios").select("id").eq("supervisor_id", user.id).eq("ativo", true);
-    if (error) throw new ApiError("Não foi possível carregar a equipe direta.", 500);
-    teamIds = (data ?? []).map((item) => item.id);
+    teamIds = (await listarPessoasAbaixo(user.id)).map((person) => person.id);
+  }
+  if (teamIds && collaboratorId && collaboratorId !== user.id && !teamIds.includes(collaboratorId)) {
+    throw new ApiError("O colaborador selecionado está fora da sua hierarquia.", 403);
   }
   let query = admin.from("nao_conformidades").select("id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, criado_em, atualizado_em, validado_em, feedback_aplicado_em, aceito_em, decidido_em, enviado_em");
   if (teamIds) {
-    const scope = buildNcReadScopeFilter(user, teamIds);
+    const scope = buildNcTeamScopeFilter(user, teamIds);
     if (scope) query = query.or(scope);
   }
   if (selectedStatuses) query = query.in("status", selectedStatuses);
@@ -201,5 +204,57 @@ export async function obterInsights(
   for(const measure of measures??[]){const date=isoDate(measure.data_aplicacao)||isoDate(measure.criado_em);if(!date||date<start||date>end)continue;inc(disciplineApplied,measure.tipo);const ci=measuresByCause.get(measure.causa_id)??{causa_id:measure.causa_id,causa:causeTotals.get(measure.causa_id)?.causa||`Causa ${measure.causa_id}`,advertencias:0,suspensoes:0,avaliacoes_justa_causa:0,total:0};ci.total++;if(measure.tipo==='advertencia')ci.advertencias++;else if(measure.tipo==='suspensao')ci.suspensoes++;else ci.avaliacoes_justa_causa++;measuresByCause.set(measure.causa_id,ci);}
   for(const nc of period.filter((item)=>COUNTABLE.has(item.status)))for(const cause of causes.get(nc.id)??[]){const suggestion=suggestedMeasure(Number(cause.ocorrencia_numero));if(!suggestion)continue;inc(disciplineSuggested,suggestion);const si=suggestions.get(cause.causa_id)??{causa_id:cause.causa_id,causa:cause.descricao||`Causa ${cause.causa_id}`,advertencias_sugeridas:0,suspensoes_sugeridas:0,avaliacoes_justa_causa_sugeridas:0,total_sugestoes:0};si.total_sugestoes++;if(suggestion==='advertencia')si.advertencias_sugeridas++;else if(suggestion==='suspensao')si.suspensoes_sugeridas++;else si.avaliacoes_justa_causa_sugeridas++;suggestions.set(cause.causa_id,si);}
   const criticities=new Map<string,number>();period.forEach((nc)=>inc(criticities,nc.criticidade||'Não informada'));
-  return {versao_contrato:'insights-v2',periodo:{inicio:start,fim:end},escopo:{tipo:teamIds===null?'global':'equipe_direta',quantidade_colaboradores:teamIds?.length??null},metodologia:{volume:'NCs cuja data efetiva de abertura está dentro do período.',backlog:'Fotografia atual de todas as NCs ativas do escopo, independentemente da data de abertura.',tempos:'Cada amostra pertence ao período pelo timestamp da transição final medida.',reincidencia:'Mesmo colaborador + mesma causa; snapshot ocorrencia_numero > 1 na janela móvel de 12 meses.'},kpis,tempos:durations,aged_backlog:{total:active.length,faixas:[...ranges].map(([faixa,quantidade])=>({faixa,quantidade})),por_status:STATUS_ORDER.slice(0,3).filter((status)=>count(backlogStatus,status)).map((status)=>({status,quantidade:count(backlogStatus,status)})),mais_antiga:oldest},ncs_por_mes:[...months.values()],ncs_por_status:STATUS_ORDER.filter((status)=>count(periodStatus,status)).map((status)=>({status,quantidade:count(periodStatus,status)})),ncs_por_colaborador:[...collaborators.values()].sort((a,b)=>b.total-a.total||b.backlog_ativo-a.backlog_ativo),ncs_por_setor:[...sectors.values()].sort((a,b)=>b.total-a.total||b.backlog_ativo-a.backlog_ativo),ncs_por_criticidade:[...criticities].map(([criticidade,total])=>({criticidade,total})).sort((a,b)=>b.total-a.total),ncs_por_causa:[...causeTotals.values()].map(({ocorrencias,reincidencias_12m,...rest})=>rest).sort((a,b)=>b.total-a.total),reincidencia_por_causa:[...causeTotals.values()].filter((item)=>item.ocorrencias).map((item)=>({causa_id:item.causa_id,causa:item.causa,ocorrencias:item.ocorrencias,reincidencias_12m:item.reincidencias_12m,reincidiu_apos_conclusao:item.reincidencias_12m})).sort((a,b)=>b.ocorrencias-a.ocorrencias),reincidencia_por_colaborador:[...collaborators.values()].filter((item)=>item.reincidencias_12m>0).map((item)=>({colaborador_id:item.colaborador_id,colaborador:item.colaborador,setor:item.setor,reincidencias_12m:item.reincidencias_12m,total_ncs:item.total})).sort((a,b)=>b.reincidencias_12m-a.reincidencias_12m),medidas_por_causa:[...measuresByCause.values()].sort((a,b)=>b.total-a.total),disciplina:{aplicadas:{advertencias:count(disciplineApplied,'advertencia'),suspensoes:count(disciplineApplied,'suspensao'),avaliacoes_justa_causa:count(disciplineApplied,'avaliar_justa_causa'),total:[...disciplineApplied.values()].reduce((a,b)=>a+b,0)},sugeridas:{advertencias:count(disciplineSuggested,'advertencia'),suspensoes:count(disciplineSuggested,'suspensao'),avaliacoes_justa_causa:count(disciplineSuggested,'avaliar_justa_causa'),total:[...disciplineSuggested.values()].reduce((a,b)=>a+b,0)}},sugestoes_disciplinares_por_causa:[...suggestions.values()].sort((a,b)=>b.total_sugestoes-a.total_sugestoes)};
+  return {
+    versao_contrato: "insights-v2",
+    periodo: { inicio: start, fim: end },
+    escopo: { tipo: teamIds === null ? "global" : "equipe_hierarquica", quantidade_colaboradores: teamIds?.length ?? null },
+    metodologia: {
+      volume: "NCs cuja data efetiva de abertura está dentro do período.",
+      backlog: "Fotografia atual de todas as NCs ativas do escopo, independentemente da data de abertura.",
+      tempos: "Cada amostra pertence ao período pelo timestamp da transição final medida.",
+      reincidencia: "Mesmo colaborador + mesma causa; snapshot ocorrencia_numero > 1 na janela móvel de 12 meses.",
+    },
+    kpis,
+    tempos: durations,
+    aged_backlog: {
+      total: active.length,
+      faixas: [...ranges].map(([faixa, quantidade]) => ({ faixa, quantidade })),
+      por_status: STATUS_ORDER.slice(0, 3)
+        .filter((status) => count(backlogStatus, status))
+        .map((status) => ({ status, quantidade: count(backlogStatus, status) })),
+      mais_antiga: oldest,
+    },
+    ncs_por_mes: [...months.values()],
+    ncs_por_status: STATUS_ORDER
+      .filter((status) => count(periodStatus, status))
+      .map((status) => ({ status, quantidade: count(periodStatus, status) })),
+    ncs_por_colaborador: [...collaborators.values()].sort((a, b) => b.total - a.total || b.backlog_ativo - a.backlog_ativo),
+    ncs_por_setor: [...sectors.values()].sort((a, b) => b.total - a.total || b.backlog_ativo - a.backlog_ativo),
+    ncs_por_criticidade: [...criticities].map(([criticidade, total]) => ({ criticidade, total })).sort((a, b) => b.total - a.total),
+    ncs_por_causa: [...causeTotals.values()].map(({ ocorrencias, reincidencias_12m, ...rest }) => rest).sort((a, b) => b.total - a.total),
+    reincidencia_por_causa: [...causeTotals.values()]
+      .filter((item) => item.ocorrencias)
+      .map((item) => ({ causa_id: item.causa_id, causa: item.causa, ocorrencias: item.ocorrencias, reincidencias_12m: item.reincidencias_12m, reincidiu_apos_conclusao: item.reincidencias_12m }))
+      .sort((a, b) => b.ocorrencias - a.ocorrencias),
+    reincidencia_por_colaborador: [...collaborators.values()]
+      .filter((item) => item.reincidencias_12m > 0)
+      .map((item) => ({ colaborador_id: item.colaborador_id, colaborador: item.colaborador, setor: item.setor, reincidencias_12m: item.reincidencias_12m, total_ncs: item.total }))
+      .sort((a, b) => b.reincidencias_12m - a.reincidencias_12m),
+    medidas_por_causa: [...measuresByCause.values()].sort((a, b) => b.total - a.total),
+    disciplina: {
+      aplicadas: {
+        advertencias: count(disciplineApplied, "advertencia"),
+        suspensoes: count(disciplineApplied, "suspensao"),
+        avaliacoes_justa_causa: count(disciplineApplied, "avaliar_justa_causa"),
+        total: [...disciplineApplied.values()].reduce((a, b) => a + b, 0),
+      },
+      sugeridas: {
+        advertencias: count(disciplineSuggested, "advertencia"),
+        suspensoes: count(disciplineSuggested, "suspensao"),
+        avaliacoes_justa_causa: count(disciplineSuggested, "avaliar_justa_causa"),
+        total: [...disciplineSuggested.values()].reduce((a, b) => a + b, 0),
+      },
+    },
+    sugestoes_disciplinares_por_causa: [...suggestions.values()].sort((a, b) => b.total_sugestoes - a.total_sugestoes),
+  };
 }

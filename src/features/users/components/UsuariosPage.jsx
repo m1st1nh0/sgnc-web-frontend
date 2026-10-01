@@ -169,6 +169,12 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
         </CampoSelecao>
       )}
 
+      {editando && usuario.supervisor_id !== (papel === "adm" ? null : supervisorId) && (
+        <p className="texto-xs texto-suave" role="status">
+          Ao salvar a transferência, o acesso ao histórico de NCs passa a seguir a liderança atual: a nova cadeia poderá consultar o histórico; a anterior deixa de vê-lo. A Qualidade mantém a visão organizacional.
+        </p>
+      )}
+
       {!editando && (
         <CampoTexto
           rotulo="Senha inicial (provisória)"

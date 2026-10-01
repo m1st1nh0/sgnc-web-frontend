@@ -26,12 +26,12 @@ assert.equal(
 assert.equal(descricaoTempo({ amostras: 0 }), "Sem amostras no período");
 
 assert.equal(
-  rotuloEscopo({ tipo: "equipe_direta", quantidade_colaboradores: 1 }),
-  "Equipe direta · 1 colaborador"
+  rotuloEscopo({ tipo: "equipe_hierarquica", quantidade_colaboradores: 1 }),
+  "Equipe hierárquica · 1 pessoa"
 );
 assert.equal(
-  rotuloEscopo({ tipo: "equipe_direta", quantidade_colaboradores: 3 }),
-  "Equipe direta · 3 colaboradores"
+  rotuloEscopo({ tipo: "equipe_hierarquica", quantidade_colaboradores: 3 }),
+  "Equipe hierárquica · 3 pessoas"
 );
 assert.equal(rotuloEscopo({ tipo: "global" }), "Visão global da organização");
 

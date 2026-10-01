@@ -83,3 +83,12 @@ O Supabase Advisor foi consultado em 01/10/2026. Reporta 14 índices sem uso e a
 ## Revisão adicional do mapa operacional
 
 O anexo trouxe melhorias de desempenho, governança de causas, acompanhamento de NC, mensagens de erro, hierarquia/equipe, acesso ao histórico individual, período de relatório de 30 dias e controles de navegação. A revisão técnica, estado atual, critérios de aceite e ordem de implementação estão em [`backlog-melhorias-operacionais.md`](./backlog-melhorias-operacionais.md). O candidato mensurável para lentidão é a consulta sem limite de NCs/causas antes do filtro temporal em `obterInsights`; o módulo Relatórios é somente de exportação e usa 12 meses por padrão. As observações numeradas sobre navegação não identificam a tela/controle e precisam ser mapeadas em UAT antes de alterar a interface.
+
+## Goal CEO — primeira frente executada: equipe hierárquica
+
+- `/equipe` lista liderados diretos e indiretos para supervisores e pessoas da organização para Qualidade, fora do cadastro de usuários. A página individual lista NCs paginadas com filtros por status/período e dá acesso aos indicadores/dossiê.
+- A API resolve a hierarquia no servidor, inclui histórico em todos os status e valida cada pessoa antes da consulta. Insights, relatório, exportação CSV e dossiê respeitam o mesmo escopo por cadeia atual.
+- O onboarding e a navegação agora apontam para a nova visão. A edição de usuários impede ciclos e informa a consequência de uma transferência. O histórico permanece associado à pessoa; o líder atual ganha acesso e o anterior perde. A regra não mantém snapshots de liderança passada.
+- Verificações locais nesta implementação: typecheck, regressões, lint (sem erros; três avisos existentes), build, 26 testes unitários e 28 testes HTTP aprovados. Os testes de rotas confirmam autenticação exigida, e o teste unitário cobre dois níveis, ciclo e pessoa fora do escopo.
+- O projeto Supabase compartilhado contém dados insuficientes para UAT real de dois níveis. O teste autenticado no Preview ainda precisa usar uma árvore de liderança representativa e comprovar transferência e escopo por pessoa.
+- Nenhuma alteração de banco foi aplicada. A migração já preparada para revogar leitura direta ainda depende do cutover coordenado da versão Next.js.

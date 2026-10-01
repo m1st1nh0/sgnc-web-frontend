@@ -2,7 +2,8 @@ import "server-only";
 
 import { ApiError } from "@/lib/api/error";
 import { requireApiUser as requireUser } from "@/lib/auth/api";
-import { buildNcReadScopeFilter } from "@/lib/permissions/nc-scope";
+import { buildNcTeamScopeFilter } from "@/lib/permissions/nc-scope";
+import { listarPessoasAbaixo } from "@/lib/permissions/team-scope";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type NcRow = {
@@ -64,9 +65,8 @@ export async function listarNcsDoIndicador(params: URLSearchParams) {
   const admin = createAdminClient();
   let teamIds: string[] | null = null;
   if (user.papel === "supervisor") {
-    const { data, error } = await admin.from("usuarios").select("id").eq("supervisor_id", user.id).eq("ativo", true);
-    if (error) throw new ApiError("Não foi possível validar o escopo da equipe.", 500);
-    teamIds = (data ?? []).map((row) => row.id);
+    const people = await listarPessoasAbaixo(user.id);
+    teamIds = people.map((person) => person.id);
   }
 
   let sinceField = "data";
@@ -134,6 +134,10 @@ export async function listarNcsDoIndicador(params: URLSearchParams) {
     throw new ApiError("Indicador inválido.", 422);
   }
 
+  if (teamIds !== null && employeeId && !teamIds.includes(employeeId)) {
+    throw new ApiError("Você não tem permissão para consultar este colaborador.", 403);
+  }
+
   let matchingCauseIds: number[] | null = null;
   let occurrenceFilter: "recurrent" | "initial" | null = kind === "mensal" && monthSeries === "reincidentes" ? "recurrent" : null;
   if (causeId !== null) {
@@ -167,7 +171,7 @@ export async function listarNcsDoIndicador(params: URLSearchParams) {
     { count: "exact" },
   );
   if (teamIds !== null) {
-    const scope = buildNcReadScopeFilter(user, teamIds);
+    const scope = buildNcTeamScopeFilter(user, teamIds);
     if (scope) query = query.or(scope);
   }
   if (statuses) query = statuses.length ? query.in("status", [...new Set(statuses)]) : query.in("id", [-1]);

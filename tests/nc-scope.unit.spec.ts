@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { buildNcReadScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "../src/lib/permissions/nc-scope";
+import { buildNcReadScopeFilter, buildNcTeamScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "../src/lib/permissions/nc-scope";
 
 const supervisor = {
   id: "supervisor-id",
@@ -11,17 +11,22 @@ const supervisor = {
   senha_provisoria: false,
 };
 
-test("supervisor read scope matches the authenticated database status allowlist", () => {
+test("supervisor read scope includes the full history of their current hierarchy", () => {
   expect(SUPERVISOR_VISIBLE_NC_STATUSES).toEqual([
+    "aberta",
     "aguardando_feedback",
     "aguardando_analise",
+    "validada",
     "aguardando_aceite",
     "concluida",
+    "invalidada",
   ]);
   expect(buildNcReadScopeFilter(supervisor, ["colaborador-a", "colaborador-b"])).toBe(
-    "aberto_por.eq.supervisor-id,and(status.in.(aguardando_feedback,aguardando_analise,aguardando_aceite,concluida),colaborador_id.in.(supervisor-id,colaborador-a,colaborador-b))",
+    "aberto_por.eq.supervisor-id,and(status.in.(aberta,aguardando_feedback,aguardando_analise,validada,aguardando_aceite,concluida,invalidada),colaborador_id.in.(supervisor-id,colaborador-a,colaborador-b))",
   );
   expect(buildNcReadScopeFilter({ ...supervisor, papel: "adm" }, [])).toBeNull();
+  expect(buildNcTeamScopeFilter(supervisor, ["colaborador-a"])).toBe("colaborador_id.in.(supervisor-id,colaborador-a)");
+  expect(buildNcTeamScopeFilter({ ...supervisor, papel: "adm" }, [])).toBeNull();
 });
 
 test("privileged analytics and exports enforce the same supervisor scope", () => {
@@ -29,9 +34,9 @@ test("privileged analytics and exports enforce the same supervisor scope", () =>
   const reports = readFileSync("src/lib/reports/service.ts", "utf8");
   const drilldown = readFileSync("src/lib/analytics/drilldown.ts", "utf8");
   const ncService = readFileSync("src/lib/nc/service.ts", "utf8");
-  expect(analytics).toContain("buildNcReadScopeFilter(user, teamIds)");
-  expect(reports).toContain("buildNcReadScopeFilter(requester,teamIds)");
-  expect(drilldown).toContain("buildNcReadScopeFilter(user, teamIds)");
+  expect(analytics).toContain("buildNcTeamScopeFilter(user, teamIds)");
+  expect(reports).toContain("buildNcTeamScopeFilter(requester,teamIds)");
+  expect(drilldown).toContain("buildNcTeamScopeFilter(user, teamIds)");
   expect(analytics).toContain('.in("nc_id", all.map((nc) => nc.id))');
   expect(ncService).toContain("buildNcReadScopeFilter(user, teamIds)");
 });

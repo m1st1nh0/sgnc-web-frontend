@@ -58,9 +58,9 @@ export function descricaoTempo(resumo) {
 }
 
 export function rotuloEscopo(escopo) {
-  if (escopo?.tipo === "equipe_direta") {
+  if (["equipe_direta", "equipe_hierarquica"].includes(escopo?.tipo)) {
     const quantidade = escopo.quantidade_colaboradores ?? 0;
-    return `Equipe direta · ${quantidade} colaborador${quantidade === 1 ? "" : "es"}`;
+    return `Equipe hierárquica · ${quantidade} pessoa${quantidade === 1 ? "" : "s"}`;
   }
   return "Visão global da organização";
 }

@@ -21,7 +21,7 @@ import GraficoLinha from "../../../components/graficos/GraficoLinha.jsx";
 import { CORES_GRAFICO } from "../../../components/graficos/cores.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { ErroApi } from "../../../lib/api/client/api.js";
-import { listarUsuarios } from "../../users/client/usuarioService.js";
+import { listarEquipe, listarOpcoesNc } from "../../users/client/usuarioService.js";
 import { buscarInsights, buscarNcsDoIndicador } from "../../insights/client/insightsService.js";
 import ModalNcsIndicador from "../../insights/components/ModalNcsIndicador.jsx";
 import {
@@ -90,11 +90,11 @@ export default function RelatoriosPage() {
 
   useEffect(() => {
     let ativo = true;
-    listarUsuarios()
+    (usuario?.papel === "supervisor" ? listarEquipe() : listarOpcoesNc())
       .then((lista) => { if (ativo) setPessoas(lista); })
       .catch((e) => { if (ativo) setErro(e instanceof ErroApi ? e.message : "Não foi possível carregar as opções de filtro."); });
     return () => { ativo = false; };
-  }, []);
+  }, [usuario?.papel]);
 
   useEffect(() => {
     let ativo = true;
@@ -153,7 +153,7 @@ export default function RelatoriosPage() {
   const mesesData = useMemo(() => dados?.ncs_por_mes || [], [dados]);
   const kpis = dados?.kpis || {};
   const totalPaginas = Math.max(1, Math.ceil((ncs.total || 0) / (ncs.por_pagina || 25)));
-  const escopo = usuario?.papel === "supervisor" ? "Sua equipe direta" : "Toda a organização";
+  const escopo = usuario?.papel === "supervisor" ? "Sua equipe hierárquica" : "Toda a organização";
 
   function alterar(chave, valor) {
     setFiltros((atual) => ({ ...atual, [chave]: valor }));

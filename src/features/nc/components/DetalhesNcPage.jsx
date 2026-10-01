@@ -247,7 +247,7 @@ export default function DetalhesNcPage() {
   const ehColaboradorDaNc = nc && usuario?.id === nc.colaborador_id;
   const ehResponsavel = nc && usuario?.id === nc.responsavel_id;
 
-  // O backend/RLS já limita o supervisor às NCs dos subordinados diretos.
+  // O backend limita o supervisor à hierarquia autorizada de liderados.
   const podeVerDetalhesCompletos =
     ehAdm || ehSupervisor || ehColaboradorDaNc || ehResponsavel;
   const podeVerResumo = ehAutor && !podeVerDetalhesCompletos;
