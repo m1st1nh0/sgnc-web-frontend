@@ -32,6 +32,18 @@ function startTwelveMonths(end: Date) {
   return value.toISOString().slice(0, 10);
 }
 
+function nextDate(value: string) {
+  const date = new Date(`${value}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function isIsoDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
 async function causeMap(ncIds: number[]) {
   if (!ncIds.length) return new Map<number, Row[]>();
   const { data, error } = await createAdminClient().from("nc_causas")
@@ -112,6 +124,7 @@ export async function obterInsights(startInput?: string | null, endInput?: strin
   if (!["adm", "supervisor"].includes(user.papel)) throw new ApiError("Acesso restrito a administradores e supervisores.", 403);
   const end = endInput || new Date().toISOString().slice(0, 10);
   const start = startInput || startTwelveMonths(new Date(`${end}T12:00:00Z`));
+  if (!isIsoDate(start) || !isIsoDate(end)) throw new ApiError("O período informado é inválido.");
   if (start > end) throw new ApiError("A data de início não pode ser posterior à data de fim.");
   const admin = createAdminClient();
   let teamIds: string[] | null = null;
@@ -130,13 +143,23 @@ export async function obterInsights(startInput?: string | null, endInput?: strin
   const all = (data ?? []) as Row[];
   const period = all.filter((nc) => { const date = isoDate(nc.data) || isoDate(nc.criado_em); return date && date >= start && date <= end; });
   const active = all.filter((nc) => ACTIVE.has(nc.status));
-  const causes = await causeMap(all.map((nc) => nc.id));
+  // Cause details are only used in period-based charts and suggestions. Avoid
+  // fetching cause rows for every historical NC just to discard them in JS.
+  const periodIds = period.map((nc) => nc.id);
+  const causes = await causeMap(periodIds);
   let measures: Row[] = [];
   if (teamIds === null || all.length) {
     let measuresQuery = admin.from("medidas_disciplinares").select("causa_id, colaborador_id, nc_id, ocorrencia_gatilho, tipo, status, data_aplicacao, criado_em");
     if (teamIds) {
       measuresQuery = measuresQuery.in("nc_id", all.map((nc) => nc.id));
     }
+    // The calculations below discard measures outside the selected window.
+    // Push that window into Postgres, including the same created_at fallback
+    // used when data_aplicacao is null.
+    const next = nextDate(end);
+    measuresQuery = measuresQuery.or(
+      `and(data_aplicacao.gte.${start},data_aplicacao.lt.${next}),and(data_aplicacao.is.null,criado_em.gte.${start}T00:00:00Z,criado_em.lt.${next}T00:00:00Z)`,
+    );
     const { data, error: measureError } = await measuresQuery;
     if (measureError) throw new ApiError("Não foi possível carregar os indicadores disciplinares.", 500);
     measures = data ?? [];

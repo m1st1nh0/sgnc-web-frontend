@@ -49,7 +49,7 @@ Testes locais: 26 verificações unitárias de sessão/autorização/privacidade
 
 ## Estado dos goals
 
-Goals 1–4 implementados; a migração de revogação direta continua pendente de aplicação coordenada após o cutover para as rotas Next. A branch inclui a correção de escopo e o drill-down descritos abaixo. Build, typecheck, lint, regressões, unitários e HTTP passaram localmente; CI remoto passou e o Preview está READY. O smoke visual desktop/mobile passou no CI, mas ainda não cobre UAT autenticado do drill-down. A exceção temporária de senha vazada foi aceita e registrada. Goals 6–7 (RC, release/cutover) continuam bloqueados por UAT funcional restante, revisão do Preview e coordenação da migração de banco.
+Goals 1–4 implementados; a migração de revogação direta continua pendente de aplicação coordenada após o cutover para as rotas Next. A branch inclui a correção de escopo e o drill-down descritos abaixo. Build, typecheck, lint, regressões, unitários e HTTP passaram localmente; CI remoto passou e o Preview está READY. O responsável confirmou em 01/10/2026 que o Preview atualizado está OK. O smoke desktop/mobile automatizado passou no CI; cobertura manual detalhada de todos os fluxos segue listada como gate de release. A exceção temporária de senha vazada foi aceita e registrada. Goals 6–7 (RC, release/cutover) ainda dependem da conclusão do checklist funcional remanescente e da coordenação da migração de banco.
 
 
 ## UAT autenticado do Preview (01/10/2026)
@@ -66,7 +66,15 @@ Correção de escopo implementada na branch e ampliada para respeitar também NC
 - Cards de backlog/volume e gráficos de etapa, aging, mês, causa, colaborador, setor e criticidade agora abrem um modal paginado com as NCs correspondentes e link para o detalhe.
 - O endpoint novo `/api/insights/ncs` exige papel administrador/supervisor e reaplica o escopo de leitura do servidor. As rotas de Insights e CSV usam também a regra de autoria da política.
 - Typecheck, lint (sem erros; warnings históricos), build, regressões, 23 testes unitários e 24 testes HTTP passaram localmente. `npm run test:e2e` não executou porque Chromium não está instalado neste ambiente; precisa de smoke visual no Preview/CI.
-- UAT autenticado do modal ainda precisa conferir que contagens e listas batem, especialmente barras empilhadas e períodos personalizados.
+- No registro inicial, a conferência autenticada do modal ainda estava pendente; essa pendência foi encerrada pela confirmação posterior do responsável, registrada a seguir.
+
+## Confirmação posterior do Preview (01/10/2026)
+
+O responsável validou o Preview atualizado e confirmou que está tudo OK, liberando a conclusão do gate de drill-down. O backlog foi atualizado para registrar a validação. A confirmação não substitui os fluxos que ainda não foram individualmente registrados (administrador, abertura/edição, feedback/aceite, transferência, PDF/CSV, anexos e smoke mobile manual).
+
+## Próxima execução — desempenho de Insights
+
+O Supabase Advisor foi consultado em 01/10/2026. Reporta 14 índices sem uso e a proteção contra senhas vazadas desativada; não foi criado nem removido índice sem plano de execução. Foi iniciada otimização de baixo risco em `obterInsights`: restringe a busca de causas às NCs do período e aplica a janela temporal às medidas no banco. Ainda falta medir `EXPLAIN (ANALYZE, BUFFERS)` e p50/p95 em ambiente seguro; a consulta das NCs e a montagem do backlog continuam lendo o escopo completo. A exceção de proteção de senha segue registrada.
 
 ## Revisão adicional do mapa operacional
 
