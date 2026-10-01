@@ -159,14 +159,21 @@ export default function AbrirNcPage() {
 
       if (arquivosEvidencias.length > 0) {
         setEtapaEnvio(`Enviando ${arquivosEvidencias.length} evidência(s)...`);
-        await Promise.all(
+        const resultados = await Promise.allSettled(
           arquivosEvidencias.map((arquivo) => anexarEvidencia(nc.id, arquivo))
         );
+        const falhas = resultados.filter((resultado) => resultado.status === "rejected").length;
+        if (falhas > 0) {
+          sessionStorage.setItem(
+            `sgnc-nc-${nc.id}-upload-warning`,
+            `${falhas} de ${arquivosEvidencias.length} evidência(s) não puderam ser enviadas. A NC foi criada; você pode tentar anexá-las novamente na seção Evidências.`
+          );
+        }
       }
       router.push(`/nc/${nc.id}`);
     } catch (e) {
       setErro(
-        e instanceof ErroApi ? e.message : "Não foi possível abrir a Não Conformidade."
+        e instanceof ErroApi ? e.message : "Não foi possível salvar a Não Conformidade. Seus dados continuam no formulário; tente novamente."
       );
     } finally {
       setEnviando(false);

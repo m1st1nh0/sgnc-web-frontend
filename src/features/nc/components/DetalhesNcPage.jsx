@@ -79,6 +79,18 @@ export default function DetalhesNcPage() {
   const [excluindoEvidencia, setExcluindoEvidencia] = useState(false);
   const [evidenciaVisualizada, setEvidenciaVisualizada] = useState(null);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const [avisoUploadInicial, setAvisoUploadInicial] = useState("");
+
+  useEffect(() => {
+    if (!id) return;
+    const chave = `sgnc-nc-${id}-upload-warning`;
+    const aviso = sessionStorage.getItem(chave);
+    if (aviso) {
+      sessionStorage.removeItem(chave);
+      const timer = window.setTimeout(() => setAvisoUploadInicial(aviso), 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [id]);
 
   async function baixarRelatorioPdf() {
     if (!id || baixandoPdf) return;
@@ -255,6 +267,15 @@ export default function DetalhesNcPage() {
   const podeExcluirNc = ehAdm;
   const aguardandoFeedback =
     nc && ["aguardando_feedback", "aguardando_analise"].includes(nc.status);
+  const proximaAcao = nc ? {
+    aberta: ["Qualidade", "Avaliar a ocorrência e definir se ela segue para análise."],
+    aguardando_feedback: ["Qualidade", "Registrar o feedback e o combinado com o colaborador."],
+    aguardando_analise: ["Qualidade", "Registrar o feedback e o combinado com o colaborador."],
+    aguardando_aceite: [nc.colaborador || "Colaborador analisado", "Ler o feedback e registrar o aceite formal."],
+    validada: ["Qualidade", "A análise foi validada; acompanhe o próximo encaminhamento."],
+    concluida: ["Concluída", "Não há ação pendente nesta não conformidade."],
+    invalidada: ["Encerrada", nc.motivo_invalidacao || "A ocorrência foi invalidada."],
+  }[nc.status] : null;
 
   return (
     <div>
@@ -309,6 +330,11 @@ export default function DetalhesNcPage() {
         <Link href="/" className="sg-voltar mb-3 d-inline-flex">
           &larr; Voltar para a lista
         </Link>
+        {avisoUploadInicial && (
+          <div className="sg-alerta sg-alerta--atencao mb-3" role="status">
+            {avisoUploadInicial}
+          </div>
+        )}
         {carregando && (
           <EstadoCarregamento mensagem="Carregando não conformidade..." />
         )}
@@ -316,6 +342,12 @@ export default function DetalhesNcPage() {
 
         {nc && (
           <div className="d-flex flex-column gap-3">
+            {proximaAcao && (
+              <section className="sg-alerta sg-alerta--info mb-0" aria-label="Próxima ação">
+                <strong>Próxima ação: {proximaAcao[0]}</strong>
+                <div>{proximaAcao[1]}</div>
+              </section>
+            )}
             <div className="sg-card">
               <div className="sg-card-body p-4">
                 <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
