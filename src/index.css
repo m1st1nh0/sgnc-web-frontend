@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 12483)
+Total output lines: 2051
+
 /* ═══════════════════════════════════════════════════════════════
    SGNC — Design System Global
    Tokens de cores, espaçamento, bordas, sombras e tipografia.
@@ -919,70 +922,7 @@ a:hover {
 }
 
 .sg-nc-card__titulo {
-  font-size: var(--texto-base);
-  font-weight: 600;
-  color: var(--texto-primario);
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sg-nc-card__meta {
-  font-size: var(--texto-xs);
-  color: var(--texto-suave);
-  margin: var(--espaco-1) 0 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--espaco-2) var(--espaco-4);
-}
-
-.sg-nc-card__secundario {
-  display: flex;
-  align-items: center;
-  gap: var(--espaco-3);
-  flex-shrink: 0;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Conteúdo principal
-   ═══════════════════════════════════════════════════════════════ */
-
-.sg-container {
-  width: 100%;
-  max-width: var(--largura-container);
-  margin: 0 auto;
-  padding-left: var(--espaco-4);
-  padding-right: var(--espaco-4);
-  padding-top: var(--espaco-5);
-  padding-bottom: var(--espaco-7);
-  flex: 1;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Formulários — seções
-   ═══════════════════════════════════════════════════════════════ */
-
-.sg-secao-form {
-  padding: var(--espaco-5);
-  border-bottom: 1px solid var(--borda);
-}
-
-.sg-secao-form:last-child {
-  border-bottom: none;
-}
-
-.sg-secao-form__titulo {
-  font-size: var(--texto-base);
-  font-weight: 600;
-  color: var(--texto-primario);
-  margin: 0 0 var(--espaco-1);
-}
-
-.sg-secao-form__descricao {
-  font-size: var(--texto-sm);
-  color: var(--texto-secundario);
-  margin: 0 0 var(--espaco-4);
+  font-…483 tokens truncated…espaco-4);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1634,7 +1574,7 @@ object {
 }
 
 .sg-leitura-executiva p,
-.sg-leitura-executiva article span {
+.sg-leitura-executiva__item span {
   color: rgb(255 255 255 / 0.78);
   font-size: var(--texto-sm);
 }
@@ -1652,14 +1592,47 @@ object {
   gap: var(--espaco-3);
 }
 
-.sg-leitura-executiva article {
+.sg-leitura-executiva__item {
   display: grid;
   align-content: start;
   gap: var(--espaco-1);
   padding: var(--espaco-3);
+  color: #fff;
+  text-align: left;
   border: 1px solid rgb(255 255 255 / 0.18);
   border-radius: var(--raio-md);
   background: rgb(255 255 255 / 0.08);
+  font: inherit;
+  transition: background-color var(--transicao-rapida), border-color var(--transicao-rapida), transform var(--transicao-rapida);
+}
+
+.sg-leitura-executiva__item:not(:disabled) {
+  cursor: pointer;
+}
+
+.sg-leitura-executiva__item:not(:disabled):hover,
+.sg-leitura-executiva__item:not(:disabled):focus-visible {
+  border-color: rgb(255 255 255 / 0.7);
+  background: rgb(255 255 255 / 0.16);
+  transform: translateY(-1px);
+}
+
+.sg-leitura-executiva__item:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.sg-leitura-executiva__item:disabled {
+  cursor: default;
+  opacity: 0.82;
+}
+
+.sg-leitura-executiva__acao {
+  width: fit-content;
+  margin-top: var(--espaco-1);
+  color: #fff !important;
+  font-weight: 700;
+  text-decoration: underline;
 }
 
 @media (max-width: 767.98px) {

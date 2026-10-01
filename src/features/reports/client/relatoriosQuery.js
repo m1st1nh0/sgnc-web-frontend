@@ -4,16 +4,14 @@ function adicionar(params, chave, valor) {
   }
 }
 
-export function montarQueryRelatorio(filtros = {}, { detalhado = false } = {}) {
+export function montarQueryRelatorio(filtros = {}) {
   const params = new URLSearchParams();
   adicionar(params, "inicio", filtros.inicio);
   adicionar(params, "fim", filtros.fim);
 
-  if (detalhado) {
-    adicionar(params, "status", filtros.status);
-    adicionar(params, "colaborador_id", filtros.colaboradorId);
-    adicionar(params, "setor", filtros.setor);
-  }
+  adicionar(params, "status", filtros.status);
+  adicionar(params, "colaborador_id", filtros.colaboradorId);
+  adicionar(params, "setor", filtros.setor);
 
   const query = params.toString();
   return query ? `?${query}` : "";

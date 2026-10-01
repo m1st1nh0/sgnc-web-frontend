@@ -28,6 +28,13 @@ const COUNTABLE = ["validada", "aguardando_analise", "aguardando_feedback", "agu
 const STATUS_ALIASES: Record<string, string[]> = {
   aguardando_feedback: ["aguardando_feedback", "aguardando_analise", "validada"],
 };
+const FILTER_STATUS_ALIASES: Record<string, string[]> = {
+  aberta: ["aberta"],
+  aguardando_feedback: ["aguardando_feedback", "aguardando_analise", "validada"],
+  aguardando_aceite: ["aguardando_aceite"],
+  concluida: ["concluida"],
+  invalidada: ["invalidada"],
+};
 const DAY = 86_400_000;
 
 function requiredDate(params: URLSearchParams, key: string) {
@@ -49,6 +56,11 @@ export async function listarNcsDoIndicador(params: URLSearchParams) {
 
   const page = Math.max(0, Math.min(10000, Number(params.get("pagina") ?? 0) || 0));
   const pageSize = 25;
+  const selectedFilterStatus = params.get("filtro_status");
+  const selectedFilterStatuses = selectedFilterStatus ? FILTER_STATUS_ALIASES[selectedFilterStatus] : null;
+  if (selectedFilterStatus && !selectedFilterStatuses) throw new ApiError("O status selecionado é inválido.", 422);
+  const filterEmployeeId = params.get("filtro_colaborador_id")?.trim() || null;
+  const filterSector = params.get("filtro_setor")?.trim() || null;
   const admin = createAdminClient();
   let teamIds: string[] | null = null;
   if (user.papel === "supervisor") {
@@ -65,6 +77,7 @@ export async function listarNcsDoIndicador(params: URLSearchParams) {
   let sector: string | null = null;
   let criticality: string | null = null;
   let monthSeries: string | null = null;
+  let recordId: number | null = null;
 
   if (kind === "backlog") {
     statuses = params.get("status") ? (STATUS_ALIASES[params.get("status")!] ?? [params.get("status")!]) : ACTIVE;
@@ -82,6 +95,10 @@ export async function listarNcsDoIndicador(params: URLSearchParams) {
     agingBucket = params.get("faixa");
     if (!["0-1d", "2-3d", "4-7d", "8+d"].includes(agingBucket ?? "")) throw new ApiError("Faixa de aging inválida.", 422);
     statuses = ACTIVE;
+    sinceField = "";
+  } else if (kind === "record") {
+    recordId = Number(params.get("nc_id"));
+    if (!Number.isSafeInteger(recordId) || recordId < 1) throw new ApiError("NC inválida.", 422);
     sinceField = "";
   } else if (kind === "dimension") {
     const dimension = params.get("dimensao");
@@ -141,6 +158,10 @@ export async function listarNcsDoIndicador(params: URLSearchParams) {
     matchingCauseIds = [...new Set((data ?? []).map((row) => Number(row.nc_id)))];
   }
 
+  if (selectedFilterStatuses) {
+    statuses = statuses ? statuses.filter((status) => selectedFilterStatuses.includes(status)) : selectedFilterStatuses;
+  }
+
   let query = admin.from("nao_conformidades").select(
     "id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, criado_em, atualizado_em, validado_em, feedback_aplicado_em, aceito_em, decidido_em, enviado_em",
     { count: "exact" },
@@ -151,9 +172,12 @@ export async function listarNcsDoIndicador(params: URLSearchParams) {
   }
   if (statuses) query = statuses.length ? query.in("status", [...new Set(statuses)]) : query.in("id", [-1]);
   if (sinceField) query = query.gte(sinceField, inicio).lte(sinceField, fim);
+  if (recordId !== null) query = query.eq("id", recordId);
   if (employeeId) query = query.eq("colaborador_id", employeeId);
   if (sector) query = query.eq("setor", sector);
   if (criticality) query = query.eq("criticidade", criticality);
+  if (filterEmployeeId) query = query.eq("colaborador_id", filterEmployeeId);
+  if (filterSector) query = query.eq("setor", filterSector);
   if (matchingCauseIds) query = matchingCauseIds.length ? query.in("id", matchingCauseIds) : query.in("id", [-1]);
 
   // Aging buckets are small operational backlogs; their age is derived from the current

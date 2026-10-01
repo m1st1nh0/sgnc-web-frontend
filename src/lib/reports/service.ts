@@ -114,7 +114,7 @@ export async function gerarCsvNcs(params: URLSearchParams) {
 }
 
 export async function gerarPdfResumo(params: URLSearchParams) {
-  const insights=await obterInsights(params.get("inicio"),params.get("fim")) as Row;const writer=await pdfWriter("Resumo Gerencial",`${insights.periodo.inicio} a ${insights.periodo.fim}`);const k=insights.kpis;
+  const insights=await obterInsights(params.get("inicio"),params.get("fim"),{status:params.get("status"),colaboradorId:params.get("colaborador_id"),setor:params.get("setor")}) as Row;const writer=await pdfWriter("Resumo Gerencial",`${insights.periodo.inicio} a ${insights.periodo.fim}`);const k=insights.kpis;
   writer.heading("Indicadores");writer.line("Total de NCs",k.total_ncs);writer.line("Backlog ativo",k.backlog_ativo_atual);writer.line("Aguardando avaliacao",k.abertas_atuais);writer.line("Aguardando feedback",k.aguardando_feedback_atual);writer.line("Aguardando aceite",k.aguardando_aceite_atual);writer.line("Concluidas no periodo",k.concluidas_no_periodo);writer.line("Invalidadas no periodo",k.invalidadas_no_periodo);
   writer.heading("Tempos medianos");for(const [key,value] of Object.entries(insights.tempos as Row))writer.line(key.replaceAll("_"," "),value.mediana_horas==null?"Sem amostras":`${value.mediana_horas} h (${value.amostras} amostras)`);
   writer.heading("Principais causas");for(const cause of (insights.ncs_por_causa??[]).slice(0,10))writer.line(cause.causa,`${cause.total} NC(s); ${cause.total_reincidentes} reincidente(s)`);

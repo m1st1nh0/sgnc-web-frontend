@@ -14,7 +14,7 @@ const filtros = {
   setor: "Suporte N1",
 };
 
-const csvQuery = montarQueryRelatorio(filtros, { detalhado: true });
+const csvQuery = montarQueryRelatorio(filtros);
 assert.match(csvQuery, /inicio=2026-01-01/);
 assert.match(csvQuery, /fim=2026-08-29/);
 assert.match(csvQuery, /status=aguardando_feedback/);
@@ -24,9 +24,9 @@ assert.match(csvQuery, /setor=Suporte\+N1/);
 const pdfQuery = montarQueryRelatorio(filtros);
 assert.match(pdfQuery, /inicio=2026-01-01/);
 assert.match(pdfQuery, /fim=2026-08-29/);
-assert.doesNotMatch(pdfQuery, /status=/);
-assert.doesNotMatch(pdfQuery, /colaborador_id=/);
-assert.doesNotMatch(pdfQuery, /setor=/);
+assert.match(pdfQuery, /status=aguardando_feedback/);
+assert.match(pdfQuery, /colaborador_id=abc-123/);
+assert.match(pdfQuery, /setor=Suporte\+N1/);
 assert.doesNotMatch(csvQuery, /token/i);
 
 assert.equal(
@@ -59,8 +59,10 @@ assert.match(service, /\/relatorios\/nc\/.*\.pdf/);
 assert.match(pagina, /baixarPdfResumo/);
 assert.match(pagina, /baixarCsvNcs/);
 assert.match(pagina, /listarUsuarios/);
-assert.match(pagina, /ocorrência canônica de 12 meses/);
-assert.match(pagina, /somente sua equipe direta/);
+assert.match(pagina, /Visão na tela/);
+assert.match(pagina, /Últimos 30 dias/);
+assert.match(pagina, /NCs do período/);
+assert.match(pagina, /ModalNcsIndicador/);
 
 assert.match(app, /RelatoriosPage/);
 assert.match(app, /requireRole\(\["adm", "supervisor"\]\)/);

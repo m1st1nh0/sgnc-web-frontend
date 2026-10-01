@@ -9,10 +9,13 @@ import { chamarApi } from "../../../lib/api/client/api.js";
  * @param {object} opcoes - { inicio, fim } datas ISO (YYYY-MM-DD) opcionais.
  *   Sem parâmetros, o backend retorna os últimos 12 meses.
  */
-export function buscarInsights({ inicio, fim } = {}) {
+export function buscarInsights({ inicio, fim, status, colaboradorId, setor } = {}) {
   const params = new URLSearchParams();
   if (inicio) params.set("inicio", inicio);
   if (fim) params.set("fim", fim);
+  if (status) params.set("status", status);
+  if (colaboradorId) params.set("colaborador_id", colaboradorId);
+  if (setor) params.set("setor", setor);
   const query = params.toString();
   return chamarApi(`/insights${query ? `?${query}` : ""}`);
 }

@@ -9,6 +9,13 @@ import { buildNcReadScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/pe
 const ACTIVE = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "validada", "aguardando_analise"]);
 const COUNTABLE = new Set(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "concluida"]);
 const STATUS_ORDER = ["aberta", "aguardando_feedback", "aguardando_aceite", "concluida", "invalidada"];
+const FILTER_STATUS_ALIASES: Record<string, string[]> = {
+  aberta: ["aberta"],
+  aguardando_feedback: ["aguardando_feedback", "aguardando_analise", "validada"],
+  aguardando_aceite: ["aguardando_aceite"],
+  concluida: ["concluida"],
+  invalidada: ["invalidada"],
+};
 type Row = Record<string, any>;
 
 const isoDate = (value: unknown) => String(value ?? "").slice(0, 10) || null;
@@ -119,13 +126,25 @@ function monthKeys(start: string, end: string) {
   return keys;
 }
 
-export async function obterInsights(startInput?: string | null, endInput?: string | null) {
+export async function obterInsights(
+  startInput?: string | null,
+  endInput?: string | null,
+  filters: { status?: string | null; colaboradorId?: string | null; setor?: string | null } = {},
+) {
   const user = await requireUser();
   if (!["adm", "supervisor"].includes(user.papel)) throw new ApiError("Acesso restrito a administradores e supervisores.", 403);
   const end = endInput || new Date().toISOString().slice(0, 10);
   const start = startInput || startTwelveMonths(new Date(`${end}T12:00:00Z`));
   if (!isIsoDate(start) || !isIsoDate(end)) throw new ApiError("O período informado é inválido.");
   if (start > end) throw new ApiError("A data de início não pode ser posterior à data de fim.");
+  const selectedStatuses = filters.status ? FILTER_STATUS_ALIASES[filters.status] : null;
+  if (filters.status && !selectedStatuses) throw new ApiError("O status selecionado é inválido.", 422);
+  const collaboratorId = filters.colaboradorId?.trim() || null;
+  if (collaboratorId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(collaboratorId)) {
+    throw new ApiError("O colaborador selecionado é inválido.", 422);
+  }
+  const sector = filters.setor?.trim() || null;
+  if (sector && sector.length > 120) throw new ApiError("O setor selecionado é inválido.", 422);
   const admin = createAdminClient();
   let teamIds: string[] | null = null;
   if (user.papel === "supervisor") {
@@ -138,6 +157,9 @@ export async function obterInsights(startInput?: string | null, endInput?: strin
     const scope = buildNcReadScopeFilter(user, teamIds);
     if (scope) query = query.or(scope);
   }
+  if (selectedStatuses) query = query.in("status", selectedStatuses);
+  if (collaboratorId) query = query.eq("colaborador_id", collaboratorId);
+  if (sector) query = query.eq("setor", sector);
   const { data, error } = await query;
   if (error) throw new ApiError("Não foi possível carregar os insights.", 500);
   const all = (data ?? []) as Row[];
@@ -150,7 +172,7 @@ export async function obterInsights(startInput?: string | null, endInput?: strin
   let measures: Row[] = [];
   if (teamIds === null || all.length) {
     let measuresQuery = admin.from("medidas_disciplinares").select("causa_id, colaborador_id, nc_id, ocorrencia_gatilho, tipo, status, data_aplicacao, criado_em");
-    if (teamIds) {
+    if (teamIds || selectedStatuses || collaboratorId || sector) {
       measuresQuery = measuresQuery.in("nc_id", all.map((nc) => nc.id));
     }
     // The calculations below discard measures outside the selected window.

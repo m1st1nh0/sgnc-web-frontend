@@ -215,28 +215,37 @@ export default function InsightsPage() {
     const aceite = Number(kpis.aguardando_aceite_atual || 0);
 
     itens.push({
+      id: "backlog",
       titulo: backlog === 0 ? "Operação sem pendências" : `${backlog} NC(s) exigem acompanhamento`,
       texto:
         backlog === 0
           ? "Não há NC ativa no escopo neste momento."
           : `${feedback} aguardam feedback e ${aceite} aguardam aceite.`,
+      filtro: { tipo: "backlog" },
     });
 
     if (dados.aged_backlog?.mais_antiga) {
+      const nc = dados.aged_backlog.mais_antiga;
       itens.push({
-        titulo: `NC #${dados.aged_backlog.mais_antiga.nc_id} é a mais antiga`,
-        texto: `Está há ${dados.aged_backlog.mais_antiga.dias_na_etapa} dia(s) na etapa atual.`,
+        id: "nc-mais-antiga",
+        titulo: `NC #${nc.nc_id} é a mais antiga`,
+        texto: `Está há ${nc.dias_na_etapa} dia(s) na etapa atual.`,
+        filtro: { tipo: "record", nc_id: String(nc.nc_id) },
       });
     }
 
     const causa = porReincidenciaCausa[0];
     itens.push({
+      id: "causa-reincidente",
       titulo: causa
         ? `${causa.causa} lidera as reincidências`
         : "Sem reincidência no recorte",
       texto: causa
         ? `${causa.reincidencias_12m} reincidência(s) canônica(s) em 12 meses.`
         : "Nenhuma causa reincidente foi identificada no escopo.",
+      filtro: causa?.causa_id
+        ? { tipo: "dimension", dimensao: "causa", causa_id: String(causa.causa_id), serie: "reincidencias_12m" }
+        : null,
     });
     return itens;
   }, [dados, kpis, porReincidenciaCausa]);
@@ -352,13 +361,22 @@ export default function InsightsPage() {
                 <span className="sg-leitura-executiva__rotulo">Leitura rápida</span>
                 <h2 id="leitura-executiva">O que estes números dizem agora</h2>
                 <p>Resumo automático para orientar a análise; a decisão continua com a gestão.</p>
+                <span className="texto-xs">Selecione um resumo para abrir as NCs relacionadas.</span>
               </div>
               <div className="sg-leitura-executiva__itens">
                 {leituraExecutiva.map((item) => (
-                  <article key={item.titulo}>
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="sg-leitura-executiva__item"
+                    disabled={!item.filtro}
+                    onClick={() => item.filtro && abrirDetalhe(item.titulo, item.filtro)}
+                    aria-label={item.filtro ? `Ver NCs: ${item.titulo}` : item.titulo}
+                  >
                     <strong>{item.titulo}</strong>
                     <span>{item.texto}</span>
-                  </article>
+                    {item.filtro && <span className="sg-leitura-executiva__acao">Ver NCs</span>}
+                  </button>
                 ))}
               </div>
             </section>
