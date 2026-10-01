@@ -78,7 +78,7 @@ O Supabase Advisor foi consultado em 01/10/2026. Reporta 14 índices sem uso e a
 
 ## Relatórios: período inicial (01/10/2026)
 
-Os filtros de PDF/CSV agora iniciam com os últimos 30 dias, calculados como 30 datas locais inclusivas. As datas preenchidas são enviadas às exportações e aparecem no nome/escopo do arquivo. O backend mantém o padrão antigo de 12 meses quando chamado sem datas, para compatibilidade com consumidores atuais. Não foi criada uma tela de relatório navegável; isso permanece uma decisão de produto separada.
+`/relatorios` inicia com os últimos 30 dias, calculados como 30 datas locais inclusivas, e apresenta o relatório na própria tela: KPIs, gráficos interativos, filtros e lista paginada de NCs. Cada indicador e ponto de gráfico abre o conjunto de registros correspondente; cada linha abre o detalhe da NC. PDF/CSV seguem os filtros visíveis e ficam como ações secundárias. O backend mantém o padrão antigo de 12 meses quando chamado sem datas, para compatibilidade com consumidores atuais. A validação do novo comportamento está pendente no Preview.
 
 ## Revisão adicional do mapa operacional
 
