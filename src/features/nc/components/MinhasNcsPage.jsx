@@ -44,6 +44,12 @@ export default function MinhasNcsPage() {
   const [status, setStatus] = useState("todos");
   const [periodo, setPeriodo] = useState("30");
   const [busca, setBusca] = useState("");
+  const [agora, setAgora] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAgora(Date.now()), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     let ativo = true;
@@ -55,7 +61,7 @@ export default function MinhasNcsPage() {
   }, []);
 
   const minhasNcs = useMemo(() => {
-    const limite = periodo === "todos" ? null : Date.now() - Number(periodo) * 86400000;
+    const limite = periodo === "todos" || !agora ? null : agora - Number(periodo) * 86400000;
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
     return ncs.filter((nc) => {
       if (nc.colaborador_id !== usuario?.id && nc.aberto_por !== usuario?.id) return false;
@@ -65,7 +71,7 @@ export default function MinhasNcsPage() {
       if (termo && !`${nc.id} ${nc.descricao || ""} ${nc.chamado || ""}`.toLocaleLowerCase("pt-BR").includes(termo)) return false;
       return true;
     });
-  }, [ncs, usuario?.id, status, periodo, busca]);
+  }, [ncs, usuario?.id, status, periodo, busca, agora]);
 
   return (
     <div>
