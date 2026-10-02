@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import TrocarSenhaPage from "@/legacy/pages/TrocarSenhaPage";
+import TrocarSenhaPage from "../../features/auth/components/TrocarSenhaPage.jsx";
 import { getUser } from "@/lib/auth/session";
 
 export default async function TrocarSenhaRoute() {

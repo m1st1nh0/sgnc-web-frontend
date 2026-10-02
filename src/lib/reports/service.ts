@@ -1,27 +1,25 @@
+import { csvCell } from "./csv";
+import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { ApiError } from "@/lib/api/error";
 import { obterEstatisticasUsuario, obterInsights } from "@/lib/analytics/service";
-import { getUser } from "@/lib/auth/session";
-import { buscarNc } from "@/lib/nc/service";
+
+import { buscarNc, obterTimeline } from "@/lib/nc/service";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { buildNcReadScopeFilter, buildNcTeamScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
+import { listarPessoasAbaixo } from "@/lib/permissions/team-scope";
 
 type Row = Record<string, any>;
 const A4: [number, number] = [595.28, 841.89];
 const NAVY = rgb(0.09, 0.2, 0.3), GREEN = rgb(0.1, 0.66, 0.54), TEXT = rgb(0.13, 0.21, 0.29), MUTED = rgb(0.4, 0.46, 0.54);
 
-async function requireUser() {
-  const user = await getUser();
-  if (!user) throw new ApiError("Sessão inválida ou expirada. Faça login novamente.", 401);
-  if (user.senha_provisoria) throw new ApiError("Troque a senha provisória antes de continuar.", 403);
-  return user;
-}
 const canonical = (status: unknown) => ["validada", "aguardando_analise"].includes(String(status)) ? "aguardando_feedback" : String(status ?? "");
 const dateOnly = (value: unknown) => String(value ?? "").slice(0, 10);
 const brDate = (value: unknown) => { const date = dateOnly(value); return date ? date.split("-").reverse().join("/") : "-"; };
 const hours = (start: unknown, end: unknown) => !start || !end ? "" : Math.max(0, (Date.parse(String(end)) - Date.parse(String(start))) / 3600000).toFixed(2).replace(".", ",");
-const csvCell = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+
 
 function splitText(text: string, font: PDFFont, size: number, maxWidth: number) {
   const lines: string[] = [];
@@ -59,7 +57,7 @@ export async function gerarPdfNc(id: number) {
   writer.heading("Causas"); writer.line("Relacionadas", (nc.causas ?? []).join(" | ") || "Nenhuma");
   writer.heading("Feedback"); writer.line("Registro", nc.feedback);
   const admin = createAdminClient();
-  const { data: history } = await admin.from("historico_nc").select("status_novo, observacao, criado_em").eq("nc_id", id).order("criado_em");
+  const { eventos: history } = await obterTimeline(id);
   writer.heading("Andamento"); for(const event of history ?? []) writer.line(brDate(event.criado_em), `${canonical(event.status_novo)} - ${event.observacao || "Sem observacao"}`);
   const { data: evidence } = await admin.from("evidencias").select("nome_original, caminho_storage, criado_em").eq("nc_id", id).order("criado_em");
   writer.heading("Evidencias anexadas");
@@ -82,12 +80,15 @@ export async function gerarPdfNc(id: number) {
 }
 
 export async function gerarPdfDossie(userId: string) {
+  const requester = await requireUser();
   const stats = await obterEstatisticasUsuario(userId) as Row;
   const writer = await pdfWriter("Dossie do Colaborador", stats.nome);
   writer.heading("Resumo"); writer.line("Nome", stats.nome); writer.line("Setor", stats.setor); writer.line("Periodo", "Ultimos 12 meses"); writer.line("Total de NCs", stats.total_nc_12m);
   writer.heading("Causas e recorrencia");
   for(const cause of stats.causas ?? []) { writer.line(String(cause.causa), `${cause.ocorrencias_12m} ocorrencia(s); ultima NC #${cause.ultima_ocorrencia_nc_id ?? "-"}; medida sugerida: ${cause.medida_sugerida ?? "nenhuma"}`); }
-  const admin=createAdminClient(); const {data:ncs}=await admin.from("nao_conformidades").select("id, data, status, criticidade, criado_em").eq("colaborador_id",userId).order("data",{ascending:false}).limit(12);
+  const admin=createAdminClient(); let historyQuery=admin.from("nao_conformidades").select("id, data, status, criticidade, criado_em").eq("colaborador_id",userId);
+  if(requester.papel!=="adm")historyQuery=historyQuery.or(`status.in.(${SUPERVISOR_VISIBLE_NC_STATUSES.join(",")}),aberto_por.eq.${requester.id}`);
+  const {data:ncs}=await historyQuery.order("data",{ascending:false}).limit(12);
   writer.heading("Historico recente"); for(const nc of ncs??[]) writer.line(`NC #${nc.id}`, `${brDate(nc.data||nc.criado_em)} | ${canonical(nc.status)} | ${nc.criticidade||"-"}`);
   writer.heading("Medidas disciplinares"); const measures=(stats.causas??[]).flatMap((cause:Row)=>cause.medidas??[]); if(!measures.length)writer.line("Registro","Nenhuma medida disciplinar registrada");for(const measure of measures)writer.line(measure.tipo,`ocorrencia ${measure.ocorrencia_gatilho}; ${brDate(measure.data_aplicacao)}`);
   return {bytes:await writer.doc.save(),filename:`sgnc-dossie-${userId}.pdf`};
@@ -96,13 +97,17 @@ export async function gerarPdfDossie(userId: string) {
 async function reportScope() {
   const user=await requireUser(); if(!["adm","supervisor"].includes(user.papel))throw new ApiError("Acesso restrito a administradores e supervisores.",403);
   const admin=createAdminClient(); let teamIds:string[]|null=null;
-  if(user.papel==="supervisor"){const {data,error}=await admin.from("usuarios").select("id").eq("supervisor_id",user.id).eq("ativo",true);if(error)throw new ApiError("Não foi possível carregar a equipe direta.",500);teamIds=(data??[]).map(item=>item.id);}
-  return {admin,teamIds};
+  if(user.papel==="supervisor"){teamIds=(await listarPessoasAbaixo(user.id)).map((person)=>person.id);}
+  return {admin,teamIds,user};
 }
 
 export async function gerarCsvNcs(params: URLSearchParams) {
-  const {admin,teamIds}=await reportScope(); const end=params.get("fim")||new Date().toISOString().slice(0,10);const endDate=new Date(`${end}T12:00:00Z`);endDate.setUTCFullYear(endDate.getUTCFullYear()-1);const start=params.get("inicio")||endDate.toISOString().slice(0,10);if(start>end)throw new ApiError("A data de início não pode ser posterior à data de fim.");
-  let query=admin.from("nao_conformidades").select("id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, descricao, criado_em, validado_em, feedback_aplicado_em, aceito_em");if(teamIds)query=query.in("colaborador_id",teamIds.length?teamIds:["00000000-0000-0000-0000-000000000000"]);const {data,error}=await query;if(error)throw new ApiError("Não foi possível gerar o CSV.",500);
+  const {admin,teamIds,user:requester}=await reportScope(); const end=params.get("fim")||new Date().toISOString().slice(0,10);const endDate=new Date(`${end}T12:00:00Z`);endDate.setUTCFullYear(endDate.getUTCFullYear()-1);const start=params.get("inicio")||endDate.toISOString().slice(0,10);if(start>end)throw new ApiError("A data de início não pode ser posterior à data de fim.");
+  const requestedEmployee=params.get("colaborador_id");
+  if(teamIds && requestedEmployee && requestedEmployee!==requester.id && !teamIds.includes(requestedEmployee))throw new ApiError("O colaborador selecionado está fora da sua hierarquia.",403);
+  let query=admin.from("nao_conformidades").select("id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, descricao, criado_em, validado_em, feedback_aplicado_em, aceito_em");
+  if(teamIds){const scope=buildNcTeamScopeFilter(requester,teamIds);if(scope)query=query.or(scope);}
+  const {data,error}=await query;if(error)throw new ApiError("Não foi possível gerar o CSV.",500);
   const status=params.get("status")?canonical(params.get("status")):null,employee=params.get("colaborador_id"),sector=params.get("setor")?.trim().toLocaleLowerCase();const rows=(data??[]).filter(nc=>{const date=dateOnly(nc.data||nc.criado_em);return date>=start&&date<=end&&(!status||canonical(nc.status)===status)&&(!employee||nc.colaborador_id===employee)&&(!sector||String(nc.setor||"").trim().toLocaleLowerCase()===sector);}).sort((a,b)=>String(b.data||b.criado_em).localeCompare(String(a.data||a.criado_em))||b.id-a.id);
   const ids=rows.map(item=>item.id);const {data:relations}=ids.length?await admin.from("nc_causas").select("nc_id, ocorrencia_numero, causas(descricao)").in("nc_id",ids):{data:[]};const byNc=new Map<number,Row[]>();for(const relation of relations??[]){const joined=relation.causas as unknown as {descricao?:string}|null;byNc.set(relation.nc_id,[...(byNc.get(relation.nc_id)??[]),{descricao:joined?.descricao,ocorrencia_numero:relation.ocorrencia_numero}]);}
   const headers=["NC","Data","Status","Colaborador","Setor","Criticidade","Chamado","Causas","Ocorrencias por causa","Reincidente 12m","Descricao","Criado em","Validado em","Feedback aplicado em","Aceito em","Horas ate validacao","Horas validacao-feedback","Horas feedback-aceite","Horas ciclo total"];
@@ -111,7 +116,7 @@ export async function gerarCsvNcs(params: URLSearchParams) {
 }
 
 export async function gerarPdfResumo(params: URLSearchParams) {
-  const insights=await obterInsights(params.get("inicio"),params.get("fim")) as Row;const writer=await pdfWriter("Resumo Gerencial",`${insights.periodo.inicio} a ${insights.periodo.fim}`);const k=insights.kpis;
+  const insights=await obterInsights(params.get("inicio"),params.get("fim"),{status:params.get("status"),colaboradorId:params.get("colaborador_id"),setor:params.get("setor")}) as Row;const writer=await pdfWriter("Resumo Gerencial",`${insights.periodo.inicio} a ${insights.periodo.fim}`);const k=insights.kpis;
   writer.heading("Indicadores");writer.line("Total de NCs",k.total_ncs);writer.line("Backlog ativo",k.backlog_ativo_atual);writer.line("Aguardando avaliacao",k.abertas_atuais);writer.line("Aguardando feedback",k.aguardando_feedback_atual);writer.line("Aguardando aceite",k.aguardando_aceite_atual);writer.line("Concluidas no periodo",k.concluidas_no_periodo);writer.line("Invalidadas no periodo",k.invalidadas_no_periodo);
   writer.heading("Tempos medianos");for(const [key,value] of Object.entries(insights.tempos as Row))writer.line(key.replaceAll("_"," "),value.mediana_horas==null?"Sem amostras":`${value.mediana_horas} h (${value.amostras} amostras)`);
   writer.heading("Principais causas");for(const cause of (insights.ncs_por_causa??[]).slice(0,10))writer.line(cause.causa,`${cause.total} NC(s); ${cause.total_reincidentes} reincidente(s)`);

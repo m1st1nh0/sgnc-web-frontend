@@ -3,8 +3,9 @@ import { readFileSync } from "node:fs";
 
 import {
   criarVisaoHome,
+  filtrarNcsPorCardHome,
   normalizarStatusHome,
-} from "./src/services/homeUx.js";
+} from "./src/features/nc/client/homeUx.js";
 
 assert.equal(normalizarStatusHome("validada"), "aguardando_feedback");
 assert.equal(normalizarStatusHome("aguardando_analise"), "aguardando_feedback");
@@ -75,6 +76,12 @@ const funcionario = criarVisaoHome(
   { id: "u1", papel: "funcionario" },
   ncs
 );
+assert.deepEqual(filtrarNcsPorCardHome(ncs, "Aguardando avaliação").map((nc) => nc.id), [1]);
+assert.deepEqual(filtrarNcsPorCardHome(ncs, "Aguardando feedback").map((nc) => nc.id), [2]);
+assert.deepEqual(filtrarNcsPorCardHome(ncs, "Aguardando aceite").map((nc) => nc.id), [3, 5]);
+assert.deepEqual(filtrarNcsPorCardHome(ncs, "Concluídas").map((nc) => nc.id), [4, 6]);
+assert.deepEqual(filtrarNcsPorCardHome(ncs, "Abertas por mim", "u1").map((nc) => nc.id), [2, 4]);
+assert.deepEqual(filtrarNcsPorCardHome(ncs, "Minhas NCs ativas", "u1").map((nc) => nc.id), [1, 2, 3]);
 assert.equal(
   funcionario.cards.find((c) => c.rotulo === "Aguardando meu aceite").valor,
   1
@@ -89,15 +96,15 @@ assert.ok(
   )
 );
 
-const app = readFileSync("src/App.jsx", "utf8");
-assert.match(app, /papeis=\{\["adm"\]\}/);
-assert.match(app, /papeis=\{\["adm", "supervisor"\]\}/);
+const app = readFileSync("src/app/(app)/usuarios/page.tsx", "utf8") + readFileSync("src/app/(app)/insights/page.tsx", "utf8");
+assert.match(app, /requireRole\(\["adm"\]\)/);
+assert.match(app, /requireRole\(\["adm", "supervisor"\]\)/);
 
-const home = readFileSync("src/pages/HomePage.jsx", "utf8");
+const home = readFileSync("src/features/nc/components/HomePage.jsx", "utf8");
 assert.match(home, /listarOpcoesNc/);
-assert.match(home, /listarUsuarios/);
+assert.match(home, /listarEquipe/);
 
-const detalhes = readFileSync("src/pages/DetalhesNcPage.jsx", "utf8");
+const detalhes = readFileSync("src/features/nc/components/DetalhesNcPage.jsx", "utf8");
 assert.match(detalhes, /Tentar novamente/);
 assert.match(detalhes, /bloqueado=\{enviandoArquivo\}/);
 assert.match(detalhes, /await anexarEvidencia/);

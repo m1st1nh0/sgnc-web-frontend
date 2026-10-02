@@ -2,9 +2,7 @@ name: Frontend checks
 
 on:
   pull_request:
-    branches: [main]
   push:
-    branches: [main]
 
 permissions:
   contents: read
@@ -22,6 +20,8 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
       - name: PR05 role-aware UX regression
         run: node test_pr05.mjs
       - name: PR08 frontend security regression
@@ -34,5 +34,15 @@ jobs:
         run: node test_ux_operacao_indicadores.mjs
       - name: PR09 hybrid onboarding regression
         run: node test_pr09_onboarding.mjs
+      - name: PR10 hierarchical team access regression
+        run: node test_pr10_hierarchy.mjs
+      - name: PR11 cause catalog governance regression
+        run: node test_pr11_cause_governance.mjs
+      - name: Playwright browser setup
+        run: npx playwright install --with-deps chromium
       - name: Build
         run: npm run build
+      - name: Unit and HTTP security tests
+        run: npx playwright test --project=unit --project=http
+      - name: Desktop and mobile smoke tests
+        run: npm run test:e2e

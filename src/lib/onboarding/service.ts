@@ -1,7 +1,8 @@
+import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
 import { ApiError } from "@/lib/api/error";
-import { getUser, type UsuarioAutenticado } from "@/lib/auth/session";
+import type { UsuarioAutenticado } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 
 const VERSION = 1;
@@ -18,12 +19,6 @@ const BY_ROLE: Record<string, Record<string, string>> = {
   funcionario: { apresentacao_papel_funcionario: "apresentacao", checklist_evidencias: "checklist", checklist_aceite: "checklist", dica_nc_aceite: "contextual", dica_dossie_pessoal: "contextual" },
 };
 
-async function requireUser() {
-  const user = await getUser();
-  if (!user) throw new ApiError("Sessão inválida ou expirada. Faça login novamente.", 401);
-  if (user.senha_provisoria) throw new ApiError("Troque a senha provisória antes de continuar.", 403);
-  return user;
-}
 const manifest = (role: string) => ({ ...SHARED, ...(BY_ROLE[role] ?? {}) });
 const keysByOrigin = (role: string, origin: string) => Object.entries(manifest(role)).filter(([, value]) => value === origin).map(([key]) => key);
 const now = () => new Date().toISOString();

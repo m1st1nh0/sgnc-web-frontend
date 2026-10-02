@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import LoginPage from "@/legacy/pages/LoginPage";
+import LoginPage from "../../features/auth/components/LoginPage.jsx";
 import { getUser } from "@/lib/auth/session";
 
 export default async function LoginRoute({ searchParams }) {

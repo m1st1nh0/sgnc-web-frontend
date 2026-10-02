@@ -1,7 +1,10 @@
+import { filterSensitive } from "@/lib/permissions/nc";
+import { buildNcReadScopeFilter } from "@/lib/permissions/nc-scope";
+import { listarPessoasAbaixo, validarAcessoPessoa } from "@/lib/permissions/team-scope";
+import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
 import { ApiError } from "@/lib/api/error";
-import { getUser, type UsuarioAutenticado } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,12 +19,6 @@ type NcInput = {
   causas?: unknown;
 };
 
-async function requireUser() {
-  const user = await getUser();
-  if (!user) throw new ApiError("Sessão inválida ou expirada. Faça login novamente.", 401);
-  if (user.senha_provisoria) throw new ApiError("Troque a senha provisória antes de continuar.", 403);
-  return user;
-}
 
 async function requireAdmin() {
   const user = await requireUser();
@@ -69,25 +66,39 @@ function parseInput(input: NcInput) {
   };
 }
 
-async function causeIds(causas: string[], userId: string) {
-  const admin = createAdminClient();
+async function causeIds(
+  causas: string[],
+  user: Awaited<ReturnType<typeof requireUser>>,
+  options: { allowCreate?: boolean; allowInactive?: boolean } = {},
+) {
+  const admin = createAdminClient() as any;
   const ids: number[] = [];
   for (const descricao of causas) {
-    const { data: existing } = await admin
-      .from("causas")
-      .select("id")
-      .ilike("descricao", descricao)
-      .limit(1)
-      .maybeSingle();
+    const normalized = descricao.trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
+    const { data: existing, error: lookupError } = await admin.from("causas")
+      .select("id, ativo").eq("descricao_normalizada", normalized).maybeSingle();
+    if (lookupError) throw new ApiError("Não foi possível validar o catálogo de causas.", 500);
     if (existing) {
+      if (!existing.ativo && !options.allowInactive) {
+        throw new ApiError("Esta causa está arquivada. Solicite sua reativação ao administrador.", 422);
+      }
+      if (!existing.ativo && options.allowCreate) await admin.from("causas").update({ ativo: true }).eq("id", existing.id);
       ids.push(existing.id);
       continue;
     }
+    if (!options.allowCreate) {
+      throw new ApiError("Esta causa não está no catálogo aprovado. Solicite sua inclusão ao administrador.", 422);
+    }
     const { data, error } = await admin
       .from("causas")
-      .insert({ descricao, criado_por: userId })
+      .insert({ descricao, criado_por: user.id, ativo: true })
       .select("id")
       .single();
+    if (error?.code === "23505") {
+      const { data: concurrent } = await admin.from("causas").select("id, ativo")
+        .eq("descricao_normalizada", normalized).maybeSingle();
+      if (concurrent && (concurrent.ativo || options.allowInactive)) { ids.push(concurrent.id); continue; }
+    }
     if (error || !data) throw new ApiError("Não foi possível cadastrar a causa.", 500);
     ids.push(data.id);
   }
@@ -152,58 +163,252 @@ function durations(nc: Record<string, unknown>) {
   };
 }
 
-function filterSensitive(nc: Record<string, unknown>, user: UsuarioAutenticado) {
-  const isAuthor = nc.aberto_por === user.id;
-  const complete =
-    user.papel === "adm" ||
-    user.papel === "supervisor" ||
-    nc.colaborador_id === user.id ||
-    nc.responsavel_id === user.id;
-  if (isAuthor && !complete) {
-    return {
-      ...nc,
-      motivo_invalidacao: null,
-      feedback: null,
-      texto_aceite: null,
-      validado_em: null,
-      feedback_aplicado_em: null,
-      aceito_em: null,
-    };
-  }
-  return nc;
-}
 
 export async function listarNcs() {
-  await requireUser();
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("nao_conformidades").select("*").order("criado_em", { ascending: false });
+  const user = await requireUser();
+  const admin = createAdminClient();
+  let query = admin.from("nao_conformidades").select("*");
+  if (user.papel !== "adm") {
+    let teamIds: string[] = [];
+    if (user.papel === "supervisor") {
+      teamIds = (await listarPessoasAbaixo(user.id)).map((member) => member.id);
+    }
+    const scope = buildNcReadScopeFilter(user, teamIds);
+    if (scope) query = query.or(scope);
+  }
+  const { data, error } = await query.order("criado_em", { ascending: false });
   if (error) throw new ApiError("Não foi possível carregar as não conformidades.", 500);
-  return addCauses((data ?? []) as Array<{ id: number }>);
+  const rows = await addCauses((data ?? []) as Array<{ id: number }>);
+  return rows.map((nc) => filterSensitive(nc, user));
+}
+
+export async function listarMinhasNcs() {
+  const user = await requireUser();
+  const admin = createAdminClient();
+  let query = admin.from("nao_conformidades").select("*");
+  if (user.papel !== "adm") {
+    const scope = buildNcReadScopeFilter(user, []);
+    if (scope) query = query.or(scope);
+  }
+  const { data, error } = await query.order("criado_em", { ascending: false });
+  if (error) throw new ApiError("Não foi possível carregar suas não conformidades.", 500);
+  const rows = await addCauses((data ?? []) as Array<{ id: number }>);
+  return rows.map((nc) => filterSensitive(nc, user));
 }
 
 export async function buscarNc(id: number) {
   const user = await requireUser();
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("nao_conformidades").select("*").eq("id", id).maybeSingle();
+  const admin = createAdminClient();
+  let query = admin.from("nao_conformidades").select("*").eq("id", id);
+  if (user.papel !== "adm") {
+    let teamIds: string[] = [];
+    if (user.papel === "supervisor") {
+      teamIds = (await listarPessoasAbaixo(user.id)).map((member) => member.id);
+    }
+    const scope = buildNcReadScopeFilter(user, teamIds);
+    if (scope) query = query.or(scope);
+  }
+  const { data, error } = await query.maybeSingle();
   if (error || !data) throw new ApiError("NC não encontrada.", 404);
   const [withCauses] = await addCauses([data]);
   const filtered = filterSensitive(withCauses, user);
   return { ...filtered, duracoes: durations(filtered) };
 }
 
+export async function listarNcsDaPessoa(
+  pessoaId: string,
+  options: { pagina?: number; status?: string | null; inicio?: string | null; fim?: string | null } = {},
+) {
+  const user = await requireUser();
+  await validarAcessoPessoa(user, pessoaId);
+  const paginaInformada = Number(options.pagina ?? 0);
+  const pagina = Number.isFinite(paginaInformada) ? Math.max(0, Math.min(10_000, Math.floor(paginaInformada))) : 0;
+  const pageSize = 25;
+  const status = options.status?.trim() || null;
+  const inicio = options.inicio?.trim() || null;
+  const fim = options.fim?.trim() || null;
+  const validStatuses = ["aberta", "aguardando_feedback", "aguardando_analise", "validada", "aguardando_aceite", "concluida", "invalidada"];
+  if (status && !validStatuses.includes(status)) throw new ApiError("O status selecionado é inválido.", 422);
+  const isDate = (value: string | null) => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+  if ((inicio || fim) && (!isDate(inicio) || !isDate(fim))) throw new ApiError("Informe o período completo para filtrar as NCs.", 422);
+  if (inicio && fim && inicio > fim) throw new ApiError("A data inicial não pode ser posterior à data final.", 422);
+
+  const admin = createAdminClient();
+  let query = admin.from("nao_conformidades").select("*", { count: "exact" }).eq("colaborador_id", pessoaId);
+  if (user.papel !== "adm") {
+    const teamIds = user.papel === "supervisor" ? (await listarPessoasAbaixo(user.id)).map((member) => member.id) : [];
+    const scope = buildNcReadScopeFilter(user, teamIds);
+    if (scope) query = query.or(scope);
+  }
+  if (status) query = query.eq("status", status);
+  if (inicio && fim) query = query.gte("data", inicio).lte("data", fim);
+
+  const { data, count, error } = await query
+    .order("criado_em", { ascending: false })
+    .order("id", { ascending: false })
+    .range(pagina * pageSize, pagina * pageSize + pageSize - 1);
+  if (error) throw new ApiError("Não foi possível carregar as NCs deste colaborador.", 500);
+  const rows = await addCauses((data ?? []) as Array<{ id: number }>);
+  return {
+    items: rows.map((nc) => filterSensitive(nc, user)),
+    total: count ?? rows.length,
+    pagina,
+    por_pagina: pageSize,
+  };
+}
+
 export async function listarCausas() {
   await requireUser();
-  const { data, error } = await createClient().then((client) =>
-    client.from("causas").select("descricao").order("descricao"),
-  );
+  const client = await createClient();
+  const { data, error } = await (client as any)
+    .from("causas").select("descricao").eq("ativo", true).order("descricao");
   if (error) throw new ApiError("Não foi possível carregar as causas.", 500);
   return (data ?? []).map((item) => item.descricao);
+}
+
+export async function solicitarCausa(input: { descricao?: unknown; justificativa?: unknown }) {
+  const user = await requireUser();
+  if (user.papel === "adm") throw new ApiError("Administradores podem cadastrar causas diretamente.", 403);
+  const descricao = String(input.descricao ?? "").trim().replace(/\s+/g, " ");
+  const justificativa = String(input.justificativa ?? "").trim();
+  if (descricao.length < 3 || descricao.length > 120) throw new ApiError("A causa deve ter entre 3 e 120 caracteres.", 422);
+  if (justificativa.length < 10 || justificativa.length > 1000) throw new ApiError("A justificativa deve ter entre 10 e 1.000 caracteres.", 422);
+  const admin = createAdminClient() as any;
+  const normalized = descricao.toLocaleLowerCase("pt-BR");
+  const { data: cause, error: causeError } = await admin.from("causas").select("id, ativo").eq("descricao_normalizada", normalized).maybeSingle();
+  if (causeError) throw new ApiError("Não foi possível validar o catálogo de causas.", 500);
+  if (cause?.ativo) throw new ApiError("Esta causa já está aprovada no catálogo.", 409);
+  const { data: pending, error: pendingError } = await admin.from("solicitacoes_causa")
+    .select("id").eq("descricao_normalizada", normalized).eq("status", "pendente").maybeSingle();
+  if (pendingError) throw new ApiError("Não foi possível validar solicitações existentes.", 500);
+  if (pending) throw new ApiError("Já existe uma solicitação pendente para esta causa.", 409);
+  const { data, error } = await admin.from("solicitacoes_causa")
+    .insert({ descricao, justificativa, solicitado_por: user.id }).select("id, status, solicitado_em").single();
+  if (error?.code === "23505") throw new ApiError("Já existe uma solicitação pendente para esta causa.", 409);
+  if (error || !data) throw new ApiError("Não foi possível enviar a solicitação da causa.", 500);
+  return data;
+}
+
+export async function listarSolicitacoesCausa() {
+  await requireAdmin();
+  const admin = createAdminClient() as any;
+  const [{ data: requests, error }, { data: causes, error: causesError }] = await Promise.all([
+    admin.from("solicitacoes_causa").select("id, descricao, justificativa, solicitado_por, solicitado_em")
+      .eq("status", "pendente").order("solicitado_em", { ascending: true }),
+    admin.from("causas").select("id, descricao").eq("ativo", true).order("descricao"),
+  ]);
+  if (error || causesError) throw new ApiError("Não foi possível carregar a fila de causas.", 500);
+  const ids = [...new Set((requests ?? []).map((item: { solicitado_por: string }) => item.solicitado_por))];
+  const { data: people, error: peopleError } = ids.length
+    ? await admin.from("usuarios").select("id, nome").in("id", ids) : { data: [], error: null };
+  if (peopleError) throw new ApiError("Não foi possível identificar os solicitantes.", 500);
+  const names = new Map((people ?? []).map((item: { id: string; nome: string }) => [item.id, item.nome]));
+  return { solicitacoes: (requests ?? []).map((item: Record<string, unknown>) => ({
+    ...item, solicitante_nome: names.get(item.solicitado_por as string) ?? "Usuário",
+  })), causas: causes ?? [] };
+}
+
+function validarCausaId(id: number) {
+  if (!Number.isSafeInteger(id) || id < 1) throw new ApiError("Causa inválida.", 422);
+}
+
+function normalizarDescricaoCausa(input: unknown) {
+  const descricao = String(input ?? "").trim().replace(/\s+/g, " ");
+  if (descricao.length < 3 || descricao.length > 120) {
+    throw new ApiError("A descrição deve conter entre 3 e 120 caracteres.", 422);
+  }
+  return descricao;
+}
+
+export async function listarCausasGestao() {
+  await requireAdmin();
+  const admin = createAdminClient() as any;
+  const { data: causas, error } = await admin.from("causas")
+    .select("id, descricao, ativo").order("ativo", { ascending: false }).order("descricao");
+  if (error) throw new ApiError("Não foi possível carregar o catálogo de causas.", 500);
+  const ids = (causas ?? []).map((causa: { id: number }) => causa.id);
+  const { data: vinculos, error: vinculosError } = ids.length
+    ? await admin.from("nc_causas").select("causa_id").in("causa_id", ids)
+    : { data: [], error: null };
+  if (vinculosError) throw new ApiError("Não foi possível verificar as NCs vinculadas às causas.", 500);
+  const contagens = new Map<number, number>();
+  for (const vinculo of vinculos ?? []) contagens.set(vinculo.causa_id, (contagens.get(vinculo.causa_id) ?? 0) + 1);
+  return (causas ?? []).map((causa: { id: number; descricao: string; ativo: boolean }) => ({
+    ...causa,
+    ncs_vinculadas: contagens.get(causa.id) ?? 0,
+  }));
+}
+
+export async function criarCausaCatalogo(input: { descricao?: unknown }) {
+  const user = await requireAdmin();
+  const descricao = normalizarDescricaoCausa(input.descricao);
+  const { data, error } = await (createAdminClient() as any).from("causas")
+    .insert({ descricao, criado_por: user.id, ativo: true }).select("id, descricao, ativo").single();
+  if (error?.code === "23505") throw new ApiError("Já existe uma causa com essa descrição.", 409);
+  if (error || !data) throw new ApiError("Não foi possível cadastrar a causa.", 500);
+  return { ...data, ncs_vinculadas: 0 };
+}
+
+export async function atualizarCausaCatalogo(id: number, input: { descricao?: unknown }) {
+  await requireAdmin();
+  validarCausaId(id);
+  const descricao = normalizarDescricaoCausa(input.descricao);
+  const { data, error } = await (createAdminClient() as any).from("causas")
+    .update({ descricao }).eq("id", id).select("id, descricao, ativo").maybeSingle();
+  if (error?.code === "23505") throw new ApiError("Já existe uma causa com essa descrição.", 409);
+  if (error) throw new ApiError("Não foi possível atualizar a causa.", 500);
+  if (!data) throw new ApiError("Causa não encontrada.", 404);
+  return data;
+}
+
+export async function definirCausaAtiva(id: number, ativo: boolean) {
+  await requireAdmin();
+  validarCausaId(id);
+  const { data, error } = await (createAdminClient() as any).from("causas")
+    .update({ ativo }).eq("id", id).select("id, descricao, ativo").maybeSingle();
+  if (error?.code === "23505") throw new ApiError("Já existe uma causa com essa descrição.", 409);
+  if (error) throw new ApiError("Não foi possível atualizar a situação da causa.", 500);
+  if (!data) throw new ApiError("Causa não encontrada.", 404);
+  return data;
+}
+
+export async function excluirCausaCatalogo(id: number) {
+  await requireAdmin();
+  validarCausaId(id);
+  const admin = createAdminClient() as any;
+  const { count, error: vinculosError } = await admin.from("nc_causas")
+    .select("causa_id", { count: "exact", head: true }).eq("causa_id", id);
+  if (vinculosError) throw new ApiError("Não foi possível verificar o histórico da causa.", 500);
+  if ((count ?? 0) > 0) throw new ApiError("Esta causa possui NCs vinculadas. Arquive-a para preservar o histórico.", 409);
+  const { data, error } = await admin.from("causas").delete().eq("id", id).select("id").maybeSingle();
+  if (error?.code === "23503") throw new ApiError("Esta causa recebeu uma NC vinculada. Ela foi mantida para preservar o histórico.", 409);
+  if (error) throw new ApiError("Não foi possível excluir a causa.", 500);
+  if (!data) throw new ApiError("Causa não encontrada.", 404);
+  return { id: data.id, excluida: true };
+}
+
+export async function decidirSolicitacaoCausa(id: number, input: { decisao?: unknown; observacao?: unknown; causa_existente_id?: unknown }) {
+  const user = await requireAdmin();
+  const decisao = String(input.decisao ?? "");
+  if (!["aprovar", "rejeitar"].includes(decisao)) throw new ApiError("Decisão inválida.", 422);
+  const observacao = String(input.observacao ?? "").trim() || null;
+  if (decisao === "rejeitar" && (!observacao || observacao.length < 3)) throw new ApiError("Informe o motivo da rejeição.", 422);
+  const causeId = input.causa_existente_id == null || input.causa_existente_id === "" ? null : Number(input.causa_existente_id);
+  if (causeId !== null && (!Number.isSafeInteger(causeId) || causeId < 1)) throw new ApiError("A causa existente selecionada é inválida.", 422);
+  const { data, error } = await (createAdminClient() as any).rpc("decidir_solicitacao_causa", {
+    p_solicitacao_id: id, p_decisor_id: user.id, p_decisao: decisao,
+    p_observacao: observacao, p_causa_existente_id: causeId,
+  });
+  if (error) throw new ApiError("Não foi possível decidir a solicitação da causa.", 500);
+  const result = normalizeRpc(data);
+  if (!result.ok) throw new ApiError("A solicitação já foi decidida ou os dados não são válidos.", result.erro === "solicitacao_ja_decidida" ? 409 : 422);
+  return result;
 }
 
 export async function criarNc(input: NcInput) {
   const user = await requireUser();
   const data = parseInput(input);
-  const [ids, employee] = await Promise.all([causeIds(data.causas, user.id), collaborator(data.colaborador_id)]);
+  const [ids, employee] = await Promise.all([causeIds(data.causas, user, { allowCreate: user.papel === "adm" }), collaborator(data.colaborador_id)]);
   const admin = createAdminClient();
   const { data: rpcData, error } = await admin.rpc("criar_nc_com_historico_v3", {
     p_data: data.data,
@@ -226,7 +431,7 @@ export async function criarNc(input: NcInput) {
 export async function editarNc(id: number, input: NcInput) {
   const user = await requireAdmin();
   const data = parseInput(input);
-  const [ids, employee] = await Promise.all([causeIds(data.causas, user.id), collaborator(data.colaborador_id)]);
+  const [ids, employee] = await Promise.all([causeIds(data.causas, user, { allowCreate: true, allowInactive: true }), collaborator(data.colaborador_id)]);
   const admin = createAdminClient();
   const { data: updated, error } = await admin
     .from("nao_conformidades")
