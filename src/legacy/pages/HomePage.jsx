@@ -111,6 +111,11 @@ export default function HomePage() {
     [usuario, ncs, equipeIds]
   );
 
+  const idsPrioritarios = useMemo(
+    () => new Set(visao.prioridades.map((nc) => nc.id)),
+    [visao.prioridades]
+  );
+
   const ncsFiltradas = useMemo(() => {
     const filtro = ABAS_FILTRO.find((a) => a.chave === abaAtiva);
     if (!filtro || !filtro.status) return ncs;
@@ -272,7 +277,7 @@ export default function HomePage() {
               />
             ) : (
               <div className="d-flex flex-column gap-3">
-                {ncsFiltradas.map((nc) => (
+                {ncsFiltradas.filter((nc) => !idsPrioritarios.has(nc.id)).map((nc) => (
                   <NcCard
                     key={nc.id}
                     nc={nc}
