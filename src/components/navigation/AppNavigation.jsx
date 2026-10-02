@@ -32,7 +32,7 @@ export default function AppNavigation({ children }) {
   const { usuario, sair } = useAuth();
   const { progresso, restaurar, abrirRevisao } = useOnboarding();
   const pathname = usePathname();
-  const [compacta, setCompacta] = useState(false);
+  const [compacta, setCompacta] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const ehGestao = usuario?.papel === "adm" || usuario?.papel === "supervisor";
   const links = [
@@ -48,20 +48,18 @@ export default function AppNavigation({ children }) {
   ].filter((link) => link.show);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem("sgnc-menu-compacto");
-    // Restore the user preference after hydration to avoid a server/client mismatch.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (stored !== null) setCompacta(stored === "true");
-  }, []);
-  useEffect(() => {
     document.body.classList.toggle("sg-mobile-menu-open", mobileOpen);
     return () => document.body.classList.remove("sg-mobile-menu-open");
   }, [mobileOpen]);
 
   function alternarMenu() {
-    const value = !compacta;
-    setCompacta(value);
-    window.localStorage.setItem("sgnc-menu-compacto", String(value));
+    setCompacta((value) => !value);
+  }
+  function fecharMenuNavegacao() {
+    setMobileOpen(false);
+    if (window.matchMedia("(min-width: 600.01px) and (max-width: 1023.98px)").matches) {
+      setCompacta(true);
+    }
   }
   async function guia() {
     if (progresso?.status === "dispensado") await restaurar();
@@ -77,18 +75,18 @@ export default function AppNavigation({ children }) {
       <Link href="/" className="sg-mobile-brand" aria-label="SGNC - início"><MarcaSgnc /><strong>SGNC</strong></Link>
       <span className="sg-mobile-avatar" aria-label={usuario?.nome}>{iniciais(usuario?.nome)}</span>
     </header>
-    <button className={`sg-nav-scrim${mobileOpen ? " is-visible" : ""}`} onClick={() => setMobileOpen(false)} aria-label="Fechar menu" tabIndex={mobileOpen ? 0 : -1} />
+    <button className={`sg-nav-scrim${mobileOpen ? " is-visible" : ""}`} onClick={fecharMenuNavegacao} aria-label="Fechar menu" tabIndex={0} />
     <aside className={classes} aria-label="Navegação principal">
       <div className="sg-app-nav__brand-row">
         <Link href="/" className="sg-app-nav__brand" aria-label="SGNC - início"><MarcaSgnc /><strong className="sg-app-nav__brand-name">SGNC</strong></Link>
         <button type="button" className="sg-app-nav__toggle" onClick={alternarMenu} aria-label={compacta ? "Expandir menu" : "Recolher menu"} title={compacta ? "Expandir menu" : "Recolher menu"}><Icon name={compacta ? "right" : "left"} /></button>
         <button type="button" className="sg-app-nav__close" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><Icon name="close" /></button>
       </div>
-      <nav className="sg-app-nav__links">{links.map((link) => <Link key={link.href} href={link.href} className={`sg-app-nav__link${link.active ? " is-active" : ""}`} onClick={() => setMobileOpen(false)} aria-current={link.active ? "page" : undefined} title={compacta ? link.label : undefined}><Icon name={link.icon} /><span>{link.label}</span></Link>)}</nav>
+      <nav className="sg-app-nav__links">{links.map((link) => <Link key={link.href} href={link.href} className={`sg-app-nav__link${link.active ? " is-active" : ""}`} onClick={fecharMenuNavegacao} aria-current={link.active ? "page" : undefined} title={compacta ? link.label : undefined}><Icon name={link.icon} /><span>{link.label}</span></Link>)}</nav>
       <div className="sg-app-nav__footer">
         <div className="sg-app-nav__profile"><span className="sg-app-nav__avatar">{iniciais(usuario?.nome)}</span><div className="sg-app-nav__profile-copy"><strong>{usuario?.nome}</strong><small>{NOME_PAPEL[usuario?.papel] ?? usuario?.papel}</small></div></div>
         <button type="button" className="sg-app-nav__link" onClick={guia} title={compacta ? "Guia" : undefined}><Icon name="guide"/><span>Guia</span></button>
-        <button type="button" className="sg-app-nav__link" onClick={sair} title={compacta ? "Sair" : undefined}><Icon name="exit"/><span>Sair</span></button>
+        <button type="button" className="sg-app-nav__link" onClick={() => sair()} title={compacta ? "Sair" : undefined}><Icon name="exit"/><span>Sair</span></button>
       </div>
     </aside>
     <main id="sg-main-content" className="sg-app-main">{children}</main>

@@ -91,8 +91,8 @@ export async function listarPessoasGerenciaveis(user: UsuarioAutenticado): Promi
 
 export async function validarAcessoPessoa(user: UsuarioAutenticado, pessoaId: string) {
   if (user.papel === "adm") return;
+  if (user.id === pessoaId) return;
   if (user.papel !== "supervisor") {
-    if (user.id === pessoaId) return;
     throw new ApiError("Você não tem permissão para acessar este colaborador.", 403);
   }
 

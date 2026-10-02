@@ -22,7 +22,7 @@ const STATUS = {
 };
 const DATA = (value) => value ? new Date(value).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—";
 
-export default function ModalNcsIndicador({ filtro, titulo, aoFechar }) {
+export default function ModalNcsIndicador({ filtro, titulo, aoFechar, retorno = "/" }) {
   const [resultado, setResultado] = useState({ items: [], total: 0 });
   const [pagina, setPagina] = useState(0);
   const [carregando, setCarregando] = useState(false);
@@ -61,7 +61,7 @@ export default function ModalNcsIndicador({ filtro, titulo, aoFechar }) {
                   <td>{nc.colaborador || "—"}</td>
                   <td>{STATUS[nc.status] || nc.status}</td>
                   <td>{nc.setor || "—"}</td>
-                  <td><Button as={Link} href={`/nc/${nc.id}`} size="sm" variant="outline-primary">Abrir</Button></td>
+                  <td><Button as={Link} href={`/nc/${nc.id}?retorno=${encodeURIComponent(retorno)}`} size="sm" variant="outline-primary">Abrir</Button></td>
                 </tr>
               ))}</tbody>
             </Table>

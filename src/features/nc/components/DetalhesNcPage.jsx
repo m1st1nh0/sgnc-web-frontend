@@ -54,7 +54,7 @@ function ehImagem(nomeArquivo) {
   return EXTENSOES_IMAGEM.has(extensao);
 }
 
-export default function DetalhesNcPage() {
+export default function DetalhesNcPage({ retorno = "/" }) {
   const { id } = useParams();
   const { usuario } = useAuth();
   const { concluirEtapa } = useOnboarding();
@@ -325,7 +325,7 @@ export default function DetalhesNcPage() {
 
         <DicaContextual chave="dica_nc_pdf" className="mb-3" />
 
-        <Link href="/" className="sg-voltar mb-3 d-inline-flex">
+        <Link href={retorno === "/relatorios" ? retorno : "/"} className="sg-voltar mb-3 d-inline-flex">
           &larr; Voltar para a lista
         </Link>
         {avisoUploadInicial && (

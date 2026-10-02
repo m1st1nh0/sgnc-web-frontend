@@ -57,6 +57,26 @@ export function listarSolicitacoesCausa() {
   return chamarApi("/nc/causas/solicitacoes");
 }
 
+export function listarCausasGestao() {
+  return chamarApi("/nc/causas/gestao");
+}
+
+export function criarCausaCatalogo(descricao) {
+  return chamarApi("/nc/causas/gestao", { method: "POST", body: { descricao } });
+}
+
+export function atualizarCausaCatalogo(id, descricao) {
+  return chamarApi(`/nc/causas/gestao/${id}`, { method: "PUT", body: { descricao } });
+}
+
+export function definirCausaAtiva(id, ativo) {
+  return chamarApi(`/nc/causas/gestao/${id}`, { method: "PATCH", body: { ativo } });
+}
+
+export function excluirCausaCatalogo(id) {
+  return chamarApi(`/nc/causas/gestao/${id}`, { method: "DELETE" });
+}
+
 export function decidirSolicitacaoCausa(id, dados) {
   return chamarApi("/nc/causas/solicitacoes/decidir", { method: "POST", body: { id, ...dados } });
 }

@@ -5,11 +5,17 @@ import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
+import Modal from "react-bootstrap/Modal";
 
 import CabecalhoPagina from "@/components/ui/CabecalhoPagina.jsx";
 import EstadoCarregamento from "@/components/ui/EstadoCarregamento.jsx";
 import {
+  atualizarCausaCatalogo,
+  criarCausaCatalogo,
+  definirCausaAtiva,
+  excluirCausaCatalogo,
   decidirSolicitacaoCausa,
+  listarCausasGestao,
   listarSolicitacoesCausa,
 } from "@/features/nc/client/ncService.js";
 
@@ -19,18 +25,27 @@ function mensagemErro(error) {
 
 export default function CausasPage() {
   const [dados, setDados] = useState({ solicitacoes: [], causas: [] });
+  const [catalogo, setCatalogo] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [solicitacaoEmDecisao, setSolicitacaoEmDecisao] = useState(null);
   const [causasExistentes, setCausasExistentes] = useState({});
   const [motivosRejeicao, setMotivosRejeicao] = useState({});
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
+  const [novaCausa, setNovaCausa] = useState("");
+  const [causaEditando, setCausaEditando] = useState(null);
+  const [descricaoEditando, setDescricaoEditando] = useState("");
+  const [salvandoCatalogo, setSalvandoCatalogo] = useState(false);
+  const [causaEmAtualizacao, setCausaEmAtualizacao] = useState(null);
+  const [causaParaExcluir, setCausaParaExcluir] = useState(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await listarSolicitacoesCausa());
+      const [solicitacoes, causas] = await Promise.all([listarSolicitacoesCausa(), listarCausasGestao()]);
+      setDados(solicitacoes);
+      setCatalogo(causas);
     } catch (error) {
       setErro(mensagemErro(error));
     } finally {
@@ -60,6 +75,67 @@ export default function CausasPage() {
       setErro(mensagemErro(error));
     } finally {
       setSolicitacaoEmDecisao(null);
+    }
+  }
+
+  async function salvarCausa(event) {
+    event.preventDefault();
+    const descricao = causaEditando ? descricaoEditando : novaCausa;
+    if (salvandoCatalogo || !descricao.trim()) return;
+    setSalvandoCatalogo(true);
+    setErro("");
+    setAviso("");
+    try {
+      if (causaEditando) {
+        await atualizarCausaCatalogo(causaEditando, descricao);
+        setAviso("Causa atualizada. Os registros históricos continuam vinculados.");
+        setCausaEditando(null);
+        setDescricaoEditando("");
+      } else {
+        await criarCausaCatalogo(descricao);
+        setAviso("Causa cadastrada no catálogo.");
+        setNovaCausa("");
+      }
+      await carregar();
+    } catch (error) {
+      setErro(mensagemErro(error));
+    } finally {
+      setSalvandoCatalogo(false);
+    }
+  }
+
+  async function alternarSituacao(causa) {
+    setCausaEmAtualizacao(causa.id);
+    setErro("");
+    setAviso("");
+    try {
+      await definirCausaAtiva(causa.id, !causa.ativo);
+      setAviso(causa.ativo
+        ? `“${causa.descricao}” foi arquivada. O histórico das NCs foi preservado.`
+        : `“${causa.descricao}” voltou ao catálogo ativo.`);
+      await carregar();
+    } catch (error) {
+      setErro(mensagemErro(error));
+    } finally {
+      setCausaEmAtualizacao(null);
+    }
+  }
+
+  async function excluirCausa() {
+    if (!causaParaExcluir || causaEmAtualizacao) return;
+    setCausaEmAtualizacao(causaParaExcluir.id);
+    setErro("");
+    setAviso("");
+    try {
+      await excluirCausaCatalogo(causaParaExcluir.id);
+      setAviso(`“${causaParaExcluir.descricao}” foi excluída do catálogo.`);
+      setCausaParaExcluir(null);
+      await carregar();
+    } catch (error) {
+      setErro(mensagemErro(error));
+      setCausaParaExcluir(null);
+    } finally {
+      setCausaEmAtualizacao(null);
     }
   }
 
@@ -165,23 +241,57 @@ export default function CausasPage() {
             <div className="sg-governanca__section-mark sg-governanca__section-mark--catalog" aria-hidden="true">✓</div>
             <div className="sg-governanca__panel-title">
               <div className="sg-governanca__title-line">
-                <h2 id="causas-ativas-titulo">Catálogo aprovado</h2>
-                <span className="sg-governanca__catalog-count">{dados.causas.length} {dados.causas.length === 1 ? "causa" : "causas"}</span>
+                <h2 id="causas-ativas-titulo">Catálogo de causas</h2>
+                <span className="sg-governanca__catalog-count">{catalogo.filter((causa) => causa.ativo).length} ativas</span>
               </div>
-              <p>Disponíveis para abertura e edição de não conformidades.</p>
+              <p>Crie e edite opções. Causas sem vínculos podem ser excluídas; as que possuem NCs são arquivadas para preservar o histórico.</p>
             </div>
           </header>
-          {dados.causas.length ? (
+          <Form className="sg-governanca__create-cause" onSubmit={salvarCausa}>
+            <Form.Group className="flex-grow-1">
+              <Form.Label htmlFor="nova-causa-catalogo">Nova causa</Form.Label>
+              <Form.Control id="nova-causa-catalogo" value={novaCausa} maxLength={120} onChange={(event) => setNovaCausa(event.target.value)} placeholder="Ex.: Falha no retorno ao cliente" disabled={salvandoCatalogo || Boolean(causaEditando)} />
+            </Form.Group>
+            <Button type="submit" disabled={salvandoCatalogo || !novaCausa.trim() || Boolean(causaEditando)}>{salvandoCatalogo && !causaEditando ? "Salvando…" : "Adicionar causa"}</Button>
+          </Form>
+          {catalogo.length ? (
             <ul className="sg-governanca__catalog-list">
-              {dados.causas.map((causa) => (
-                <li key={causa.id}><span aria-hidden="true">✓</span>{causa.descricao}</li>
+              {catalogo.map((causa) => (
+                <li key={causa.id} className={!causa.ativo ? "is-archived" : ""}>
+                  {causaEditando === causa.id ? (
+                    <Form className="sg-governanca__cause-edit" onSubmit={salvarCausa}>
+                      <Form.Control aria-label={`Editar descrição de ${causa.descricao}`} value={descricaoEditando} maxLength={120} onChange={(event) => setDescricaoEditando(event.target.value)} autoFocus />
+                      <Button type="submit" size="sm" disabled={salvandoCatalogo || !descricaoEditando.trim()}>{salvandoCatalogo ? "Salvando…" : "Salvar"}</Button>
+                      <Button type="button" size="sm" variant="outline-secondary" onClick={() => { setCausaEditando(null); setDescricaoEditando(""); }}>Cancelar</Button>
+                    </Form>
+                  ) : (
+                    <>
+                      <span className="sg-governanca__cause-status" aria-hidden="true">{causa.ativo ? "✓" : "—"}</span>
+                      <span className="sg-governanca__cause-copy"><strong>{causa.descricao}</strong><small>{causa.ativo ? "Ativa" : "Arquivada"} · {causa.ncs_vinculadas} NC(s) vinculada(s)</small></span>
+                      <div className="sg-governanca__cause-actions">
+                        <Button type="button" size="sm" variant="outline-secondary" onClick={() => { setCausaEditando(causa.id); setDescricaoEditando(causa.descricao); setNovaCausa(""); }} disabled={causaEmAtualizacao === causa.id}>Editar</Button>
+                        {!causa.ativo && <Button type="button" size="sm" variant="outline-success" onClick={() => alternarSituacao(causa)} disabled={causaEmAtualizacao === causa.id}>Restaurar</Button>}
+                        {causa.ativo && causa.ncs_vinculadas > 0 && <Button type="button" size="sm" variant="outline-danger" onClick={() => alternarSituacao(causa)} disabled={causaEmAtualizacao === causa.id}>Arquivar</Button>}
+                        {causa.ncs_vinculadas === 0 && <Button type="button" size="sm" variant="outline-danger" onClick={() => setCausaParaExcluir(causa)} disabled={causaEmAtualizacao === causa.id}>Excluir</Button>}
+                      </div>
+                    </>
+                  )}
+                </li>
               ))}
             </ul>
           ) : (
-            <div className="sg-governanca__catalog-empty">Ainda não há causas aprovadas no catálogo.</div>
+            <div className="sg-governanca__catalog-empty">Ainda não há causas cadastradas. Use o campo acima ou aprove uma solicitação da equipe.</div>
           )}
         </section>
       </Container>
+      <Modal show={Boolean(causaParaExcluir)} centered onHide={() => setCausaParaExcluir(null)} aria-labelledby="confirmar-exclusao-causa">
+        <Modal.Header closeButton><Modal.Title id="confirmar-exclusao-causa">Excluir causa?</Modal.Title></Modal.Header>
+        <Modal.Body>A causa “{causaParaExcluir?.descricao}” não possui NCs vinculadas e será removida do catálogo.</Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={() => setCausaParaExcluir(null)} disabled={Boolean(causaEmAtualizacao)}>Cancelar</Button>
+          <Button variant="danger" onClick={excluirCausa} disabled={Boolean(causaEmAtualizacao)}>{causaEmAtualizacao ? "Excluindo…" : "Excluir causa"}</Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

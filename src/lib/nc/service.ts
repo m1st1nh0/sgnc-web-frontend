@@ -308,6 +308,85 @@ export async function listarSolicitacoesCausa() {
   })), causas: causes ?? [] };
 }
 
+function validarCausaId(id: number) {
+  if (!Number.isSafeInteger(id) || id < 1) throw new ApiError("Causa inválida.", 422);
+}
+
+function normalizarDescricaoCausa(input: unknown) {
+  const descricao = String(input ?? "").trim().replace(/\s+/g, " ");
+  if (descricao.length < 3 || descricao.length > 120) {
+    throw new ApiError("A descrição deve conter entre 3 e 120 caracteres.", 422);
+  }
+  return descricao;
+}
+
+export async function listarCausasGestao() {
+  await requireAdmin();
+  const admin = createAdminClient() as any;
+  const { data: causas, error } = await admin.from("causas")
+    .select("id, descricao, ativo").order("ativo", { ascending: false }).order("descricao");
+  if (error) throw new ApiError("Não foi possível carregar o catálogo de causas.", 500);
+  const ids = (causas ?? []).map((causa: { id: number }) => causa.id);
+  const { data: vinculos, error: vinculosError } = ids.length
+    ? await admin.from("nc_causas").select("causa_id").in("causa_id", ids)
+    : { data: [], error: null };
+  if (vinculosError) throw new ApiError("Não foi possível verificar as NCs vinculadas às causas.", 500);
+  const contagens = new Map<number, number>();
+  for (const vinculo of vinculos ?? []) contagens.set(vinculo.causa_id, (contagens.get(vinculo.causa_id) ?? 0) + 1);
+  return (causas ?? []).map((causa: { id: number; descricao: string; ativo: boolean }) => ({
+    ...causa,
+    ncs_vinculadas: contagens.get(causa.id) ?? 0,
+  }));
+}
+
+export async function criarCausaCatalogo(input: { descricao?: unknown }) {
+  const user = await requireAdmin();
+  const descricao = normalizarDescricaoCausa(input.descricao);
+  const { data, error } = await (createAdminClient() as any).from("causas")
+    .insert({ descricao, criado_por: user.id, ativo: true }).select("id, descricao, ativo").single();
+  if (error?.code === "23505") throw new ApiError("Já existe uma causa com essa descrição.", 409);
+  if (error || !data) throw new ApiError("Não foi possível cadastrar a causa.", 500);
+  return { ...data, ncs_vinculadas: 0 };
+}
+
+export async function atualizarCausaCatalogo(id: number, input: { descricao?: unknown }) {
+  await requireAdmin();
+  validarCausaId(id);
+  const descricao = normalizarDescricaoCausa(input.descricao);
+  const { data, error } = await (createAdminClient() as any).from("causas")
+    .update({ descricao }).eq("id", id).select("id, descricao, ativo").maybeSingle();
+  if (error?.code === "23505") throw new ApiError("Já existe uma causa com essa descrição.", 409);
+  if (error) throw new ApiError("Não foi possível atualizar a causa.", 500);
+  if (!data) throw new ApiError("Causa não encontrada.", 404);
+  return data;
+}
+
+export async function definirCausaAtiva(id: number, ativo: boolean) {
+  await requireAdmin();
+  validarCausaId(id);
+  const { data, error } = await (createAdminClient() as any).from("causas")
+    .update({ ativo }).eq("id", id).select("id, descricao, ativo").maybeSingle();
+  if (error?.code === "23505") throw new ApiError("Já existe uma causa com essa descrição.", 409);
+  if (error) throw new ApiError("Não foi possível atualizar a situação da causa.", 500);
+  if (!data) throw new ApiError("Causa não encontrada.", 404);
+  return data;
+}
+
+export async function excluirCausaCatalogo(id: number) {
+  await requireAdmin();
+  validarCausaId(id);
+  const admin = createAdminClient() as any;
+  const { count, error: vinculosError } = await admin.from("nc_causas")
+    .select("causa_id", { count: "exact", head: true }).eq("causa_id", id);
+  if (vinculosError) throw new ApiError("Não foi possível verificar o histórico da causa.", 500);
+  if ((count ?? 0) > 0) throw new ApiError("Esta causa possui NCs vinculadas. Arquive-a para preservar o histórico.", 409);
+  const { data, error } = await admin.from("causas").delete().eq("id", id).select("id").maybeSingle();
+  if (error?.code === "23503") throw new ApiError("Esta causa recebeu uma NC vinculada. Ela foi mantida para preservar o histórico.", 409);
+  if (error) throw new ApiError("Não foi possível excluir a causa.", 500);
+  if (!data) throw new ApiError("Causa não encontrada.", 404);
+  return { id: data.id, excluida: true };
+}
+
 export async function decidirSolicitacaoCausa(id: number, input: { decisao?: unknown; observacao?: unknown; causa_existente_id?: unknown }) {
   const user = await requireAdmin();
   const decisao = String(input.decisao ?? "");

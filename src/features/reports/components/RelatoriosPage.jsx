@@ -339,7 +339,7 @@ export default function RelatoriosPage() {
                           <td>{nc.setor || "—"}</td>
                           <td><BadgeStatus status={nc.status} /></td>
                           <td>{nc.criticidade || "—"}</td>
-                          <td><Botao as={Link} href={`/nc/${nc.id}`} variante="secundario" size="sm">Abrir</Botao></td>
+                          <td><Botao as={Link} href={`/nc/${nc.id}?retorno=${encodeURIComponent("/relatorios")}`} variante="secundario" size="sm">Abrir</Botao></td>
                         </tr>
                       ))}</tbody>
                     </Table>
@@ -354,7 +354,7 @@ export default function RelatoriosPage() {
           </>
         )}
       </Container>
-      {detalheIndicador && <ModalNcsIndicador titulo={detalheIndicador.titulo} filtro={detalheIndicador.filtro} aoFechar={() => setDetalheIndicador(null)} />}
+      {detalheIndicador && <ModalNcsIndicador titulo={detalheIndicador.titulo} filtro={detalheIndicador.filtro} retorno="/relatorios" aoFechar={() => setDetalheIndicador(null)} />}
     </div>
   );
 }
