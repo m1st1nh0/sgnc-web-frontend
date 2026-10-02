@@ -92,8 +92,8 @@ for (const id of ["operacao", "tempos", "reincidencia", "distribuicao", "discipl
 }
 assert.doesNotMatch(insights, /<section id="[^"]+">\s*<section/);
 
-assert.match(home, /sg-home-destaque--/);
-assert.match(home, /Acessos importantes para você/);
+assert.match(home, /aria-labelledby="proxima-acao-titulo"/);
+assert.match(home, /aria-labelledby="atalhos-do-papel"/);
 assert.match(homeUx, /Visão da Qualidade/);
 assert.match(homeUx, /Sua equipe hierárquica/);
 assert.match(homeUx, /Seu próximo passo/);
