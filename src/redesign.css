@@ -232,6 +232,8 @@ h6 {
 
 /* Estrutura e títulos */
 .sg-container {
+  width: 100%;
+  max-width: var(--largura-container);
   padding-top: 36px;
   padding-bottom: 64px;
 }
@@ -456,7 +458,11 @@ textarea:focus-visible {
 
 /* Métricas — aparência de resumo técnico, não cards clonados */
 .sg-metrica {
+  display: flex;
+  width: 100%;
+  height: 100%;
   min-height: 142px;
+  flex-direction: column;
   padding: 20px 20px 18px;
   gap: 6px;
   border-top: 3px solid var(--borda-forte);
@@ -472,15 +478,21 @@ textarea:focus-visible {
 }
 
 .sg-metrica-interativa {
-  display: block;
+  display: flex;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  flex-direction: column;
   padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.sg-metrica-interativa > .sg-metrica {
+  flex: 1 0 auto;
 }
 
 .sg-metrica-interativa:focus-visible {
@@ -747,6 +759,18 @@ textarea:focus-visible {
 /* Tabelas */
 .sg-tabela-wrap {
   border-radius: 6px;
+  background: var(--fundo-card);
+  overflow: hidden;
+}
+
+.sg-tabela-wrap .table-responsive {
+  margin-bottom: 0;
+}
+
+.sg-tabela-wrap .table {
+  margin-bottom: 0;
+  color: var(--texto-primario);
+  font-size: 0.875rem;
 }
 
 .sg-tabela-wrap .table thead th {
@@ -767,6 +791,50 @@ textarea:focus-visible {
 .table-secondary,
 .table-secondary > * {
   --bs-table-bg: #f1f2f1;
+}
+
+/* Ritmo compartilhado nas áreas autenticadas. O conteúdo usa a largura
+   disponível ao lado da navegação lateral e encolhe sem estourar o viewport. */
+.sg-app-main,
+.sg-app-main > *,
+.sg-container,
+.sg-container > * {
+  min-width: 0;
+}
+
+.sg-container > .row,
+.sg-container .row > [class*="col-"] {
+  min-width: 0;
+}
+
+.sg-container .sg-card,
+.sg-container .sg-painel,
+.sg-container .sg-tabela-wrap {
+  max-width: 100%;
+}
+
+.sg-container .form-label,
+.sg-container .sg-label {
+  margin-bottom: 6px;
+  color: var(--texto-secundario);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.sg-container .form-control,
+.sg-container .form-select {
+  min-width: 0;
+}
+
+.sg-container .table-responsive {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: var(--borda-forte) transparent;
+}
+
+.sg-container .table th,
+.sg-container .table td {
+  vertical-align: middle;
 }
 
 /* Autenticação */
@@ -1973,6 +2041,9 @@ textarea:focus-visible {
   .sg-nav-scrim.is-visible { position: fixed; z-index: 1045; inset: 56px 0 0; display: block; width: 100%; background: rgb(11 25 39 / 60%); border: 0; }
   body.sg-mobile-menu-open { overflow: hidden; }
   .sg-container { padding-top: 24px; }
+  .sg-container { padding-inline: 16px; }
+  .sg-metrica { min-height: 132px; padding: 16px; }
+  .sg-tabela-wrap .table > :not(caption) > * > * { padding: 11px 12px; }
   .sg-route-loading { min-height: 60vh; }
 }
 @media (prefers-reduced-motion: reduce) {
