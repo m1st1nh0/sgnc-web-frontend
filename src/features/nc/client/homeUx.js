@@ -50,8 +50,14 @@ function porPrioridade(a, b) {
   );
 }
 
-function limitarPrioridades(ncs) {
-  return [...ncs].sort(porPrioridade).slice(0, 5);
+export function ordenarNcsHome(ncs, prioridades = []) {
+  const idsPrioritarios = new Set(prioridades.map((nc) => nc.id));
+  return [...ncs].sort((a, b) => {
+    const prioridadeA = idsPrioritarios.has(a.id);
+    const prioridadeB = idsPrioritarios.has(b.id);
+    if (prioridadeA !== prioridadeB) return prioridadeA ? -1 : 1;
+    return porPrioridade(a, b);
+  });
 }
 
 export function criarVisaoHome(usuario, ncs, equipeIds = []) {
@@ -77,7 +83,7 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
           contar(ncs, "aguardando_feedback") > 0
             ? `${contar(ncs, "aguardando_feedback")} NC(s) procedentes ainda aguardam feedback.`
             : "O fluxo administrativo está sem feedbacks pendentes.",
-        acao: { rotulo: "Ver ações da Qualidade", destino: "#prioridades" },
+        acao: { rotulo: "Ver ações da Qualidade", destino: "#lista-ncs-home" },
       },
       atalhos: [
         { rotulo: "Analisar indicadores", descricao: "Backlog, tempos e reincidência", destino: "/insights", icone: "↗" },
@@ -114,7 +120,7 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
           cor: "verde",
         },
       ],
-      prioridades: limitarPrioridades(prioridades),
+      prioridades: [...prioridades].sort(porPrioridade),
     };
   }
 
@@ -136,7 +142,7 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
           contar(equipe, "aguardando_aceite") > 0
             ? `${contar(equipe, "aguardando_aceite")} NC(s) aguardam confirmação após o feedback.`
             : "Não há aceites pendentes na sua equipe.",
-        acao: { rotulo: "Ver equipe em acompanhamento", destino: "#prioridades" },
+        acao: { rotulo: "Ver equipe em acompanhamento", destino: "#lista-ncs-home" },
       },
       atalhos: [
         { rotulo: "Ver pessoas e NCs", descricao: "Abra cada liderado para ver suas NCs e histórico", destino: "/equipe", icone: "◉" },
@@ -173,7 +179,7 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
           cor: "verde",
         },
       ],
-      prioridades: limitarPrioridades(prioridades),
+      prioridades: [...prioridades].sort(porPrioridade),
     };
   }
 
@@ -205,7 +211,7 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
             : "Consultar minhas estatísticas",
         destino:
           contar(minhasNcs, "aguardando_aceite") > 0
-            ? "#prioridades"
+            ? "#lista-ncs-home"
             : `/usuarios/${usuario.id}/estatisticas`,
       },
     },
@@ -242,7 +248,7 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
         cor: "laranja",
       },
     ],
-    prioridades: limitarPrioridades(prioridades),
+    prioridades: [...prioridades].sort(porPrioridade),
   };
 }
 

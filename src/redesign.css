@@ -1997,6 +1997,59 @@ textarea:focus-visible {
 .sg-governanca__cause-copy strong { overflow-wrap: anywhere; font-size: .86rem; }
 .sg-governanca__cause-copy small { color: var(--texto-suave); font-size: .72rem; }
 .sg-governanca__cause-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 6px; }
+
+/* Home operacional: uma fila única, com prioridades, busca e filtros no mesmo contexto. */
+.sg-home-fila__heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.sg-home-fila__eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--cor-norma);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.sg-home-fila__controles { display: grid; gap: 10px; margin-bottom: 16px; }
+.sg-home-fila__controles .nav-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.sg-home-fila__controles .nav-tabs::-webkit-scrollbar { display: none; }
+.sg-home-fila__busca { display: flex; align-items: center; gap: 12px; }
+.sg-home-fila__busca input { width: min(100%, 360px); min-height: 38px; }
+.sg-home-fila__busca > span { white-space: nowrap; }
+.sg-home-fila__grupos { display: grid; gap: 20px; }
+.sg-home-fila__grupo-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 9px;
+  color: var(--texto-primario);
+  font-size: .88rem;
+  font-weight: 750;
+}
+.sg-home-fila__grupo-titulo span {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--cor-norma);
+  background: color-mix(in srgb, var(--cor-norma) 10%, white);
+  font-size: .7rem;
+}
+.sg-home-atalhos-final { margin-top: 32px; }
+@media (max-width: 600px) {
+  .sg-home-fila__heading { align-items: flex-start; flex-direction: column; }
+  .sg-home-fila__controles { gap: 8px; }
+  .sg-home-fila__busca { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .sg-home-fila__busca input { width: 100%; }
+  .sg-home-atalhos-final { margin-top: 24px; }
+}
 .sg-governanca__cause-actions .btn, .sg-governanca__cause-edit .btn { border-radius: 8px; font-weight: 650; }
 .sg-governanca__cause-edit { display: flex; width: 100%; align-items: center; gap: 8px; }
 .sg-governanca__cause-edit .form-control { min-width: 80px; min-height: 38px; }

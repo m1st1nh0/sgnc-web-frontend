@@ -9,7 +9,7 @@ import Nav from "react-bootstrap/Nav";
 import { listarNcs } from "../client/ncService.js";
 import { listarEquipe, listarOpcoesNc } from "../../users/client/usuarioService.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
-import { criarVisaoHome, filtrarNcsPorCardHome } from "../client/homeUx.js";
+import { criarVisaoHome, filtrarNcsPorCardHome, ordenarNcsHome } from "../client/homeUx.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
 import OnboardingChecklist from "../../onboarding/components/OnboardingChecklist.jsx";
@@ -48,6 +48,7 @@ export default function HomePage() {
   const [atualizando, setAtualizando] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState("todas");
   const [filtroCardAtivo, setFiltroCardAtivo] = useState(null);
+  const [termoBusca, setTermoBusca] = useState("");
 
   async function carregar() {
     try {
@@ -115,16 +116,25 @@ export default function HomePage() {
   );
 
   const ncsFiltradas = useMemo(() => {
+    let resultado;
     if (filtroCardAtivo) {
-      return filtrarNcsPorCardHome(ncs, filtroCardAtivo, usuario?.id);
+      resultado = filtrarNcsPorCardHome(ncs, filtroCardAtivo, usuario?.id);
+    } else {
+      const filtro = ABAS_FILTRO.find((a) => a.chave === abaAtiva);
+      if (!filtro || !filtro.status) resultado = ncs;
+      else {
+        const statusAlvo = Array.isArray(filtro.status) ? filtro.status : [filtro.status];
+        resultado = ncs.filter((nc) => statusAlvo.includes(nc.status));
+      }
     }
-    const filtro = ABAS_FILTRO.find((a) => a.chave === abaAtiva);
-    if (!filtro || !filtro.status) return ncs;
-    const statusAlvo = Array.isArray(filtro.status)
-      ? filtro.status
-      : [filtro.status];
-    return ncs.filter((nc) => statusAlvo.includes(nc.status));
-  }, [ncs, abaAtiva, filtroCardAtivo, usuario?.id]);
+    const termo = termoBusca.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+    if (termo) {
+      resultado = resultado.filter((nc) => [
+        nc.id, nc.colaborador, nc.setor, nc.chamado, nc.assunto, nc.descricao, nc.status,
+      ].filter((valor) => valor != null).join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").includes(termo));
+    }
+    return ordenarNcsHome(resultado, visao.prioridades);
+  }, [ncs, abaAtiva, filtroCardAtivo, termoBusca, usuario?.id, visao.prioridades]);
 
   const contagemPorAba = useMemo(() => {
     const contagem = {};
@@ -157,6 +167,10 @@ export default function HomePage() {
       document.getElementById("lista-ncs-home")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
+
+  const idsPrioritarios = new Set(visao.prioridades.map((nc) => nc.id));
+  const ncsPrioritarias = ncsFiltradas.filter((nc) => idsPrioritarios.has(nc.id));
+  const demaisNcs = ncsFiltradas.filter((nc) => !idsPrioritarios.has(nc.id));
 
 
   return (
@@ -233,12 +247,73 @@ export default function HomePage() {
               ))}
             </div>
 
-            <section className="mb-5" aria-labelledby="atalhos-do-papel">
-              <div className="d-flex justify-content-between align-items-end gap-3 mb-3">
+            <section id="lista-ncs-home" className="sg-ancora-secao" aria-labelledby="lista-ncs-home-titulo">
+              <div className="sg-home-fila__heading">
                 <div>
-                  <h2 id="atalhos-do-papel" className="h5 mb-1">Acessos importantes para você</h2>
-                  <p className="texto-sm texto-suave mb-0">Atalhos organizados conforme seu papel no sistema.</p>
+                  <span className="sg-home-fila__eyebrow">{visao.tituloPrioridades}</span>
+                  <h2 id="lista-ncs-home-titulo" className="h5 mb-1">{visao.tituloLista}</h2>
+                  <p className="texto-sm texto-suave mb-0">As NCs que pedem ação aparecem primeiro; cada registro é mostrado uma única vez.</p>
                 </div>
+                {filtroCardAtivo && <button type="button" className="btn btn-link p-0" onClick={() => setFiltroCardAtivo(null)}>Limpar filtro: {filtroCardAtivo}</button>}
+              </div>
+              {filtroCardAtivo && <p className="texto-sm texto-suave mt-2" role="status">Lista filtrada pelo indicador “{filtroCardAtivo}”. Selecione o card novamente ou limpe o filtro para ver todas as NCs.</p>}
+              <div className="sg-home-fila__controles">
+                <Nav
+                  variant="tabs"
+                  activeKey={abaAtiva}
+                  onSelect={(chave) => { if (chave) { setFiltroCardAtivo(null); setAbaAtiva(chave); } }}
+                  aria-label="Filtrar não conformidades por status"
+                >
+                  {ABAS_FILTRO.map((aba) => (
+                    <Nav.Item key={aba.chave}>
+                      <Nav.Link eventKey={aba.chave}>
+                        {aba.rotulo}<span className="texto-xs texto-suave ms-1">({contagemPorAba[aba.chave] ?? 0})</span>
+                      </Nav.Link>
+                    </Nav.Item>
+                  ))}
+                </Nav>
+                <div className="sg-home-fila__busca">
+                  <label htmlFor="buscar-nc-home" className="visually-hidden">Buscar não conformidade</label>
+                  <input
+                    id="buscar-nc-home"
+                    className="form-control form-control-sm"
+                    type="search"
+                    placeholder="Buscar NC, pessoa ou chamado"
+                    value={termoBusca}
+                    onChange={(event) => setTermoBusca(event.target.value)}
+                  />
+                  <span className="texto-xs texto-suave" role="status" aria-live="polite">{ncsFiltradas.length} resultado(s)</span>
+                </div>
+              </div>
+
+              {ncsFiltradas.length === 0 ? (
+                <EstadoVazio titulo="Nenhuma Não Conformidade encontrada" descricao={termoBusca ? "Revise a busca ou limpe os filtros para ver outros registros." : "Não há registros para este filtro."} />
+              ) : (
+                <div className="sg-home-fila__grupos">
+                  {ncsPrioritarias.length > 0 && (
+                    <section aria-label="NCs prioritárias">
+                      <h3 className="sg-home-fila__grupo-titulo">Exigem atenção <span>{ncsPrioritarias.length}</span></h3>
+                      <div className="d-flex flex-column gap-2">
+                        {ncsPrioritarias.map((nc) => <NcCard key={nc.id} nc={nc} abertoPorNome={obterNomeAbertoPor(nc)} aoClicar={() => router.push(`/nc/${nc.id}`)} />)}
+                      </div>
+                    </section>
+                  )}
+                  {demaisNcs.length > 0 && (
+                    <section aria-label="Demais não conformidades">
+                      <h3 className="sg-home-fila__grupo-titulo">{ncsPrioritarias.length ? "Demais registros" : "Registros"} <span>{demaisNcs.length}</span></h3>
+                      <div className="d-flex flex-column gap-2">
+                        {demaisNcs.map((nc) => <NcCard key={nc.id} nc={nc} abertoPorNome={obterNomeAbertoPor(nc)} aoClicar={() => router.push(`/nc/${nc.id}`)} />)}
+                      </div>
+                    </section>
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section className="sg-home-atalhos-final" aria-labelledby="atalhos-do-papel">
+              <div className="mb-3">
+                <h2 id="atalhos-do-papel" className="h5 mb-1">Acessos importantes para você</h2>
+                <p className="texto-sm texto-suave mb-0">Atalhos organizados conforme seu papel no sistema.</p>
               </div>
               <div className="sg-atalhos-papel">
                 {visao.atalhos.map((atalho) => (
@@ -249,68 +324,6 @@ export default function HomePage() {
                   </Link>
                 ))}
               </div>
-            </section>
-
-            <h2 id="prioridades" className="h5 mb-3 sg-ancora-secao">{visao.tituloPrioridades}</h2>
-            {visao.prioridades.length === 0 ? (
-              <EstadoVazio
-                titulo="Tudo em dia"
-                descricao={visao.vazioPrioridades}
-              />
-            ) : (
-              <div className="d-flex flex-column gap-3 mb-5">
-                {visao.prioridades.map((nc) => (
-                  <NcCard
-                    key={nc.id}
-                    nc={nc}
-                    abertoPorNome={obterNomeAbertoPor(nc)}
-                    aoClicar={() => router.push(`/nc/${nc.id}`)}
-                  />
-                ))}
-              </div>
-            )}
-
-            <section id="lista-ncs-home" className="sg-ancora-secao" aria-labelledby="lista-ncs-home-titulo">
-            <div className="d-flex justify-content-between align-items-end gap-3 mb-3">
-              <h2 id="lista-ncs-home-titulo" className="h5 mb-0">{visao.tituloLista}</h2>
-              {filtroCardAtivo && <button type="button" className="btn btn-link p-0" onClick={() => setFiltroCardAtivo(null)}>Limpar filtro: {filtroCardAtivo}</button>}
-            </div>
-            {filtroCardAtivo && <p className="texto-sm texto-suave" role="status">Lista filtrada pelo indicador “{filtroCardAtivo}”. Selecione o card novamente ou limpe o filtro para ver todas as NCs.</p>}
-            <Nav
-              variant="tabs"
-              activeKey={abaAtiva}
-              onSelect={(chave) => { if (chave) { setFiltroCardAtivo(null); setAbaAtiva(chave); } }}
-              className="mb-3"
-            >
-              {ABAS_FILTRO.map((aba) => (
-                <Nav.Item key={aba.chave}>
-                  <Nav.Link eventKey={aba.chave}>
-                    {aba.rotulo}
-                    <span className="texto-xs texto-suave ms-1">
-                      ({contagemPorAba[aba.chave] ?? 0})
-                    </span>
-                  </Nav.Link>
-                </Nav.Item>
-              ))}
-            </Nav>
-
-            {ncsFiltradas.length === 0 ? (
-              <EstadoVazio
-                titulo="Nenhuma Não Conformidade encontrada"
-                descricao="Não há registros para este filtro."
-              />
-            ) : (
-              <div className="d-flex flex-column gap-3">
-                {ncsFiltradas.map((nc) => (
-                  <NcCard
-                    key={nc.id}
-                    nc={nc}
-                    abertoPorNome={obterNomeAbertoPor(nc)}
-                    aoClicar={() => router.push(`/nc/${nc.id}`)}
-                  />
-                ))}
-              </div>
-            )}
             </section>
           </>
         )}
