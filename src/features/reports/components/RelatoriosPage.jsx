@@ -275,13 +275,12 @@ export default function RelatoriosPage() {
 
         {dados && (
           <>
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <h2 className="h5 mb-0">Resumo do período</h2>
-              <div className="d-flex gap-2">
-                <Botao variante="secundario" type="button" carregando={baixando === "pdf"} disabled={carregando || Boolean(baixando)} onClick={() => gerar("pdf")}>Baixar PDF</Botao>
-                <Botao variante="secundario" type="button" carregando={baixando === "csv"} disabled={carregando || Boolean(baixando)} onClick={() => gerar("csv")}>Baixar CSV</Botao>
-              </div>
-            </div>
+            <div className="sg-analiticos-layout sg-relatorios-layout">
+              <div className="sg-analiticos-conteudo">
+                <div className="mb-3">
+                  <h2 className="h5 mb-1">Resumo do período</h2>
+                  <p className="texto-sm texto-suave mb-0">Indicadores e registros atualizados para os filtros aplicados.</p>
+                </div>
 
             <div className="row g-3 mb-4">
               <div className="col-sm-6 col-xl-3">{card("NCs registradas", { tipo: "period" }, { rotulo: "NCs registradas", valor: kpis.total_ncs ?? 0, descricao: "Abertas no período", cor: "azul" })}</div>
@@ -351,6 +350,43 @@ export default function RelatoriosPage() {
                 </div>
               </div>
             </section>
+              </div>
+
+              <aside className="sg-analiticos-aside" aria-label="Ações do relatório">
+                <section className="sg-card sg-proxima-acao">
+                  <div className="sg-card-body">
+                    <span className="sg-proxima-acao__rotulo">Próxima ação</span>
+                    <h2 className="h6 mt-2 mb-2">Consultar registros do período</h2>
+                    <p className="texto-sm mb-3">Os gráficos e indicadores levam às NCs que formam cada resultado.</p>
+                    <a className="sg-btn sg-btn--primario sg-proxima-acao__botao" href="#lista-ncs-relatorio">Ver lista de NCs</a>
+                  </div>
+                </section>
+
+                <section className="sg-card sg-exportar-relatorio" aria-labelledby="exportar-relatorio">
+                  <div className="sg-card-body">
+                    <h2 id="exportar-relatorio" className="h6 mb-1">Exportar relatório</h2>
+                    <p className="texto-xs texto-suave mb-3">Arquivos gerados com o mesmo período e filtros aplicados.</p>
+                    <div className="sg-exportar-relatorio__acoes">
+                      <Botao variante="secundario" type="button" carregando={baixando === "pdf"} disabled={carregando || Boolean(baixando)} onClick={() => gerar("pdf")}>Baixar PDF</Botao>
+                      <Botao variante="secundario" type="button" carregando={baixando === "csv"} disabled={carregando || Boolean(baixando)} onClick={() => gerar("csv")}>Baixar CSV</Botao>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="sg-card sg-filtros-aplicados" aria-labelledby="filtros-aplicados-relatorio">
+                  <div className="sg-card-body">
+                    <h2 id="filtros-aplicados-relatorio" className="h6 mb-3">Filtros aplicados</h2>
+                    <dl>
+                      <div><dt>Período</dt><dd>{aplicados.inicio} a {aplicados.fim}</dd></div>
+                      <div><dt>Status</dt><dd>{STATUS_LABEL[aplicados.status] || "Todos os status"}</dd></div>
+                      <div><dt>Colaborador</dt><dd>{pessoas.find((pessoa) => pessoa.id === aplicados.colaboradorId)?.nome || "Todos"}</dd></div>
+                      <div><dt>Setor</dt><dd>{aplicados.setor || "Todos"}</dd></div>
+                    </dl>
+                    <p className="texto-xs texto-suave mb-0">Escopo: {escopo}.</p>
+                  </div>
+                </section>
+              </aside>
+            </div>
           </>
         )}
       </Container>
