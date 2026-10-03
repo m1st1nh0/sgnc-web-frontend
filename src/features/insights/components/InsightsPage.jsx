@@ -254,6 +254,7 @@ export default function InsightsPage() {
   if (!podeVer) return null; // O gate server-side da rota valida o papel.
 
   const maisAntiga = dados?.aged_backlog?.mais_antiga;
+  const backlogAtual = Number(kpis.backlog_ativo_atual || 0);
   const disciplina = dados?.disciplina || {};
   const aplicadas = disciplina.aplicadas || {};
   const sugeridas = disciplina.sugeridas || {};
@@ -346,38 +347,62 @@ export default function InsightsPage() {
 
         {!erro && dados && (
           <>
-            <nav className="sg-indice-insights mb-4" aria-label="Atalhos dos Insights">
-              <a href="#operacao">Operação agora</a>
-              <a href="#tempos">Tempos</a>
-              <a href="#reincidencia">Reincidência</a>
-              <a href="#distribuicao">Distribuição</a>
-              <a href="#disciplina">Disciplina</a>
-            </nav>
+          <div className="sg-analiticos-layout sg-insights-layout">
+            <aside className="sg-analiticos-aside" aria-label="Ações e atalhos dos Insights">
+              <section className="sg-card sg-proxima-acao">
+                <div className="sg-card-body">
+                  <span className="sg-proxima-acao__rotulo">Próxima ação</span>
+                  <h2 className="h6 mt-2 mb-2">{leituraExecutiva[0]?.titulo || "Acompanhar a operação"}</h2>
+                  <p className="texto-sm mb-3">{leituraExecutiva[0]?.texto || "Consulte os indicadores e as NCs dentro do seu escopo."}</p>
+                  {backlogAtual > 0 ? (
+                    <button
+                      type="button"
+                      className="sg-btn sg-btn--primario sg-proxima-acao__botao"
+                      onClick={() => leituraExecutiva[0]?.filtro && abrirDetalhe(leituraExecutiva[0].titulo, leituraExecutiva[0].filtro)}
+                    >
+                      Ver NCs do backlog
+                    </button>
+                  ) : (
+                    <span className="sg-proxima-acao__sem-pendencia" role="status">Sem NCs ativas para tratar</span>
+                  )}
+                </div>
+              </section>
 
-            <section className="sg-leitura-executiva mb-5" aria-labelledby="leitura-executiva">
-              <div>
-                <span className="sg-leitura-executiva__rotulo">Leitura rápida</span>
-                <h2 id="leitura-executiva">O que estes números dizem agora</h2>
-                <p>Resumo automático para orientar a análise; a decisão continua com a gestão.</p>
-                <span className="texto-xs">Selecione um resumo para abrir as NCs relacionadas.</span>
-              </div>
-              <div className="sg-leitura-executiva__itens">
-                {leituraExecutiva.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="sg-leitura-executiva__item"
-                    disabled={!item.filtro}
-                    onClick={() => item.filtro && abrirDetalhe(item.titulo, item.filtro)}
-                    aria-label={item.filtro ? `Ver NCs: ${item.titulo}` : item.titulo}
-                  >
-                    <strong>{item.titulo}</strong>
-                    <span>{item.texto}</span>
-                    {item.filtro && <span className="sg-leitura-executiva__acao">Ver NCs</span>}
-                  </button>
-                ))}
-              </div>
-            </section>
+              <section className="sg-card sg-leitura-rapida" aria-labelledby="leitura-executiva">
+                <div className="sg-card-body">
+                  <span className="sg-leitura-executiva__rotulo">Leitura rápida</span>
+                  <h2 id="leitura-executiva" className="h6 mt-2 mb-1">O que os dados indicam</h2>
+                  <p className="texto-xs texto-suave mb-3">Resumo para orientar a análise. A decisão continua com a gestão.</p>
+                  <div className="sg-leitura-executiva__itens">
+                    {leituraExecutiva.slice(1).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="sg-leitura-executiva__item"
+                        disabled={!item.filtro}
+                        onClick={() => item.filtro && abrirDetalhe(item.titulo, item.filtro)}
+                        aria-label={item.filtro ? `Ver NCs: ${item.titulo}` : item.titulo}
+                      >
+                        <strong>{item.titulo}</strong>
+                        <span>{item.texto}</span>
+                        {item.filtro && <span className="sg-leitura-executiva__acao">Ver NCs</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              <nav className="sg-card sg-atalhos-modulo" aria-label="Ir para seção dos Insights">
+                <div className="sg-card-body">
+                  <h2 className="h6 mb-2">Atalhos</h2>
+                  <a href="#operacao">Operação agora</a>
+                  <a href="#tempos">Tempos do fluxo</a>
+                  <a href="#reincidencia">Causas e reincidência</a>
+                  <a href="#distribuicao">Distribuição</a>
+                  <a href="#disciplina">Disciplina</a>
+                </div>
+              </nav>
+            </aside>
 
           <div className="sg-insights d-flex flex-column gap-5">
             <section id="operacao" className="sg-insights__secao sg-insights__secao--norma">
@@ -852,6 +877,7 @@ export default function InsightsPage() {
                 </div>
               </div>
             </section>
+          </div>
           </div>
           </>
         )}
