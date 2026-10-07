@@ -2,9 +2,7 @@ name: Security checks
 
 on:
   push:
-    branches: [main, pr09-devsecops]
   pull_request:
-    branches: [main, pr08-security-hardening]
   schedule:
     - cron: "23 6 * * 1"
 

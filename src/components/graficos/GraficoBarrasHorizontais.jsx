@@ -2,6 +2,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -20,6 +21,8 @@ export default function GraficoBarrasHorizontais({
   series,
   empilhado = false,
   altura = 320,
+  onCategoryClick,
+  corChave,
 }) {
   return (
     <ResponsiveContainer width="100%" height={altura}>
@@ -64,7 +67,13 @@ export default function GraficoBarrasHorizontais({
             stackId={empilhado ? "total" : undefined}
             radius={empilhado && indice === series.length - 1 ? [0, 3, 3, 0] : 0}
             maxBarSize={24}
-          />
+            onClick={onCategoryClick ? (entry) => onCategoryClick(entry?.payload ?? entry, serie.chave) : undefined}
+            cursor={onCategoryClick ? "pointer" : undefined}
+          >
+            {corChave && dados.map((item, itemIndex) => (
+              <Cell key={`${serie.chave}-${itemIndex}`} fill={item[corChave] || serie.cor} />
+            ))}
+          </Bar>
         ))}
       </BarChart>
     </ResponsiveContainer>

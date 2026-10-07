@@ -1,5 +1,5 @@
 import Modal from "react-bootstrap/Modal";
-import Botao from "./Botao";
+import Botao from "./Botao.jsx";
 
 /**
  * Modal de confirmação padronizado.

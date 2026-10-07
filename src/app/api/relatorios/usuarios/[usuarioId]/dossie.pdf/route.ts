@@ -1,0 +1,2 @@
+import { apiErrorResponse } from "@/lib/api/error"; import { gerarPdfDossie } from "@/lib/reports/service"; import { downloadResponse } from "@/lib/reports/response";
+type Context={params:Promise<{usuarioId:string}>};export async function GET(_request:Request,context:Context){try{const file=await gerarPdfDossie((await context.params).usuarioId);return downloadResponse(file.bytes,file.filename,"application/pdf");}catch(error){return apiErrorResponse(error);}}

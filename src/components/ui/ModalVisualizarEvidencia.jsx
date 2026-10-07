@@ -1,6 +1,6 @@
 import Modal from "react-bootstrap/Modal";
 
-import Botao from "./Botao";
+import Botao from "./Botao.jsx";
 
 /**
  * Modal para visualizar a imagem de uma evidência anexada dentro da

@@ -1,18 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const abertura = readFileSync("src/pages/AbrirNcPage.jsx", "utf8");
-const estatisticas = readFileSync("src/pages/EstatisticasUsuarioPage.jsx", "utf8");
-const usuarios = readFileSync("src/pages/UsuariosPage.jsx", "utf8");
-const detalhes = readFileSync("src/pages/DetalhesNcPage.jsx", "utf8");
-const navegacao = readFileSync("src/components/BarraNavegacao.jsx", "utf8");
+const abertura = readFileSync("src/features/nc/components/AbrirNcPage.jsx", "utf8");
+const estatisticas = readFileSync("src/features/users/components/EstatisticasUsuarioPage.jsx", "utf8");
+const usuarios = readFileSync("src/features/users/components/UsuariosPage.jsx", "utf8");
+const detalhes = readFileSync("src/features/nc/components/DetalhesNcPage.jsx", "utf8");
+const navegacao = readFileSync("src/components/navigation/BarraNavegacao.jsx", "utf8");
 const estilos = readFileSync("src/redesign.css", "utf8");
-const app = readFileSync("src/App.jsx", "utf8");
-const insights = readFileSync("src/pages/InsightsPage.jsx", "utf8");
-const home = readFileSync("src/pages/HomePage.jsx", "utf8");
-const homeUx = readFileSync("src/services/homeUx.js", "utf8");
-const api = readFileSync("src/services/api.js", "utf8");
-const auth = readFileSync("src/context/AuthContext.jsx", "utf8");
+const app = readFileSync("src/app/(app)/usuarios/[usuarioId]/dossie/page.tsx", "utf8");
+const insights = readFileSync("src/features/insights/components/InsightsPage.jsx", "utf8");
+const home = readFileSync("src/features/nc/components/HomePage.jsx", "utf8");
+const homeUx = readFileSync("src/features/nc/client/homeUx.js", "utf8");
+const api = readFileSync("src/lib/api/client/api.js", "utf8");
+const auth = readFileSync("src/features/auth/components/AuthContext.jsx", "utf8");
 const workflow = readFileSync(".github/workflows/frontend-checks.yml", "utf8");
 
 assert.match(abertura, /Colaborador analisado/);
@@ -39,7 +39,7 @@ assert.doesNotMatch(estatisticas, /bg-primary/);
 assert.match(usuarios, /Dossiê/);
 assert.doesNotMatch(usuarios, /react-bootstrap\/Badge/);
 assert.match(navegacao, /Meu dossiê/);
-assert.match(app, /\/usuarios\/:usuarioId\/dossie/);
+assert.match(app, /EstatisticasUsuarioPage/);
 
 assert.match(detalhes, /Baixar relatório PDF/);
 assert.match(detalhes, /baixarPdfNc/);
@@ -83,7 +83,7 @@ for (const [texto, fundo] of badgesPapel) {
   );
 }
 
-assert.match(insights, /O que estes números dizem agora/);
+assert.match(insights, /O que os dados indicam/);
 assert.match(insights, /Fotografia atual/);
 assert.match(insights, /Histórico do período/);
 assert.match(insights, /mesmo colaborador e a mesma causa/);
@@ -92,10 +92,10 @@ for (const id of ["operacao", "tempos", "reincidencia", "distribuicao", "discipl
 }
 assert.doesNotMatch(insights, /<section id="[^"]+">\s*<section/);
 
-assert.match(home, /sg-home-destaque--/);
-assert.match(home, /Acessos importantes para você/);
+assert.match(home, /aria-labelledby="proxima-acao-titulo"/);
+assert.match(home, /aria-labelledby="atalhos-do-papel"/);
 assert.match(homeUx, /Visão da Qualidade/);
-assert.match(homeUx, /Sua equipe direta/);
+assert.match(homeUx, /Sua equipe hierárquica/);
 assert.match(homeUx, /Seu próximo passo/);
 assert.match(homeUx, /Seus indicadores pessoais separados/);
 

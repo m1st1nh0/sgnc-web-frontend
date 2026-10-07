@@ -1,4 +1,4 @@
-import MarcaSgnc from "./MarcaSgnc";
+import MarcaSgnc from "./MarcaSgnc.jsx";
 
 export default function AuthLayout({ children }) {
   return (

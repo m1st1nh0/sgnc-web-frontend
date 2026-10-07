@@ -1,4 +1,4 @@
-import { infoDoStatus } from "../../services/statusNc";
+import { infoDoStatus } from "../../features/nc/client/statusNc.js";
 
 const MAPA_COR = {
   secondary: "sg-badge--cinza",

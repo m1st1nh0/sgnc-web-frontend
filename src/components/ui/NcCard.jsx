@@ -1,7 +1,7 @@
-import BadgeStatus from "./BadgeStatus";
-import BadgePrioridade from "./BadgePrioridade";
-import { formatarData } from "../../utils/formato";
-import { infoDoStatus } from "../../services/statusNc";
+import BadgeStatus from "./BadgeStatus.jsx";
+import BadgePrioridade from "./BadgePrioridade.jsx";
+import { formatarData } from "../../lib/utils/formato.js";
+import { infoDoStatus } from "../../features/nc/client/statusNc.js";
 
 export default function NcCard({ nc, aoClicar, abertoPorNome }) {
   const { etapa } = infoDoStatus(nc.status);

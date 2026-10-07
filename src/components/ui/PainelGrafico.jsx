@@ -1,4 +1,4 @@
-import EstadoVazio from "./EstadoVazio";
+import EstadoVazio from "./EstadoVazio.jsx";
 
 /**
  * Card padrão que envolve um gráfico na página de Insights.

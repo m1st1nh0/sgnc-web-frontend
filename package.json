@@ -4,28 +4,38 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "typecheck": "next typegen && tsc --noEmit",
+    "test:regression": "node test_pr05.mjs && node test_pr06.mjs && node test_pr07.mjs && node test_pr08.mjs && node test_pr09_onboarding.mjs && node test_ux_operacao_indicadores.mjs && node test_pr10_hierarchy.mjs",
+    "test:unit": "playwright test --project=unit",
+    "test:api": "playwright test --project=http",
+    "test:e2e": "playwright test --project=desktop --project=mobile",
+    "test": "npm run test:regression && npm run test:unit"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.2",
     "bootstrap": "^5.3.8",
+    "next": "^16.3.7",
+    "pdf-lib": "^1.17.1",
     "react": "^19.2.8",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.2",
     "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.4",
     "eslint": "^10.8.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.7.0",
-    "vite": "^8.2.0"
+    "typescript": "^7.0.2"
   }
 }
