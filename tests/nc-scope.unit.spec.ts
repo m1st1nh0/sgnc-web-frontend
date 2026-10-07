@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { buildNcReadScopeFilter, buildNcTeamScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "../src/lib/permissions/nc-scope";
+import { filterSensitive } from "../src/lib/permissions/nc";
 
 const supervisor = {
   id: "supervisor-id",
@@ -49,4 +50,14 @@ test("insights KPIs and charts expose a scoped NC drilldown", () => {
   expect(page).toContain("onPointClick");
   expect(page).toContain("ModalNcsIndicador");
   expect(endpoint).toContain("listarNcsDoIndicador");
+});
+
+test("employees see their own validated and invalidated NCs with the invalidation reason", () => {
+  const funcionario = { ...supervisor, id: "funcionario-id", papel: "funcionario" as const };
+  const scope = buildNcReadScopeFilter(funcionario, []);
+  expect(scope).toContain("validada");
+  expect(scope).toContain("invalidada");
+  expect(scope).toContain("colaborador_id.in.(funcionario-id)");
+  const nc = { aberto_por: "autor", colaborador_id: funcionario.id, status: "invalidada", motivo_invalidacao: "Evidência insuficiente" };
+  expect(filterSensitive(nc, funcionario).motivo_invalidacao).toBe("Evidência insuficiente");
 });
