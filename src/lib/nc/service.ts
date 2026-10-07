@@ -82,7 +82,6 @@ async function causeIds(
       if (!existing.ativo && !options.allowInactive) {
         throw new ApiError("Esta causa está arquivada. Solicite sua reativação ao administrador.", 422);
       }
-      if (!existing.ativo && options.allowCreate) await admin.from("causas").update({ ativo: true }).eq("id", existing.id);
       ids.push(existing.id);
       continue;
     }
@@ -452,8 +451,13 @@ export async function editarNc(id: number, input: NcInput) {
     .maybeSingle();
   if (error) throw new ApiError("Não foi possível editar a NC.", 500);
   if (!updated) throw new ApiError("A NC foi alterada por outro processo. Atualize a página e tente novamente.", 409);
-  await admin.from("nc_causas").delete().eq("nc_id", id);
-  if (ids.length) await admin.from("nc_causas").insert(ids.map((causaId) => ({ nc_id: id, causa_id: causaId })));
+  const { error: removeCausesError } = await admin.from("nc_causas").delete().eq("nc_id", id);
+  if (removeCausesError) throw new ApiError("Não foi possível atualizar as causas da NC.", 500);
+  if (ids.length) {
+    const { error: insertCausesError } = await admin.from("nc_causas")
+      .insert(ids.map((causaId) => ({ nc_id: id, causa_id: causaId })));
+    if (insertCausesError) throw new ApiError("Não foi possível atualizar as causas da NC.", 500);
+  }
   return buscarNc(id);
 }
 
