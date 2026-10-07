@@ -81,7 +81,7 @@ export default function AbrirNcPage() {
         ]);
         setUsuarios(listaUsuarios);
         setCausasConhecidas(listaCausas);
-        await concluirEtapa("checklist_abrir_nc", "checklist", {
+        void concluirEtapa("checklist_abrir_nc", "checklist", {
           pagina: "abrir-nc",
         });
       } catch (e) {
@@ -95,6 +95,8 @@ export default function AbrirNcPage() {
       }
     }
     carregarDadosDeApoio();
+    // Dados de apoio carregados apenas na montagem do formulário.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const colaboradorSelecionado = usuarios.find((u) => u.id === colaboradorId);

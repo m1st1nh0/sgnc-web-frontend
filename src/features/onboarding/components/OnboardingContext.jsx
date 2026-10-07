@@ -169,7 +169,6 @@ export function OnboardingProvider({ children }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useOnboarding() {
   const contexto = useContext(OnboardingContext);
   if (!contexto) {

@@ -83,7 +83,7 @@ for (const [texto, fundo] of badgesPapel) {
   );
 }
 
-assert.match(insights, /O que estes números dizem agora/);
+assert.match(insights, /O que os dados indicam/);
 assert.match(insights, /Fotografia atual/);
 assert.match(insights, /Histórico do período/);
 assert.match(insights, /mesmo colaborador e a mesma causa/);
