@@ -1976,15 +1976,6 @@ textarea:focus-visible {
 }
 @keyframes sg-loading-spin { to { transform: rotate(360deg); } }
 @keyframes sg-loading-in { from { opacity: 0; } to { opacity: 1; } }
-.sg-metrica-interativa:hover .sg-metrica {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 18px rgb(16 38 61 / .12);
-}
-.sg-metrica-interativa:has(.sg-metrica__faixa--azul):hover .sg-metrica { background: #f1f5ff; }
-.sg-metrica-interativa:has(.sg-metrica__faixa--verde):hover .sg-metrica { background: #eff8f4; }
-.sg-metrica-interativa:has(.sg-metrica__faixa--amarela):hover .sg-metrica { background: #fff9e8; }
-.sg-metrica-interativa:has(.sg-metrica__faixa--laranja):hover .sg-metrica { background: #fff4eb; }
-.sg-metrica-interativa:has(.sg-metrica__faixa--vermelha):hover .sg-metrica { background: #fff1ef; }
 @media (max-width: 1023.98px) and (min-width: 600.01px) {
   .sg-app-shell { --sg-nav-width: 72px; }
   .sg-app-nav { width: 72px; }
@@ -1995,18 +1986,18 @@ textarea:focus-visible {
   .sg-app-nav__link { justify-content: center; padding: 0; }
   .sg-app-nav__profile { justify-content: center; padding-inline: 0; }
   .sg-app-nav__toggle { display: grid; transform: none; }
-  .sg-app-shell:not(.sg-app-shell--compact) .sg-app-nav {
+  .sg-app-shell--overlay-open .sg-app-nav {
     z-index: 1040;
     width: min(296px, calc(100vw - 88px));
     box-shadow: 12px 0 28px rgb(9 24 40 / 18%);
   }
-  .sg-app-shell:not(.sg-app-shell--compact) .sg-app-nav__brand-row { flex-direction: row; justify-content: space-between; padding: 0 2px 8px 8px; }
-  .sg-app-shell:not(.sg-app-shell--compact) .sg-app-nav__brand-name,
-  .sg-app-shell:not(.sg-app-shell--compact) .sg-app-nav__link span,
-  .sg-app-shell:not(.sg-app-shell--compact) .sg-app-nav__profile-copy { display: grid; }
-  .sg-app-shell:not(.sg-app-shell--compact) .sg-app-nav__link { justify-content: flex-start; padding: 0 14px; }
-  .sg-app-shell:not(.sg-app-shell--compact) .sg-app-nav__profile { justify-content: flex-start; padding-inline: 8px; }
-  .sg-app-shell:not(.sg-app-shell--compact) .sg-nav-scrim { position: fixed; z-index: 1035; inset: 0; display: block; background: rgb(11 25 39 / 52%); border: 0; }
+  .sg-app-shell--overlay-open .sg-app-nav__brand-row { flex-direction: row; justify-content: space-between; padding: 0 2px 8px 8px; }
+  .sg-app-shell--overlay-open .sg-app-nav__brand-name,
+  .sg-app-shell--overlay-open .sg-app-nav__link span,
+  .sg-app-shell--overlay-open .sg-app-nav__profile-copy { display: grid; }
+  .sg-app-shell--overlay-open .sg-app-nav__link { justify-content: flex-start; padding: 0 14px; }
+  .sg-app-shell--overlay-open .sg-app-nav__profile { justify-content: flex-start; padding-inline: 8px; }
+  .sg-app-shell--overlay-open .sg-nav-scrim { position: fixed; z-index: 1035; inset: 0; display: block; background: rgb(11 25 39 / 52%); border: 0; }
 }
 @media (max-width: 600px) {
   .sg-app-shell, .sg-app-shell--compact { --sg-nav-width: 0px; }
@@ -2353,4 +2344,91 @@ textarea:focus-visible {
   .sg-governanca__cause-actions { width: 100%; padding-left: 32px; }
   .sg-governanca__cause-edit { flex-wrap: wrap; }
   .sg-governanca__cause-edit .form-control { flex-basis: 100%; }
+}
+
+/* Cards de indicador clicáveis (Insights, Relatórios): o botão é o próprio card,
+   com a faixa colorida no topo e a ação "Ver NCs" dentro da borda. A home mantém
+   a composição própria em dashboard.css. */
+.sg-metrica-interativa {
+  overflow: hidden;
+  border: 1px solid var(--borda);
+  border-top: 3px solid var(--borda-forte);
+  border-radius: 6px;
+  background: var(--fundo-card);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.sg-metrica-interativa:has(.sg-metrica__faixa--azul) { border-top-color: var(--cor-norma); }
+.sg-metrica-interativa:has(.sg-metrica__faixa--verde) { border-top-color: var(--cor-controle); }
+.sg-metrica-interativa:has(.sg-metrica__faixa--amarela) { border-top-color: var(--cor-pendencia); }
+.sg-metrica-interativa:has(.sg-metrica__faixa--laranja) { border-top-color: var(--status-feedback-forte); }
+.sg-metrica-interativa:has(.sg-metrica__faixa--vermelha) { border-top-color: var(--cor-desvio); }
+.sg-metrica-interativa > .sg-metrica {
+  height: auto;
+  min-height: 0;
+  padding-bottom: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.sg-metrica-interativa > .sg-metrica:hover { background: transparent; }
+.sg-metrica-interativa__acao {
+  margin-top: auto;
+  padding: 0 20px 14px;
+  color: var(--cor-norma);
+}
+.sg-metrica-interativa__acao::after { content: " →"; }
+.sg-metrica-interativa:hover {
+  border-right-color: var(--borda-forte);
+  border-bottom-color: var(--borda-forte);
+  border-left-color: var(--borda-forte);
+  box-shadow: 0 4px 12px rgb(16 38 61 / 8%);
+}
+.sg-metrica-interativa:hover .sg-metrica-interativa__acao { text-decoration: underline; }
+
+/* Texto visualmente oculto em cabeçalhos de tabela não pode escapar da rolagem
+   horizontal do contêiner (gerava scroll na página inteira em telas estreitas). */
+.table-responsive { position: relative; }
+
+/* Atualização de dados já exibidos: sinal discreto, sem desmontar a tela. */
+.sg-analiticos-layout[aria-busy="true"] { opacity: .6; transition: opacity 160ms ease; }
+
+/* Cards inteiros clicáveis (ex.: Minhas NCs). */
+.sg-card--link { color: inherit; transition: border-color 140ms ease, box-shadow 140ms ease; }
+.sg-card--link:hover { border-color: var(--borda-forte); box-shadow: 0 4px 12px rgb(16 38 61 / 8%); }
+.sg-card--link:focus-visible { outline: 3px solid var(--cor-norma); outline-offset: 2px; }
+
+/* Filtros do relatório: grade fluida, o botão Aplicar nunca sai do card. */
+.sg-filtros-relatorio {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  align-items: end;
+  gap: 14px 16px;
+}
+.sg-filtros-relatorio__acao .sg-btn { width: 100%; }
+@media (min-width: 1200px) {
+  .sg-filtros-relatorio {
+    grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) minmax(150px, 1fr) minmax(190px, 1.4fr) minmax(150px, 1fr) auto;
+  }
+  .sg-filtros-relatorio__acao .sg-btn { min-width: 110px; }
+}
+
+/* Em telas sem coluna lateral, o relatório mostra primeiro os dados e depois
+   as ações de apoio (exportar, filtros aplicados). */
+@media (max-width: 1199.98px) {
+  .sg-relatorios-layout { grid-template-areas: "content" "aside"; }
+  .sg-relatorios-layout .sg-analiticos-aside { order: 0; }
+}
+
+/* O componente Botao herda .btn-primary do React Bootstrap; sem estas variáveis,
+   qualquer variante desabilitada/pressionada assumia o azul padrão do Bootstrap. */
+.sg-btn--primario { --bs-btn-disabled-bg: var(--cor-norma); --bs-btn-disabled-border-color: var(--cor-norma); --bs-btn-disabled-color: #fff; --bs-btn-active-bg: var(--cor-norma-hover); --bs-btn-active-border-color: var(--cor-norma-hover); --bs-btn-active-color: #fff; }
+.sg-btn--secundario { --bs-btn-disabled-bg: #fff; --bs-btn-disabled-border-color: var(--borda-forte); --bs-btn-disabled-color: var(--texto-primario); --bs-btn-active-bg: var(--fundo-hover); --bs-btn-active-border-color: var(--texto-suave); --bs-btn-active-color: var(--texto-primario); --bs-btn-color: var(--texto-primario); }
+.sg-btn--perigo { --bs-btn-disabled-bg: var(--erro); --bs-btn-disabled-border-color: var(--erro); --bs-btn-disabled-color: #fff; --bs-btn-active-bg: #b91c1c; --bs-btn-active-border-color: #b91c1c; --bs-btn-active-color: #fff; }
+.sg-btn--sucesso { --bs-btn-disabled-bg: var(--cor-controle); --bs-btn-disabled-border-color: var(--cor-controle); --bs-btn-disabled-color: #fff; --bs-btn-active-bg: var(--cor-controle-hover); --bs-btn-active-border-color: var(--cor-controle-hover); --bs-btn-active-color: #fff; }
+.sg-btn--subtle { --bs-btn-disabled-bg: transparent; --bs-btn-disabled-border-color: transparent; --bs-btn-disabled-color: var(--texto-secundario); --bs-btn-active-bg: var(--fundo-hover); --bs-btn-active-border-color: transparent; --bs-btn-active-color: var(--texto-primario); }
+
+.sg-app-nav__link:hover, .sg-app-nav__brand:hover { text-decoration: none; }
+@media (max-width: 600px) {
+  /* Menu fechado fora da tela: sem sombra vazando na borda esquerda. */
+  .sg-app-nav:not(.is-mobile-open) { box-shadow: none; }
 }

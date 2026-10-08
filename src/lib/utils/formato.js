@@ -29,3 +29,9 @@ export function formatarDataHora(dataIso) {
   const minuto = String(data.getMinutes()).padStart(2, "0");
   return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
 }
+
+/** Intervalo de datas ISO no padrão brasileiro: "01/09/2026 a 30/09/2026". */
+export function formatarPeriodo(inicio, fim) {
+  if (!inicio || !fim) return "";
+  return `${formatarData(inicio)} a ${formatarData(fim)}`;
+}

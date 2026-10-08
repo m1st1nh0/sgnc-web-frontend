@@ -21,6 +21,7 @@ import { ErroApi, chamarApi } from "../../../lib/api/client/api.js";
 import { baixarPdfNc } from "../../reports/client/relatoriosService.js";
 import { salvarArquivoLocal } from "../../../lib/utils/arquivoLocal.js";
 import { formatarData, formatarDataHora } from "../../../lib/utils/formato.js";
+import { rotuloRetorno } from "../../../lib/utils/retorno.js";
 import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
@@ -52,6 +53,13 @@ function ehImagem(nomeArquivo) {
   if (!nomeArquivo) return false;
   const extensao = nomeArquivo.split(".").pop()?.toLowerCase() || "";
   return EXTENSOES_IMAGEM.has(extensao);
+}
+
+function resumirDescricao(descricao, limite = 90) {
+  const texto = String(descricao || "").trim();
+  if (texto.length <= limite) return texto;
+  const corte = texto.slice(0, limite);
+  return `${corte.slice(0, Math.max(corte.lastIndexOf(" "), limite * 0.6)).trimEnd()}…`;
 }
 
 export default function DetalhesNcPage({ retorno = "/" }) {
@@ -164,7 +172,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
     setExcluindoNc(true);
     try {
       await chamarApi(`/nc/${id}`, { method: "DELETE" });
-      router.push("/");
+      router.push(retorno);
     } catch (e) {
       setErro(
         e instanceof ErroApi ? e.message : "Não foi possível excluir a NC."
@@ -279,11 +287,14 @@ export default function DetalhesNcPage({ retorno = "/" }) {
   return (
     <div>
       <Container className="sg-container" style={{ maxWidth: "900px" }}>
+        <Link href={retorno} className="sg-voltar mb-3 d-inline-flex">
+          &larr; {rotuloRetorno(retorno)}
+        </Link>
         <CabecalhoPagina
           titulo={`NC #${id}`}
           subtitulo={
             nc
-              ? nc.descricao?.slice(0, 80) || "Detalhes da não conformidade"
+              ? resumirDescricao(nc.descricao) || "Detalhes da não conformidade"
               : ""
           }
           acoes={
@@ -325,9 +336,6 @@ export default function DetalhesNcPage({ retorno = "/" }) {
 
         <DicaContextual chave="dica_nc_pdf" className="mb-3" />
 
-        <Link href={retorno === "/relatorios" ? retorno : "/"} className="sg-voltar mb-3 d-inline-flex">
-          &larr; Voltar para a lista
-        </Link>
         {avisoUploadInicial && (
           <div className="sg-alerta sg-alerta--atencao mb-3" role="status">
             {avisoUploadInicial}
@@ -349,7 +357,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
             <div className="sg-card">
               <div className="sg-card-body p-4">
                 <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
-                  <h1 className="h5 mb-0">NC #{nc.id}</h1>
+                  <h2 className="h5 mb-0">Dados da ocorrência</h2>
                   <div className="d-flex gap-2 flex-wrap">
                     <BadgePrioridade criticidade={nc.criticidade} />
                     <BadgeStatus status={nc.status} />
@@ -517,6 +525,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                             type="file"
                             size="sm"
                             className="sg-input"
+                            aria-label="Selecionar arquivo de evidência"
                             disabled={enviandoArquivo}
                             onChange={selecionarArquivo}
                           />

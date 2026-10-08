@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Table from "react-bootstrap/Table";
 
@@ -14,6 +14,7 @@ import { registrarMedidaDisciplinar } from "../../nc/client/ncService.js";
 import { baixarPdfDossie } from "../../reports/client/relatoriosService.js";
 import { salvarArquivoLocal } from "../../../lib/utils/arquivoLocal.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
+import { normalizarRetorno, rotuloRetorno } from "../../../lib/utils/retorno.js";
 import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import CardMetrica from "../../../components/ui/CardMetrica.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
@@ -65,6 +66,7 @@ function medidaDaUltimaOcorrencia(causa) {
 
 export default function EstatisticasUsuarioPage() {
   const { usuarioId } = useParams();
+  const retorno = normalizarRetorno(useSearchParams().get("retorno"));
   const { usuario } = useAuth();
   const { concluirEtapa } = useOnboarding();
 
@@ -164,8 +166,8 @@ export default function EstatisticasUsuarioPage() {
   return (
     <div>
       <Container className="sg-container" style={{ maxWidth: "1100px" }}>
-        <Link href="/" className="sg-voltar mb-3 d-inline-flex">
-          &larr; Voltar
+        <Link href={retorno} className="sg-voltar mb-3 d-inline-flex">
+          &larr; {retorno === "/" ? "Voltar ao início" : rotuloRetorno(retorno)}
         </Link>
 
         <CabecalhoPagina

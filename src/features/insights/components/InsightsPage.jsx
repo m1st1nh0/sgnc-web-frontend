@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
@@ -33,6 +34,7 @@ import GraficoDonut from "../../../components/graficos/GraficoDonut.jsx";
 import GraficoLinha from "../../../components/graficos/GraficoLinha.jsx";
 import { CORES_GRAFICO } from "../../../components/graficos/cores.js";
 import ModalNcsIndicador from "./ModalNcsIndicador.jsx";
+import { urlComFiltros } from "../../../lib/utils/retorno.js";
 
 const CORES_CRITICIDADE = {
   baixa: CORES_GRAFICO.verde,
@@ -67,11 +69,20 @@ function TempoCard({ rotulo, resumo, cor }) {
 export default function InsightsPage() {
   const { usuario } = useAuth();
   const { concluirEtapa } = useOnboarding();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [dados, setDados] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [detalheIndicador, setDetalheIndicador] = useState(null);
   const [filtros, setFiltros] = useState({ inicio: "", fim: "" });
+  // Período escolhido pelo usuário; fica na URL para sobreviver ao retorno do detalhe da NC.
+  const [periodoUrl] = useState(() => ({
+    inicio: searchParams.get("inicio") || "",
+    fim: searchParams.get("fim") || "",
+  }));
+  const [periodoAplicado, setPeriodoAplicado] = useState(periodoUrl);
+  const urlAtual = urlComFiltros("/insights", periodoAplicado);
 
   async function carregar(opcoes = {}) {
     setCarregando(true);
@@ -82,6 +93,9 @@ export default function InsightsPage() {
         throw new Error("Contrato de Insights incompatível com a interface V2.");
       }
       setDados(resultado);
+      const aplicado = { inicio: opcoes.inicio || "", fim: opcoes.fim || "" };
+      setPeriodoAplicado(aplicado);
+      router.replace(urlComFiltros("/insights", aplicado), { scroll: false });
       void concluirEtapa("checklist_insights", "checklist", {
         escopo: usuario?.papel === "supervisor" ? "equipe_hierarquica" : "organizacao",
       });
@@ -102,13 +116,17 @@ export default function InsightsPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    carregar();
+    carregar({ inicio: periodoUrl.inicio || undefined, fim: periodoUrl.fim || undefined });
     // Carrega somente na montagem; filtros posteriores chamam carregar() diretamente.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function aplicarFiltros(evento) {
     evento.preventDefault();
+    if (filtros.inicio && filtros.fim && filtros.inicio > filtros.fim) {
+      setErro("A data inicial não pode ser posterior à data final.");
+      return;
+    }
     await carregar({
       inicio: filtros.inicio || undefined,
       fim: filtros.fim || undefined,
@@ -277,7 +295,7 @@ export default function InsightsPage() {
           <div className="sg-card-body p-3 p-md-4">
             <Form onSubmit={aplicarFiltros}>
               <div className="row g-3 align-items-end">
-                <div className="col-sm-6 col-lg-3">
+                <Form.Group className="col-sm-6 col-lg-3" controlId="insights-inicio">
                   <Form.Label className="sg-label">Início do período</Form.Label>
                   <Form.Control
                     type="date"
@@ -291,8 +309,8 @@ export default function InsightsPage() {
                     }
                     disabled={carregando}
                   />
-                </div>
-                <div className="col-sm-6 col-lg-3">
+                </Form.Group>
+                <Form.Group className="col-sm-6 col-lg-3" controlId="insights-fim">
                   <Form.Label className="sg-label">Fim do período</Form.Label>
                   <Form.Control
                     type="date"
@@ -306,7 +324,7 @@ export default function InsightsPage() {
                     }
                     disabled={carregando}
                   />
-                </div>
+                </Form.Group>
                 <div className="col-lg-6 d-flex flex-wrap gap-2">
                   <Botao
                     type="submit"
@@ -346,10 +364,15 @@ export default function InsightsPage() {
           <EstadoCarregamento mensagem="Carregando insights..." />
         )}
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
+        {erro && !dados && !carregando && (
+          <Botao variante="secundario" onClick={() => carregar({ inicio: periodoAplicado.inicio || undefined, fim: periodoAplicado.fim || undefined })}>
+            Tentar novamente
+          </Botao>
+        )}
 
-        {!erro && dados && (
+        {dados && (
           <>
-          <div className="sg-analiticos-layout sg-insights-layout">
+          <div className="sg-analiticos-layout sg-insights-layout" aria-busy={carregando}>
             <aside className="sg-analiticos-aside" aria-label="Ações e atalhos dos Insights">
               <section className="sg-card sg-proxima-acao">
                 <div className="sg-card-body">
@@ -398,7 +421,8 @@ export default function InsightsPage() {
                 <div className="sg-card-body">
                   <h2 className="h6 mb-2">Atalhos</h2>
                   <a href="#operacao">Operação agora</a>
-                  <a href="#tempos">Tempos do fluxo</a>
+                  <a href="#movimento">Movimento no período</a>
+                  <a href="#tempos">Velocidade do fluxo</a>
                   <a href="#reincidencia">Causas e reincidência</a>
                   <a href="#distribuicao">Distribuição</a>
                   <a href="#disciplina">Disciplina</a>
@@ -513,47 +537,7 @@ export default function InsightsPage() {
               </div>
             </section>
 
-            <section id="tempos" className="sg-insights__secao">
-              <div className="mb-3">
-                <h2 className="h5 mb-1">Velocidade do fluxo</h2>
-                <p className="texto-sm texto-suave mb-0">
-                  O valor principal é a mediana; a média e o tamanho da amostra
-                  aparecem abaixo para evitar conclusões distorcidas por outliers.
-                </p>
-              </div>
-              <div className="row g-3">
-                <div className="col-sm-6 col-xl-3">
-                  <TempoCard
-                    rotulo="Até validação"
-                    resumo={tempos.criacao_ate_validacao}
-                    cor="azul"
-                  />
-                </div>
-                <div className="col-sm-6 col-xl-3">
-                  <TempoCard
-                    rotulo="Validação → feedback"
-                    resumo={tempos.validacao_ate_feedback}
-                    cor="laranja"
-                  />
-                </div>
-                <div className="col-sm-6 col-xl-3">
-                  <TempoCard
-                    rotulo="Feedback → aceite"
-                    resumo={tempos.feedback_ate_aceite}
-                    cor="amarela"
-                  />
-                </div>
-                <div className="col-sm-6 col-xl-3">
-                  <TempoCard
-                    rotulo="Ciclo total"
-                    resumo={tempos.ciclo_total}
-                    cor="verde"
-                  />
-                </div>
-              </div>
-            </section>
-
-            <section className="sg-insights__secao sg-insights__secao--norma">
+            <section id="movimento" className="sg-insights__secao sg-insights__secao--norma">
               <div className="mb-3">
                 <h2 className="h5 mb-1">Movimento no período</h2>
                 <p className="texto-sm texto-suave mb-0">
@@ -632,6 +616,46 @@ export default function InsightsPage() {
                   )}
                 />
               </PainelGrafico>
+            </section>
+
+            <section id="tempos" className="sg-insights__secao">
+              <div className="mb-3">
+                <h2 className="h5 mb-1">Velocidade do fluxo</h2>
+                <p className="texto-sm texto-suave mb-0">
+                  O valor principal é a mediana; a média e o tamanho da amostra
+                  aparecem abaixo para evitar conclusões distorcidas por outliers.
+                </p>
+              </div>
+              <div className="row g-3">
+                <div className="col-sm-6 col-xl-3">
+                  <TempoCard
+                    rotulo="Até validação"
+                    resumo={tempos.criacao_ate_validacao}
+                    cor="azul"
+                  />
+                </div>
+                <div className="col-sm-6 col-xl-3">
+                  <TempoCard
+                    rotulo="Validação → feedback"
+                    resumo={tempos.validacao_ate_feedback}
+                    cor="laranja"
+                  />
+                </div>
+                <div className="col-sm-6 col-xl-3">
+                  <TempoCard
+                    rotulo="Feedback → aceite"
+                    resumo={tempos.feedback_ate_aceite}
+                    cor="amarela"
+                  />
+                </div>
+                <div className="col-sm-6 col-xl-3">
+                  <TempoCard
+                    rotulo="Ciclo total"
+                    resumo={tempos.ciclo_total}
+                    cor="verde"
+                  />
+                </div>
+              </div>
             </section>
 
             <section id="reincidencia" className="sg-insights__secao sg-insights__secao--pendencia">
@@ -733,8 +757,8 @@ export default function InsightsPage() {
               <div className="mb-3">
                 <h2 className="h5 mb-1">Distribuição organizacional</h2>
                 <p className="texto-sm texto-suave mb-0">
-                  Para supervisores, estes gráficos permanecem limitados à
-                  equipe direta pelo backend.
+                  Para supervisores, estes gráficos ficam limitados às pessoas
+                  da hierarquia sob sua liderança.
                 </p>
               </div>
               <div className="row g-3">
@@ -886,6 +910,7 @@ export default function InsightsPage() {
       </Container>
       {detalheIndicador && (
         <ModalNcsIndicador
+          retorno={urlAtual}
           titulo={detalheIndicador.titulo}
           filtro={detalheIndicador.filtro}
           aoFechar={() => setDetalheIndicador(null)}
