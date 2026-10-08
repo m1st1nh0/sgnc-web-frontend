@@ -1,6 +1,9 @@
 import type { UsuarioAutenticado } from "@/lib/auth/types";
 
-// Mirrors the authenticated SELECT policy for direct reports in the database.
+// Business rule: the analysed collaborator and their leadership follow the whole NC lifecycle,
+// including validated and invalidated NCs, so employees learn from invalidation reasons.
+// This is intentionally broader than the legacy nc_select_escopo RLS policy; app reads use the
+// service role and this filter is the authority.
 export const SUPERVISOR_VISIBLE_NC_STATUSES = [
   "aberta",
   "aguardando_feedback",

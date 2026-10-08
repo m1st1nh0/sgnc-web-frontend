@@ -82,7 +82,6 @@ async function causeIds(
       if (!existing.ativo && !options.allowInactive) {
         throw new ApiError("Esta causa está arquivada. Solicite sua reativação ao administrador.", 422);
       }
-      if (!existing.ativo && options.allowCreate) await admin.from("causas").update({ ativo: true }).eq("id", existing.id);
       ids.push(existing.id);
       continue;
     }
@@ -432,28 +431,21 @@ export async function editarNc(id: number, input: NcInput) {
   const user = await requireAdmin();
   const data = parseInput(input);
   const [ids, employee] = await Promise.all([causeIds(data.causas, user, { allowCreate: true, allowInactive: true }), collaborator(data.colaborador_id)]);
-  const admin = createAdminClient();
-  const { data: updated, error } = await admin
-    .from("nao_conformidades")
-    .update({
-      data: data.data,
-      chamado: data.chamado,
-      setor: employee?.setor ?? null,
-      colaborador: employee?.nome ?? null,
-      colaborador_id: data.colaborador_id,
-      criticidade: data.criticidade,
-      reincidencia: "Não",
-      descricao: data.descricao,
-      setor_responsavel: employee?.setor ?? null,
-    })
-    .eq("id", id)
-    .eq("status", "aberta")
-    .select("id")
-    .maybeSingle();
+  const { data: rpcData, error } = await createAdminClient().rpc("editar_nc_v3", {
+    p_nc_id: id,
+    p_data: data.data,
+    p_chamado: data.chamado,
+    p_setor: employee?.setor ?? null,
+    p_colaborador: employee?.nome ?? null,
+    p_colaborador_id: data.colaborador_id,
+    p_criticidade: data.criticidade,
+    p_descricao: data.descricao,
+    p_setor_responsavel: employee?.setor ?? null,
+    p_causa_ids: ids,
+  });
   if (error) throw new ApiError("Não foi possível editar a NC.", 500);
-  if (!updated) throw new ApiError("A NC foi alterada por outro processo. Atualize a página e tente novamente.", 409);
-  await admin.from("nc_causas").delete().eq("nc_id", id);
-  if (ids.length) await admin.from("nc_causas").insert(ids.map((causaId) => ({ nc_id: id, causa_id: causaId })));
+  const result = normalizeRpc(rpcData);
+  if (!result.ok) transitionError(result);
   return buscarNc(id);
 }
 

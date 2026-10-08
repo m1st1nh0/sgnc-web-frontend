@@ -4,6 +4,7 @@ import "server-only";
 import { ApiError } from "@/lib/api/error";
 
 import { buscarNc } from "@/lib/nc/service";
+import { podeAnexarEvidencia, podeExcluirEvidencia } from "@/lib/permissions/nc";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const BUCKET = "evidencias";
@@ -36,6 +37,9 @@ export async function anexarEvidencia(ncId: number, formData: FormData) {
   const user = await requireUser();
   const nc = await buscarNc(ncId) as Record<string, unknown>;
   if (nc.status !== "aberta") throw new ApiError("Só é possível anexar evidências enquanto a NC está em 'aberta'.");
+  if (!podeAnexarEvidencia(nc, user)) {
+    throw new ApiError("Somente a Qualidade, quem registrou a NC ou o colaborador analisado podem anexar evidências.", 403);
+  }
   const file = formData.get("arquivo");
   if (!(file instanceof File)) throw new ApiError("Selecione um arquivo para anexar.");
   validateFile(file);
@@ -60,8 +64,8 @@ export async function anexarEvidencia(ncId: number, formData: FormData) {
 export async function excluirEvidencia(ncId: number, evidenceId: number) {
   const user = await requireUser();
   const nc = await buscarNc(ncId) as Record<string, unknown>;
-  if (user.papel !== "adm" && nc.status !== "aberta") {
-    throw new ApiError("Só é possível remover evidências enquanto a NC está em 'aberta' (ou sendo o ADM).", 403);
+  if (!podeExcluirEvidencia(nc, user)) {
+    throw new ApiError("Somente a Qualidade ou quem registrou a NC, enquanto ela está em 'aberta', podem remover evidências.", 403);
   }
   const admin = createAdminClient();
   const { data, error } = await admin.from("evidencias").select("id, caminho_storage")

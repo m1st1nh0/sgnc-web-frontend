@@ -20,3 +20,17 @@ export function filterSensitive(nc: Record<string, unknown>, user: UsuarioAutent
   }
   return nc;
 }
+
+type NcEvidencia = { status?: unknown; aberto_por?: unknown; colaborador_id?: unknown };
+
+/** Anexo durante a triagem: Qualidade, quem registrou a NC ou o colaborador analisado. */
+export function podeAnexarEvidencia(nc: NcEvidencia, user: UsuarioAutenticado) {
+  if (nc.status !== "aberta") return false;
+  return user.papel === "adm" || nc.aberto_por === user.id || nc.colaborador_id === user.id;
+}
+
+/** Remoção preserva a prova de quem registrou: Qualidade a qualquer momento, autor somente na triagem. */
+export function podeExcluirEvidencia(nc: NcEvidencia, user: UsuarioAutenticado) {
+  if (user.papel === "adm") return true;
+  return nc.status === "aberta" && nc.aberto_por === user.id;
+}
