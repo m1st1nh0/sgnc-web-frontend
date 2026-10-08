@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "../../features/auth/components/AuthContext.jsx";
@@ -26,14 +26,35 @@ const ICONS = {
   left: <><path d="m14 18-6-6 6-6"/></>,
   right: <><path d="m10 18 6-6-6-6"/></>,
 };
+const MEDIA_MOBILE = "(max-width: 600px)";
+const MEDIA_TABLET = "(min-width: 600.01px) and (max-width: 1023.98px)";
+
+function assinarFaixa(aviso) {
+  const consultas = [window.matchMedia(MEDIA_MOBILE), window.matchMedia(MEDIA_TABLET)];
+  consultas.forEach((consulta) => consulta.addEventListener("change", aviso));
+  return () => consultas.forEach((consulta) => consulta.removeEventListener("change", aviso));
+}
+function faixaAtual() {
+  if (window.matchMedia(MEDIA_MOBILE).matches) return "mobile";
+  return window.matchMedia(MEDIA_TABLET).matches ? "tablet" : "desktop";
+}
+
 function Icon({ name }) { return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{ICONS[name]}</svg>; }
 
-export default function AppNavigation({ children }) {
+export default function AppNavigation({ children, compactaInicial = false }) {
   const { usuario, sair } = useAuth();
   const { progresso, restaurar, abrirRevisao } = useOnboarding();
   const pathname = usePathname();
-  const [compacta, setCompacta] = useState(true);
+  // Desktop e iPad paisagem: menu aberto por padrão; a escolha do usuário fica em cookie.
+  const [compacta, setCompacta] = useState(compactaInicial);
+  // iPad retrato: trilho de ícones que expande sobre o conteúdo.
+  const [overlayAberta, setOverlayAberta] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const faixa = useSyncExternalStore(assinarFaixa, faixaAtual, () => "desktop");
+  const botaoMenuRef = useRef(null);
+  const botaoFecharRef = useRef(null);
+  const botaoAlternarRef = useRef(null);
+  const menuSobreposto = (faixa === "mobile" && mobileOpen) || (faixa === "tablet" && overlayAberta);
   const ehGestao = usuario?.papel === "adm" || usuario?.papel === "supervisor";
   const links = [
     { label: ROTULO_HOME[usuario?.papel] || "Gestão de NCs", href: "/", icon: "home", show: true, active: pathname === "/" },
@@ -52,14 +73,36 @@ export default function AppNavigation({ children }) {
     return () => document.body.classList.remove("sg-mobile-menu-open");
   }, [mobileOpen]);
 
+  useEffect(() => {
+    if (!menuSobreposto) return undefined;
+    function aoTeclar(evento) {
+      if (evento.key !== "Escape") return;
+      setMobileOpen(false);
+      setOverlayAberta(false);
+      (faixa === "mobile" ? botaoMenuRef : botaoAlternarRef).current?.focus();
+    }
+    document.addEventListener("keydown", aoTeclar);
+    return () => document.removeEventListener("keydown", aoTeclar);
+  }, [menuSobreposto, faixa]);
+
+  function abrirMenuMobile() {
+    setMobileOpen(true);
+    requestAnimationFrame(() => botaoFecharRef.current?.focus());
+  }
   function alternarMenu() {
-    setCompacta((value) => !value);
+    if (faixa === "tablet") {
+      setOverlayAberta((valor) => !valor);
+      return;
+    }
+    setCompacta((valor) => {
+      document.cookie = `sg-nav=${valor ? "expandida" : "compacta"}; path=/; max-age=31536000; samesite=lax`;
+      return !valor;
+    });
   }
   function fecharMenuNavegacao() {
+    if (faixa === "mobile" && mobileOpen) requestAnimationFrame(() => botaoMenuRef.current?.focus());
     setMobileOpen(false);
-    if (window.matchMedia("(min-width: 600.01px) and (max-width: 1023.98px)").matches) {
-      setCompacta(true);
-    }
+    setOverlayAberta(false);
   }
   async function guia() {
     if (progresso?.status === "dispensado") await restaurar();
@@ -68,25 +111,28 @@ export default function AppNavigation({ children }) {
   }
   function iniciais(nome = "?") { return nome.trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase(); }
   const classes = `sg-app-nav${compacta ? " is-compact" : ""}${mobileOpen ? " is-mobile-open" : ""}`;
+  const recolhida = faixa === "tablet" ? !overlayAberta : compacta;
+  const rotuloAlternar = recolhida ? "Expandir menu" : "Recolher menu";
+  const mostrarDicas = recolhida && faixa !== "mobile";
 
-  return <div className={`sg-app-shell${compacta ? " sg-app-shell--compact" : ""}`}>
+  return <div className={`sg-app-shell${compacta ? " sg-app-shell--compact" : ""}${overlayAberta ? " sg-app-shell--overlay-open" : ""}`}>
     <header className="sg-mobile-bar">
-      <button className="sg-mobile-toggle" type="button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Icon name="menu" /></button>
+      <button ref={botaoMenuRef} className="sg-mobile-toggle" type="button" onClick={abrirMenuMobile} aria-label="Abrir menu" aria-expanded={mobileOpen} aria-controls="sg-app-nav"><Icon name="menu" /></button>
       <Link href="/" className="sg-mobile-brand" aria-label="SGNC - início"><MarcaSgnc /><strong>SGNC</strong></Link>
-      <span className="sg-mobile-avatar" aria-label={usuario?.nome}>{iniciais(usuario?.nome)}</span>
+      <span className="sg-mobile-avatar" role="img" aria-label={usuario?.nome}>{iniciais(usuario?.nome)}</span>
     </header>
-    <button className={`sg-nav-scrim${mobileOpen ? " is-visible" : ""}`} onClick={fecharMenuNavegacao} aria-label="Fechar menu" tabIndex={0} />
-    <aside className={classes} aria-label="Navegação principal">
+    <button className={`sg-nav-scrim${mobileOpen ? " is-visible" : ""}`} onClick={fecharMenuNavegacao} aria-label="Fechar menu" tabIndex={-1} />
+    <aside id="sg-app-nav" className={classes} aria-label="Navegação principal" inert={faixa === "mobile" && !mobileOpen}>
       <div className="sg-app-nav__brand-row">
-        <Link href="/" className="sg-app-nav__brand" aria-label="SGNC - início"><MarcaSgnc /><strong className="sg-app-nav__brand-name">SGNC</strong></Link>
-        <button type="button" className="sg-app-nav__toggle" onClick={alternarMenu} aria-label={compacta ? "Expandir menu" : "Recolher menu"} title={compacta ? "Expandir menu" : "Recolher menu"}><Icon name={compacta ? "right" : "left"} /></button>
-        <button type="button" className="sg-app-nav__close" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><Icon name="close" /></button>
+        <Link href="/" className="sg-app-nav__brand" aria-label="SGNC - início" onClick={fecharMenuNavegacao}><MarcaSgnc /><strong className="sg-app-nav__brand-name">SGNC</strong></Link>
+        <button ref={botaoAlternarRef} type="button" className="sg-app-nav__toggle" onClick={alternarMenu} aria-label={rotuloAlternar} aria-expanded={!recolhida} aria-controls="sg-app-nav" title={rotuloAlternar}><Icon name={recolhida ? "right" : "left"} /></button>
+        <button ref={botaoFecharRef} type="button" className="sg-app-nav__close" onClick={fecharMenuNavegacao} aria-label="Fechar menu"><Icon name="close" /></button>
       </div>
-      <nav className="sg-app-nav__links">{links.map((link) => <Link key={link.href} href={link.href} className={`sg-app-nav__link${link.active ? " is-active" : ""}`} onClick={fecharMenuNavegacao} aria-current={link.active ? "page" : undefined} title={compacta ? link.label : undefined}><Icon name={link.icon} /><span>{link.label}</span></Link>)}</nav>
+      <nav className="sg-app-nav__links">{links.map((link) => <Link key={link.href} href={link.href} className={`sg-app-nav__link${link.active ? " is-active" : ""}`} onClick={fecharMenuNavegacao} aria-current={link.active ? "page" : undefined} title={mostrarDicas ? link.label : undefined}><Icon name={link.icon} /><span>{link.label}</span></Link>)}</nav>
       <div className="sg-app-nav__footer">
         <div className="sg-app-nav__profile"><span className="sg-app-nav__avatar">{iniciais(usuario?.nome)}</span><div className="sg-app-nav__profile-copy"><strong>{usuario?.nome}</strong><small>{NOME_PAPEL[usuario?.papel] ?? usuario?.papel}</small></div></div>
-        <button type="button" className="sg-app-nav__link" onClick={guia} title={compacta ? "Guia" : undefined}><Icon name="guide"/><span>Guia</span></button>
-        <button type="button" className="sg-app-nav__link" onClick={() => sair()} title={compacta ? "Sair" : undefined}><Icon name="exit"/><span>Sair</span></button>
+        <button type="button" className="sg-app-nav__link" onClick={guia} title={mostrarDicas ? "Guia" : undefined}><Icon name="guide"/><span>Guia</span></button>
+        <button type="button" className="sg-app-nav__link" onClick={() => sair()} title={mostrarDicas ? "Sair" : undefined}><Icon name="exit"/><span>Sair</span></button>
       </div>
     </aside>
     <main id="sg-main-content" className="sg-app-main">{children}</main>

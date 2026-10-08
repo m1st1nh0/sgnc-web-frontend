@@ -348,7 +348,7 @@ export default function UsuariosPage() {
                             variante="secundario"
                             tamanho="sm"
                             onClick={() =>
-                              router.push(`/usuarios/${u.id}/dossie`)
+                              router.push(`/usuarios/${u.id}/dossie?retorno=%2Fusuarios`)
                             }
                           >
                             Dossiê

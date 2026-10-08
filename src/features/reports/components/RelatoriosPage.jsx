@@ -5,11 +5,13 @@ import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
 import CardMetrica from "../../../components/ui/CardMetrica.jsx";
 import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
+import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
@@ -30,6 +32,9 @@ import {
 } from "../client/relatoriosService.js";
 import { salvarArquivoLocal } from "../../../lib/utils/arquivoLocal.js";
 import { periodoPadraoRelatorio } from "../client/period.js";
+import { prepararLinhaMensal } from "../../insights/client/insightsUx.js";
+import { formatarPeriodo } from "../../../lib/utils/formato.js";
+import { comRetorno, urlComFiltros } from "../../../lib/utils/retorno.js";
 
 const STATUS = [
   ["", "Todos os status"],
@@ -74,14 +79,41 @@ function periodoDozeMeses() {
   };
 }
 
+const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Lê da URL o recorte aplicado; datas inválidas voltam ao padrão de 30 dias. */
+function filtrosDaUrl(searchParams) {
+  const padrao = periodoPadraoRelatorio();
+  const data = (chave) => DATA_ISO.test(searchParams.get(chave) || "") ? searchParams.get(chave) : padrao[chave];
+  return {
+    inicio: data("inicio"),
+    fim: data("fim"),
+    status: STATUS_LABEL[searchParams.get("status")] ? searchParams.get("status") : "",
+    colaboradorId: searchParams.get("colaborador") || "",
+    setor: searchParams.get("setor") || "",
+  };
+}
+
 export default function RelatoriosPage() {
   const { usuario } = useAuth();
-  const [filtros, setFiltros] = useState(() => ({ ...periodoPadraoRelatorio(), status: "", colaboradorId: "", setor: "" }));
-  const [aplicados, setAplicados] = useState(() => ({ ...periodoPadraoRelatorio(), status: "", colaboradorId: "", setor: "" }));
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [filtros, setFiltros] = useState(() => filtrosDaUrl(searchParams));
+  const [aplicados, setAplicados] = useState(() => filtrosDaUrl(searchParams));
   const [pessoas, setPessoas] = useState([]);
   const [dados, setDados] = useState(null);
   const [ncs, setNcs] = useState({ items: [], total: 0, por_pagina: 25 });
-  const [pagina, setPagina] = useState(0);
+  const [pagina, setPagina] = useState(() => Math.max(0, Number(searchParams.get("pagina")) || 0));
+  // URL atual do relatório: usada no retorno do detalhe para restaurar filtros e página.
+  const urlAtual = urlComFiltros(pathname, {
+    inicio: aplicados.inicio,
+    fim: aplicados.fim,
+    status: aplicados.status,
+    colaborador: aplicados.colaboradorId,
+    setor: aplicados.setor,
+    pagina,
+  });
   const [carregando, setCarregando] = useState(true);
   const [baixando, setBaixando] = useState("");
   const [erro, setErro] = useState("");
@@ -129,6 +161,10 @@ export default function RelatoriosPage() {
     return () => { ativo = false; };
   }, [aplicados, pagina]);
 
+  useEffect(() => {
+    router.replace(urlAtual, { scroll: false });
+  }, [router, urlAtual]);
+
   const setores = useMemo(
     () => [...new Set(pessoas.map((p) => p.setor).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR")),
     [pessoas],
@@ -149,7 +185,7 @@ export default function RelatoriosPage() {
   );
   const setoresData = useMemo(() => (dados?.ncs_por_setor || []).slice(0, 10).map((item, index) => ({ ...item, cor: PALETA_CATEGORIAS[index % PALETA_CATEGORIAS.length] })), [dados]);
   const colaboradoresData = useMemo(() => (dados?.ncs_por_colaborador || []).slice(0, 10).map((item, index) => ({ ...item, cor: PALETA_CATEGORIAS[index % PALETA_CATEGORIAS.length] })), [dados]);
-  const mesesData = useMemo(() => dados?.ncs_por_mes || [], [dados]);
+  const mesesData = useMemo(() => prepararLinhaMensal(dados?.ncs_por_mes), [dados]);
   const kpis = dados?.kpis || {};
   const totalPaginas = Math.max(1, Math.ceil((ncs.total || 0) / (ncs.por_pagina || 25)));
   const escopo = usuario?.papel === "supervisor" ? "Sua equipe hierárquica" : "Toda a organização";
@@ -158,16 +194,27 @@ export default function RelatoriosPage() {
     setFiltros((atual) => ({ ...atual, [chave]: valor }));
   }
 
-  function aplicarFiltros(evento) {
-    evento.preventDefault();
-    if (filtros.inicio && filtros.fim && filtros.inicio > filtros.fim) {
+  function aplicar(proximos) {
+    if (proximos.inicio && proximos.fim && proximos.inicio > proximos.fim) {
       setErro("A data inicial não pode ser posterior à data final.");
       return;
     }
     setErro("");
     setCarregando(true);
     setPagina(0);
-    setAplicados({ ...filtros });
+    setAplicados({ ...proximos });
+  }
+
+  function aplicarFiltros(evento) {
+    evento.preventDefault();
+    aplicar(filtros);
+  }
+
+  // Atalhos de período aplicam imediatamente, mantendo os demais filtros.
+  function aplicarPeriodo(periodo) {
+    const proximos = { ...filtros, ...periodo };
+    setFiltros(proximos);
+    aplicar(proximos);
   }
 
   function abrirDetalhe(titulo, filtro) {
@@ -214,7 +261,7 @@ export default function RelatoriosPage() {
       <Container className="sg-container" style={{ maxWidth: "1280px" }}>
         <CabecalhoPagina
           titulo="Relatório operacional"
-          subtitulo={`Visão na tela · ${escopo} · ${aplicados.inicio} a ${aplicados.fim}`}
+          subtitulo={`Visão na tela · ${escopo} · ${formatarPeriodo(aplicados.inicio, aplicados.fim)}`}
         />
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
@@ -224,45 +271,45 @@ export default function RelatoriosPage() {
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div>
                 <h2 id="filtros-relatorio" className="h6 mb-1">Período e filtros</h2>
-                <p className="texto-sm texto-suave mb-0">O relatório começa nos últimos 30 dias. Os filtros atualizam os indicadores, gráficos e a lista de NCs.</p>
+                <p className="texto-sm texto-suave mb-0">O relatório começa nos últimos 30 dias. Os atalhos aplicam o período na hora; os demais filtros valem ao clicar em Aplicar.</p>
               </div>
               <div className="d-flex gap-2">
-                <Botao variante="secundario" type="button" disabled={carregando} onClick={() => setFiltros((atual) => ({ ...atual, ...periodoPadraoRelatorio() }))}>Últimos 30 dias</Botao>
-                <Botao variante="secundario" type="button" disabled={carregando} onClick={() => setFiltros((atual) => ({ ...atual, ...periodoDozeMeses() }))}>Últimos 12 meses</Botao>
+                <Botao variante="secundario" tamanho="sm" type="button" disabled={carregando || Boolean(baixando)} onClick={() => aplicarPeriodo(periodoPadraoRelatorio())}>Últimos 30 dias</Botao>
+                <Botao variante="secundario" tamanho="sm" type="button" disabled={carregando || Boolean(baixando)} onClick={() => aplicarPeriodo(periodoDozeMeses())}>Últimos 12 meses</Botao>
               </div>
             </div>
 
             <Form onSubmit={aplicarFiltros}>
-              <div className="row g-3 align-items-end">
-                <div className="col-sm-6 col-lg-2">
+              <div className="sg-filtros-relatorio">
+                <Form.Group controlId="relatorio-inicio">
                   <Form.Label className="sg-label">Início</Form.Label>
                   <Form.Control type="date" className="sg-input" value={filtros.inicio} onChange={(e) => alterar("inicio", e.target.value)} disabled={carregando || Boolean(baixando)} />
-                </div>
-                <div className="col-sm-6 col-lg-2">
+                </Form.Group>
+                <Form.Group controlId="relatorio-fim">
                   <Form.Label className="sg-label">Fim</Form.Label>
                   <Form.Control type="date" className="sg-input" value={filtros.fim} onChange={(e) => alterar("fim", e.target.value)} disabled={carregando || Boolean(baixando)} />
-                </div>
-                <div className="col-sm-6 col-lg-2">
+                </Form.Group>
+                <Form.Group controlId="relatorio-status">
                   <Form.Label className="sg-label">Status</Form.Label>
                   <Form.Select className="sg-input" value={filtros.status} onChange={(e) => alterar("status", e.target.value)} disabled={carregando || Boolean(baixando)}>
                     {STATUS.map(([value, label]) => <option value={value} key={value || "todos"}>{label}</option>)}
                   </Form.Select>
-                </div>
-                <div className="col-sm-6 col-lg-3">
+                </Form.Group>
+                <Form.Group controlId="relatorio-colaborador">
                   <Form.Label className="sg-label">Colaborador</Form.Label>
                   <Form.Select className="sg-input" value={filtros.colaboradorId} onChange={(e) => alterar("colaboradorId", e.target.value)} disabled={carregando || Boolean(baixando)}>
                     <option value="">Todos os colaboradores</option>
                     {pessoas.map((pessoa) => <option value={pessoa.id} key={pessoa.id}>{pessoa.nome}</option>)}
                   </Form.Select>
-                </div>
-                <div className="col-sm-6 col-lg-2">
+                </Form.Group>
+                <Form.Group controlId="relatorio-setor">
                   <Form.Label className="sg-label">Setor</Form.Label>
                   <Form.Select className="sg-input" value={filtros.setor} onChange={(e) => alterar("setor", e.target.value)} disabled={carregando || Boolean(baixando)}>
                     <option value="">Todos os setores</option>
                     {setores.map((setor) => <option value={setor} key={setor}>{setor}</option>)}
                   </Form.Select>
-                </div>
-                <div className="col-lg-1 d-grid">
+                </Form.Group>
+                <div className="sg-filtros-relatorio__acao">
                   <Botao type="submit" variante="primario" carregando={carregando} disabled={Boolean(baixando)}>Aplicar</Botao>
                 </div>
               </div>
@@ -271,11 +318,14 @@ export default function RelatoriosPage() {
         </section>
 
         {carregando && !dados ? <EstadoCarregamento mensagem="Montando o relatório..." /> : null}
-        {carregando && dados ? <p className="texto-sm texto-suave" role="status">Atualizando relatório…</p> : null}
+        {!carregando && !dados && erro ? (
+          <Botao variante="secundario" onClick={() => { setCarregando(true); setAplicados((atual) => ({ ...atual })); }}>Tentar novamente</Botao>
+        ) : null}
+        <p className="visually-hidden" role="status">{carregando && dados ? "Atualizando relatório…" : ""}</p>
 
         {dados && (
           <>
-            <div className="sg-analiticos-layout sg-relatorios-layout">
+            <div className="sg-analiticos-layout sg-relatorios-layout" aria-busy={carregando}>
               <div className="sg-analiticos-conteudo">
                 <div className="mb-3">
                   <h2 className="h5 mb-1">Resumo do período</h2>
@@ -312,7 +362,7 @@ export default function RelatoriosPage() {
               </div>
               <div className="col-12">
                 <PainelGrafico titulo="Movimento mensal" descricao="Selecione um ponto para abrir as NCs daquele mês" vazio={!mesesData.length}>
-                  <GraficoLinha dados={mesesData} eixoChave="mes" series={[{ chave: "total", cor: CORES_GRAFICO.azul, nome: "Registradas" }, { chave: "concluidas", cor: CORES_GRAFICO.verde, nome: "Concluídas" }, { chave: "invalidadas", cor: CORES_GRAFICO.vermelho, nome: "Invalidadas" }]} onPointClick={(row) => abrirDetalhe(`NCs de ${row.mes}`, { tipo: "mensal", mes: row.mes, serie: "total" })} />
+                  <GraficoLinha dados={mesesData} eixoChave="rotuloMes" series={[{ chave: "total", cor: CORES_GRAFICO.azul, nome: "Registradas" }, { chave: "concluidas", cor: CORES_GRAFICO.verde, nome: "Concluídas" }, { chave: "invalidadas", cor: CORES_GRAFICO.vermelho, nome: "Invalidadas" }]} onPointClick={(row) => abrirDetalhe(`NCs de ${row.rotuloMes}`, { tipo: "mensal", mes: row.mes, serie: "total" })} />
                 </PainelGrafico>
               </div>
             </div>
@@ -337,17 +387,17 @@ export default function RelatoriosPage() {
                           <td>{nc.colaborador || "—"}</td>
                           <td>{nc.setor || "—"}</td>
                           <td><BadgeStatus status={nc.status} /></td>
-                          <td>{nc.criticidade || "—"}</td>
-                          <td><Botao as={Link} href={`/nc/${nc.id}?retorno=${encodeURIComponent("/relatorios")}`} variante="secundario" size="sm">Abrir</Botao></td>
+                          <td><BadgePrioridade criticidade={nc.criticidade} /></td>
+                          <td><Link className="sg-btn sg-btn--secundario sg-btn--sm" href={comRetorno(`/nc/${nc.id}`, urlAtual)} aria-label={`Abrir NC ${nc.id}`}>Abrir</Link></td>
                         </tr>
                       ))}</tbody>
                     </Table>
                   </div>
                 ) : !carregando ? <EstadoVazio titulo="Sem NCs neste recorte" descricao="Altere o período ou remova filtros para ampliar os resultados." /> : null}
-                <div className="d-flex justify-content-end gap-2">
+                {totalPaginas > 1 && <nav className="d-flex justify-content-end gap-2" aria-label="Paginação das NCs do período">
                   <Botao variante="secundario" type="button" disabled={pagina === 0 || carregando} onClick={() => atualizarPagina(pagina - 1)}>Anterior</Botao>
                   <Botao variante="secundario" type="button" disabled={pagina + 1 >= totalPaginas || carregando} onClick={() => atualizarPagina(pagina + 1)}>Próxima</Botao>
-                </div>
+                </nav>}
               </div>
             </section>
               </div>
@@ -377,7 +427,7 @@ export default function RelatoriosPage() {
                   <div className="sg-card-body">
                     <h2 id="filtros-aplicados-relatorio" className="h6 mb-3">Filtros aplicados</h2>
                     <dl>
-                      <div><dt>Período</dt><dd>{aplicados.inicio} a {aplicados.fim}</dd></div>
+                      <div><dt>Período</dt><dd>{formatarPeriodo(aplicados.inicio, aplicados.fim)}</dd></div>
                       <div><dt>Status</dt><dd>{STATUS_LABEL[aplicados.status] || "Todos os status"}</dd></div>
                       <div><dt>Colaborador</dt><dd>{pessoas.find((pessoa) => pessoa.id === aplicados.colaboradorId)?.nome || "Todos"}</dd></div>
                       <div><dt>Setor</dt><dd>{aplicados.setor || "Todos"}</dd></div>
@@ -390,7 +440,7 @@ export default function RelatoriosPage() {
           </>
         )}
       </Container>
-      {detalheIndicador && <ModalNcsIndicador titulo={detalheIndicador.titulo} filtro={detalheIndicador.filtro} retorno="/relatorios" aoFechar={() => setDetalheIndicador(null)} />}
+      {detalheIndicador && <ModalNcsIndicador titulo={detalheIndicador.titulo} filtro={detalheIndicador.filtro} retorno={urlAtual} aoFechar={() => setDetalheIndicador(null)} />}
     </div>
   );
 }

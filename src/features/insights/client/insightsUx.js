@@ -1,3 +1,5 @@
+import { formatarPeriodo } from "../../../lib/utils/formato.js";
+
 const MESES_ABREV = [
   "jan",
   "fev",
@@ -123,7 +125,7 @@ export function prepararLinhaMensal(dados) {
 export function resumoMetodologia(dados) {
   return {
     periodo: dados?.periodo
-      ? `${dados.periodo.inicio} a ${dados.periodo.fim}`
+      ? formatarPeriodo(dados.periodo.inicio, dados.periodo.fim)
       : "Período padrão da API",
     volume:
       dados?.metodologia?.volume ||
