@@ -27,7 +27,11 @@ Decisões do responsável (09/10/2026), valem como regra:
 - Quem abriu a NC não recebe notificações por ter aberto.
 - Avisos de etapa: notificações dentro do aplicativo (sem e-mail neste ciclo).
 
-Em aberto: D10 (quem da Qualidade recebe aviso de NC nova). Não assuma as recomendações do plano como aprovadas.
+- Aviso de NC nova vai para todos com papel Qualidade ou Adm, exceto quem for o colaborador analisado.
+- NC "Não respondida" conta como ocorrência para reincidência.
+- Na interface, o papel "Funcionário" se chama **"Colaborador"**. O valor interno `funcionario` no banco e na API não muda.
+
+Todas as decisões do plano estão respondidas. Decisão nova que surgir deve ser perguntada ao responsável, não assumida.
 
 ## Convenções
 
@@ -36,3 +40,4 @@ Em aberto: D10 (quem da Qualidade recebe aviso de NC nova). Não assuma as recom
 - Transições de status passam por RPCs `*_vN` com histórico em `historico_nc`. Não atualize status direto pela API.
 - A Qualidade nunca conduz NC em que é o colaborador analisado (`podeAtuarComoQualidade`).
 - Checks: `npm run lint`, `npm run typecheck`, `npm test`.
+- Credenciais de teste e token de bypass da Vercel nunca entram no repositório.

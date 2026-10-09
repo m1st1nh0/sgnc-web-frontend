@@ -52,12 +52,12 @@ Respondidas pelo responsável em 09/10/2026:
 | D13 | Quem abriu a NC recebe notificações? | **Não.** Quem abriu acompanha pela tela de detalhe e por "Minhas NCs". |
 | D11 | Depois de "Não respondida", o colaborador ainda pode registrar o aceite? | **Sim.** A NC fica registrada como "Não respondida" no histórico; o aceite tardio exige a frase, conclui a NC (ou leva ao plano de ação se crítica) e fica marcado **"aceito fora do prazo"** no histórico, no PDF e em Insights. |
 | D12 | A Qualidade é avisada quando uma NC fica "Não respondida"? | **Não.** A Qualidade acompanha pelo card "Não respondidas" no painel. |
+| D10 | Quem da Qualidade recebe aviso de NC nova? | **Todos os usuários com papel Qualidade ou Adm, exceto quem for o colaborador analisado.** |
+| D14 | NC "Não respondida" conta como ocorrência para reincidência? | **Sim**, porque a NC foi validada. |
+| D15 | Nomenclatura do perfil "Funcionário". | **Passa a se chamar "Colaborador"** em toda a interface (rótulos, telas, onboarding, mensagens). O valor interno `funcionario` no banco não muda. |
 
-Ainda em aberto (não bloqueiam o início):
+Todas as decisões necessárias estão respondidas.
 
-| ID | Pergunta | Recomendação | Bloqueia |
-|---|---|---|---|
-| D10 | Quem da Qualidade recebe aviso de NC nova? | Todos os usuários com papel Qualidade/Adm, exceto quem for o colaborador analisado. | Fase 5 |
 
 ## Fases
 
@@ -94,7 +94,10 @@ Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 
 - `src/features/nc/components/HomePage.jsx`: quando `acao.filtro` existe, o botão chama `filtrarPeloCard(acao.filtro)`.
 - Atualizar `test_ux_operacao_indicadores.mjs` / `test_pr09_onboarding.mjs` se verificarem o destino antigo.
 
-**1.5 Refinamento do ponto 5 (opcional)**
+**1.5 Nomenclatura "Colaborador" (D15)**
+- Trocar o rótulo do papel `funcionario` de "Funcionário" para "Colaborador" em `src/lib/auth/papeis.js`, `UsuariosPage.jsx`, `EquipePage.jsx`, `GestaoEquipes.jsx` (inclusive "Tornar colaborador"), `src/lib/equipes/service.ts` (mensagem de erro), onboarding e PDFs/CSV. O valor `funcionario` no banco e na API continua igual.
+
+**1.6 Refinamento do ponto 5 (opcional)**
 - Item "Localize e abra uma NC" leva à lista com a NC mais recente destacada. Só se couber no PR sem atrito.
 
 ### Fase 2: desempenho (ponto 1)
@@ -129,7 +132,7 @@ Regras decididas: todos os campos do feedback são obrigatórios, exceto o anexo
 - [ ] 4.5 RPC `marcar_nao_respondidas_v1()`: para cada NC `aguardando_aceite` com `prazo_aceite` vencido, muda para `nao_respondida` e grava histórico ("Prazo de aceite vencido sem resposta"; autor nulo = sistema, confirmar se `historico_nc.usuario_id` aceita nulo). Idempotente e com `FOR UPDATE SKIP LOCKED`. Na Fase 5 essa mesma RPC dispara as notificações.
 - [ ] 4.5a Agendamento: instalar `pg_cron` e rodar `marcar_nao_respondidas_v1()` a cada 15 minutos (o prazo tem hora, não só dia). Alternativa sem `pg_cron`: Vercel Cron chamando rota protegida por segredo.
 - [ ] 4.5b `aceitar_nc_v4`: igual à v3 (frase digitada), mas também aceita `nao_respondida` (D11), registrando "Aceite formal do colaborador fora do prazo" no histórico e `aceito_fora_prazo = true` (coluna nova em `nao_conformidades`, padrão `false`).
-- [ ] 4.5c Garantir que `nao_respondida` entra nas listas de status válidos (`listarNcsDaPessoa`, relatórios, Insights, CSV) e nas regras de reincidência de `validar_nc_com_ocorrencias_v2` (recomendação: conta como ocorrência, porque a NC foi validada; confirmar na revisão do PR da Fase 4).
+- [ ] 4.5c Garantir que `nao_respondida` entra nas listas de status válidos (`listarNcsDaPessoa`, relatórios, Insights, CSV) e nas regras de reincidência de `validar_nc_com_ocorrencias_v2` (conta como ocorrência, D14).
 - [ ] 4.6 Backfill: NCs com `feedback` preenchido ganham `nc_feedbacks` versão 1 com `combinado = feedback` e os demais campos com o texto "Não informado (registro anterior a 10/2026)"; `prazo_aceite` calculado a partir de `feedback_aplicado_em`. Não inventar causa raiz.
 
 **Servidor**
@@ -149,7 +152,7 @@ Regras decididas: todos os campos do feedback são obrigatórios, exceto o anexo
 - [ ] 4.16 Unit: validação dos campos obrigatórios; `somar_dias_uteis` (sexta 15h + 2 = terça 15h; sábado + 2 = terça; quarta + 2 = sexta); permissão do anexo do feedback.
 - [ ] 4.17 Exercitar no banco do Preview: feedback completo → aceite no prazo; feedback → prazo vencido → job marca "Não respondida" → aceite fora do prazo (D11); NC crítica → aceite → plano de ação; tentativa com campo vazio é recusada. Remover dados temporários.
 
-### Fase 5: notificações dentro do aplicativo (D7, D9, D12, D13 decididos; D10 em aberto)
+### Fase 5: notificações dentro do aplicativo (D7, D9, D10, D12, D13 decididos)
 
 Ver avaliação abaixo. Entrega mínima:
 - [ ] 5.1 Tabela `public.notificacoes`: `id`, `usuario_id`, `tipo`, `nc_id`, `titulo`, `mensagem`, `criada_em`, `lida_em`. Índice em `(usuario_id, lida_em, criada_em desc)`. RLS ligada sem concessão direta; leitura só pela API.
