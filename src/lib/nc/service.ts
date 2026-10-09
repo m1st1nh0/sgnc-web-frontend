@@ -1,4 +1,5 @@
 import { filterSensitive } from "@/lib/permissions/nc";
+import { podeAtuarComoQualidade } from "@/lib/permissions/plano-acao";
 import { buildNcReadScopeFilter } from "@/lib/permissions/nc-scope";
 import { listarPessoasAbaixo, validarAcessoPessoa } from "@/lib/permissions/team-scope";
 import { requireApiUser as requireUser } from "@/lib/auth/api";
@@ -28,7 +29,20 @@ async function requireAdmin() {
   return user;
 }
 
-function normalizeRpc(data: unknown): Record<string, unknown> {
+export const MENSAGEM_CONFLITO = "Você é o colaborador analisado nesta NC. Outra pessoa da Qualidade deve conduzir esta etapa.";
+
+/** Qualidade, desde que não seja o colaborador analisado (conflito de interesses). */
+async function requireQualidadeSemConflito(id: number) {
+  const user = await requireAdmin();
+  const { data, error } = await createAdminClient()
+    .from("nao_conformidades").select("id, colaborador_id").eq("id", id).maybeSingle();
+  if (error) throw new ApiError("Não foi possível carregar a NC.", 500);
+  if (!data) throw new ApiError("NC não encontrada.", 404);
+  if (!podeAtuarComoQualidade(data, user)) throw new ApiError(MENSAGEM_CONFLITO, 403);
+  return user;
+}
+
+export function normalizeRpc(data: unknown): Record<string, unknown> {
   if (data && typeof data === "object" && !Array.isArray(data)) return data as Record<string, unknown>;
   if (Array.isArray(data) && data.length === 1 && data[0] && typeof data[0] === "object") {
     return data[0] as Record<string, unknown>;
@@ -36,8 +50,9 @@ function normalizeRpc(data: unknown): Record<string, unknown> {
   return {};
 }
 
-function transitionError(result: Record<string, unknown>) {
+function transitionError(result: Record<string, unknown>): never {
   if (result.erro === "nc_nao_encontrada") throw new ApiError("NC não encontrada.", 404);
+  if (result.erro === "conflito_interesse") throw new ApiError(MENSAGEM_CONFLITO, 403);
   if (result.erro === "colaborador_ausente") {
     throw new ApiError("Defina o colaborador analisado antes de validar a NC.");
   }
@@ -150,6 +165,7 @@ function durations(nc: Record<string, unknown>) {
   else if (["validada", "aguardando_analise", "aguardando_feedback"].includes(status)) {
     currentStart = validado ?? (nc.enviado_em as string | null) ?? criado;
   } else if (status === "aguardando_aceite") currentStart = feedback ?? validado ?? criado;
+  else if (status === "em_plano_acao") currentStart = aceito ?? (nc.critica_marcada_em as string | null) ?? criado;
   return {
     criacao_ate_validacao_segundos: secondsBetween(criado, validado),
     validacao_ate_feedback_segundos: secondsBetween(validado, feedback),
@@ -226,7 +242,7 @@ export async function listarNcsDaPessoa(
   const status = options.status?.trim() || null;
   const inicio = options.inicio?.trim() || null;
   const fim = options.fim?.trim() || null;
-  const validStatuses = ["aberta", "aguardando_feedback", "aguardando_analise", "validada", "aguardando_aceite", "concluida", "invalidada"];
+  const validStatuses = ["aberta", "aguardando_feedback", "aguardando_analise", "validada", "aguardando_aceite", "em_plano_acao", "concluida", "invalidada"];
   if (status && !validStatuses.includes(status)) throw new ApiError("O status selecionado é inválido.", 422);
   const isDate = (value: string | null) => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
   if ((inicio || fim) && (!isDate(inicio) || !isDate(fim))) throw new ApiError("Informe o período completo para filtrar as NCs.", 422);
@@ -428,7 +444,7 @@ export async function criarNc(input: NcInput) {
 }
 
 export async function editarNc(id: number, input: NcInput) {
-  const user = await requireAdmin();
+  const user = await requireQualidadeSemConflito(id);
   const data = parseInput(input);
   const [ids, employee] = await Promise.all([causeIds(data.causas, user, { allowCreate: true, allowInactive: true }), collaborator(data.colaborador_id)]);
   const { data: rpcData, error } = await createAdminClient().rpc("editar_nc_v3", {
@@ -450,7 +466,17 @@ export async function editarNc(id: number, input: NcInput) {
 }
 
 export async function excluirNc(id: number) {
-  await requireAdmin();
+  await requireQualidadeSemConflito(id);
+  const admin = createAdminClient();
+  const { data: nc, error: ncError } = await admin
+    .from("nao_conformidades").select("critica").eq("id", id).maybeSingle();
+  if (ncError) throw new ApiError("Não foi possível carregar a NC.", 500);
+  const { count, error: planoError } = await (admin as any).from("planos_acao")
+    .select("id", { count: "exact", head: true }).eq("nc_id", id);
+  if (planoError) throw new ApiError("Não foi possível verificar o plano de ação da NC.", 500);
+  if ((nc as { critica?: boolean } | null)?.critica || (count ?? 0) > 0) {
+    throw new ApiError("Esta NC possui plano de ação registrado e não pode ser excluída, para preservar a auditoria.", 409);
+  }
   const { error } = await createAdminClient().from("nao_conformidades").delete().eq("id", id);
   if (error) throw new ApiError("Não foi possível excluir a NC.", 500);
   return { status: "excluida" };
@@ -465,7 +491,7 @@ async function rpcTransition(name: string, params: Record<string, unknown>) {
 }
 
 export async function avaliarNc(id: number, input: { decisao?: unknown; motivo_invalidacao?: unknown }) {
-  const user = await requireAdmin();
+  const user = await requireQualidadeSemConflito(id);
   const decisao = String(input.decisao ?? "");
   if (!['validar', 'invalidar'].includes(decisao)) throw new ApiError("decisao deve ser 'validar' ou 'invalidar'.");
   if (decisao === "invalidar") {
@@ -550,6 +576,7 @@ export async function registrarMedidaDisciplinar(input: DisciplinaryMeasureInput
     .from("nao_conformidades").select("id, colaborador_id").eq("id", ncId).maybeSingle();
   if (ncError || !nc) throw new ApiError("Não conformidade não encontrada.", 404);
   if (!nc.colaborador_id) throw new ApiError("A não conformidade não possui um colaborador associado.");
+  if (!podeAtuarComoQualidade(nc, user)) throw new ApiError(MENSAGEM_CONFLITO, 403);
   const { data: relation, error: relationError } = await admin
     .from("nc_causas").select("causa_id, ocorrencia_numero")
     .eq("nc_id", ncId).eq("causa_id", causeId).maybeSingle();
@@ -578,7 +605,7 @@ export async function registrarMedidaDisciplinar(input: DisciplinaryMeasureInput
 }
 
 export async function aplicarFeedback(id: number, input: { feedback?: unknown }) {
-  const user = await requireAdmin();
+  const user = await requireQualidadeSemConflito(id);
   const feedback = String(input.feedback ?? "").trim();
   if (!feedback) throw new ApiError("Informe o feedback.");
   await rpcTransition("aplicar_feedback_nc_v3", { p_nc_id: id, p_responsavel_id: user.id, p_feedback: feedback });

@@ -455,6 +455,12 @@ textarea:focus-visible {
   --status-borda: var(--status-aceite-borda);
 }
 
+.sg-status--em-plano-acao {
+  --status-cor: var(--status-invalidada-forte);
+  --status-fundo: var(--status-invalidada-fundo);
+  --status-borda: var(--status-invalidada-borda);
+}
+
 .sg-status--concluida {
   --status-cor: var(--status-concluida-forte);
   --status-fundo: var(--status-concluida-fundo);

@@ -10,6 +10,7 @@ const STATUS_ATIVOS = new Set([
   "validada",
   "aguardando_analise",
   "aguardando_aceite",
+  "em_plano_acao",
 ]);
 
 export function normalizarStatusHome(status) {
@@ -36,6 +37,7 @@ function contar(ncs, status) {
 function porPrioridade(a, b) {
   const ordem = {
     aguardando_aceite: 0,
+    em_plano_acao: 1,
     aberta: 1,
     aguardando_feedback: 2,
     validada: 2,

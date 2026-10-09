@@ -7,6 +7,7 @@ export const STATUS_INFO = {
   invalidada: { rotulo: "Invalidada", cor: "danger", etapa: "invalidada" },
   aguardando_feedback: { rotulo: "Aguardando feedback", cor: "warning", etapa: "aguardando-feedback" },
   aguardando_aceite: { rotulo: "Aguardando aceite", cor: "warning", etapa: "aguardando-aceite" },
+  em_plano_acao: { rotulo: "Em plano de ação", cor: "danger", etapa: "em-plano-acao" },
   concluida: { rotulo: "Concluída", cor: "success", etapa: "concluida" },
   validada: { rotulo: "Validada (legado)", cor: "info", etapa: "validada" },
   aguardando_analise: { rotulo: "Aguardando feedback", cor: "warning", etapa: "aguardando-feedback" },

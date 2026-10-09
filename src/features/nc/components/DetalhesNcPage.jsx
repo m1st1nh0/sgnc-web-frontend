@@ -10,6 +10,7 @@ import Form from "react-bootstrap/Form";
 import PainelAvaliar from "./PainelAvaliar.jsx";
 import PainelFeedback from "./PainelFeedback.jsx";
 import PainelAceite from "./PainelAceite.jsx";
+import PainelPlanoAcao from "./PainelPlanoAcao.jsx";
 import {
   buscarNc,
   listarEvidencias,
@@ -142,6 +143,14 @@ export default function DetalhesNcPage({ retorno = "/" }) {
     }
   }
 
+  async function recarregarNc() {
+    try {
+      setNc(await buscarNc(id));
+    } catch (e) {
+      setErro(e instanceof ErroApi ? e.message : "Não foi possível atualizar a NC.");
+    }
+  }
+
   async function carregarEvidencias() {
     if (!id) return;
     setCarregandoEvidencias(true);
@@ -265,13 +274,15 @@ export default function DetalhesNcPage({ retorno = "/" }) {
   const ehAutor = nc && usuario?.id === nc.aberto_por;
   const ehColaboradorDaNc = nc && usuario?.id === nc.colaborador_id;
   const ehResponsavel = nc && usuario?.id === nc.responsavel_id;
+  // Segregação de funções: quem é objeto da NC não exerce os poderes da Qualidade sobre ela.
+  const ehQualidadeSemConflito = ehAdm && !ehColaboradorDaNc;
 
   // O backend limita o supervisor à hierarquia autorizada de liderados.
   const podeVerDetalhesCompletos =
     ehAdm || ehSupervisor || ehColaboradorDaNc || ehResponsavel;
   const podeVerResumo = ehAutor && !podeVerDetalhesCompletos;
-  const podeEditar = nc && ehAdm && nc.status === "aberta";
-  const podeExcluirNc = ehAdm;
+  const podeEditar = nc && ehQualidadeSemConflito && nc.status === "aberta";
+  const podeExcluirNc = nc && ehQualidadeSemConflito && !nc.critica;
   const aguardandoFeedback =
     nc && ["aguardando_feedback", "aguardando_analise"].includes(nc.status);
   const proximaAcao = nc ? {
@@ -279,6 +290,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
     aguardando_feedback: ["Qualidade", "Registrar o feedback e o combinado com o colaborador."],
     aguardando_analise: ["Qualidade", "Registrar o feedback e o combinado com o colaborador."],
     aguardando_aceite: [nc.colaborador || "Colaborador analisado", "Ler o feedback e registrar o aceite formal."],
+    em_plano_acao: ["Qualidade e liderança", "Executar e acompanhar o plano de ação; a Qualidade verifica a eficácia para concluir."],
     validada: ["Qualidade", "A análise foi validada; acompanhe o próximo encaminhamento."],
     concluida: ["Concluída", "Não há ação pendente nesta não conformidade."],
     invalidada: ["Encerrada", nc.motivo_invalidacao || "A ocorrência foi invalidada."],
@@ -359,6 +371,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                 <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
                   <h2 className="h5 mb-0">Dados da ocorrência</h2>
                   <div className="d-flex gap-2 flex-wrap">
+                    {nc.critica && <span className="sg-badge sg-badge--vermelho">NC crítica</span>}
                     <BadgePrioridade criticidade={nc.criticidade} />
                     <BadgeStatus status={nc.status} />
                   </div>
@@ -480,7 +493,13 @@ export default function DetalhesNcPage({ retorno = "/" }) {
             </div>
 
             <div>
-              {podeVerDetalhesCompletos && ehAdm && nc.status === "aberta" && (
+              {ehAdm && ehColaboradorDaNc && !["concluida", "invalidada"].includes(nc.status) && (
+                <div className="sg-alerta sg-alerta--atencao mb-3" role="status">
+                  Você é o colaborador analisado nesta NC. Avaliação, feedback, edição, exclusão e o
+                  plano de ação devem ser conduzidos por outra pessoa da Qualidade.
+                </div>
+              )}
+              {podeVerDetalhesCompletos && ehQualidadeSemConflito && nc.status === "aberta" && (
                 <>
                   <DicaContextual chave="dica_nc_avaliacao" className="mb-3" />
                   <PainelAvaliar
@@ -490,7 +509,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                   />
                 </>
               )}
-              {podeVerDetalhesCompletos && ehAdm && aguardandoFeedback && (
+              {podeVerDetalhesCompletos && ehQualidadeSemConflito && aguardandoFeedback && (
                 <>
                   <DicaContextual chave="dica_nc_feedback" className="mb-3" />
                   <PainelFeedback nc={nc} aoConcluir={aoConcluirFeedback} />
@@ -504,6 +523,11 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                     <PainelAceite nc={nc} aoConcluir={aoConcluirAceite} />
                   </>
                 )}
+              {podeVerDetalhesCompletos && (
+                <div className="mt-3">
+                  <PainelPlanoAcao nc={nc} aoAlterarNc={recarregarNc} />
+                </div>
+              )}
             </div>
 
             {podeVerDetalhesCompletos && (
@@ -593,7 +617,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                                 </a>
                               ))}
                           </div>
-                          {(ehAdm || (ehAutor && nc.status === "aberta")) && (
+                          {(ehQualidadeSemConflito || (ehAutor && !ehColaboradorDaNc && nc.status === "aberta")) && (
                             <Botao
                               variante="secundario"
                               tamanho="sm"

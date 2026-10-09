@@ -16,6 +16,8 @@ export function filterSensitive(nc: Record<string, unknown>, user: UsuarioAutent
       validado_em: null,
       feedback_aplicado_em: null,
       aceito_em: null,
+      critica_motivo: null,
+      critica_marcada_por: null,
     };
   }
   return nc;
@@ -29,8 +31,12 @@ export function podeAnexarEvidencia(nc: NcEvidencia, user: UsuarioAutenticado) {
   return user.papel === "adm" || nc.aberto_por === user.id || nc.colaborador_id === user.id;
 }
 
-/** Remoção preserva a prova de quem registrou: Qualidade a qualquer momento, autor somente na triagem. */
+/**
+ * Remoção preserva a prova de quem registrou: Qualidade a qualquer momento, autor somente na triagem.
+ * O colaborador analisado nunca remove evidências da própria NC, mesmo sendo da Qualidade.
+ */
 export function podeExcluirEvidencia(nc: NcEvidencia, user: UsuarioAutenticado) {
+  if (nc.colaborador_id === user.id) return false;
   if (user.papel === "adm") return true;
   return nc.status === "aberta" && nc.aberto_por === user.id;
 }

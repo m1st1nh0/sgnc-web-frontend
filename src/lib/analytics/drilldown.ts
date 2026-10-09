@@ -24,8 +24,8 @@ type NcRow = {
   enviado_em: string | null;
 };
 
-const ACTIVE = ["aberta", "aguardando_feedback", "aguardando_aceite", "validada", "aguardando_analise"];
-const COUNTABLE = ["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "concluida"];
+const ACTIVE = ["aberta", "aguardando_feedback", "aguardando_aceite", "em_plano_acao", "validada", "aguardando_analise"];
+const COUNTABLE = ["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "em_plano_acao", "concluida"];
 const STATUS_ALIASES: Record<string, string[]> = {
   aguardando_feedback: ["aguardando_feedback", "aguardando_analise", "validada"],
 };
@@ -33,6 +33,7 @@ const FILTER_STATUS_ALIASES: Record<string, string[]> = {
   aberta: ["aberta"],
   aguardando_feedback: ["aguardando_feedback", "aguardando_analise", "validada"],
   aguardando_aceite: ["aguardando_aceite"],
+  em_plano_acao: ["em_plano_acao"],
   concluida: ["concluida"],
   invalidada: ["invalidada"],
 };
@@ -201,7 +202,9 @@ export async function listarNcsDoIndicador(params: URLSearchParams) {
         ? row.criado_em
         : row.status === "aguardando_aceite"
           ? row.feedback_aplicado_em || row.validado_em || row.criado_em
-          : row.validado_em || row.enviado_em || row.criado_em;
+          : row.status === "em_plano_acao"
+            ? row.aceito_em || row.validado_em || row.criado_em
+            : row.validado_em || row.enviado_em || row.criado_em;
       const days = Math.max(0, Math.floor((Date.now() - Date.parse(since)) / DAY));
       const bucket = days < 2 ? "0-1d" : days < 4 ? "2-3d" : days < 8 ? "4-7d" : "8+d";
       return bucket === agingBucket;

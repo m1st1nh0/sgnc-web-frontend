@@ -18,7 +18,7 @@ import { comRetorno } from "../../../lib/utils/retorno.js";
 import { infoDoStatus } from "../client/statusNc.js";
 
 // Filtra por etapa: status legados equivalentes aparecem uma única vez.
-const STATUS = ["aberta", "aguardando_feedback", "aguardando_aceite", "concluida", "invalidada", "validada"]
+const STATUS = ["aberta", "aguardando_feedback", "aguardando_aceite", "em_plano_acao", "concluida", "invalidada", "validada"]
   .map((status) => ({ valor: infoDoStatus(status).etapa, rotulo: infoDoStatus(status).rotulo }));
 const PERIODOS = [
   { valor: "30", rotulo: "Últimos 30 dias" },

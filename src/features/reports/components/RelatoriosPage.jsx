@@ -41,6 +41,7 @@ const STATUS = [
   ["aberta", "Aguardando avaliação"],
   ["aguardando_feedback", "Aguardando feedback"],
   ["aguardando_aceite", "Aguardando aceite"],
+  ["em_plano_acao", "Em plano de ação"],
   ["concluida", "Concluída"],
   ["invalidada", "Invalidada"],
 ];
@@ -54,6 +55,7 @@ const CORES_STATUS = {
   aberta: CORES_GRAFICO.amarelo,
   aguardando_feedback: CORES_GRAFICO.laranja,
   aguardando_aceite: CORES_GRAFICO.violeta,
+  em_plano_acao: CORES_GRAFICO.vermelho,
   concluida: CORES_GRAFICO.verde,
   invalidada: CORES_GRAFICO.vermelho,
 };

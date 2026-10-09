@@ -106,3 +106,26 @@ export function registrarMedidaDisciplinar(dados) {
     body: dados,
   });
 }
+
+export function obterPlanoAcao(ncId) {
+  return chamarApi(`/nc/${ncId}/plano-acao`);
+}
+
+export function definirCritica(ncId, critica, motivo) {
+  return chamarApi(`/nc/${ncId}/critica`, { method: "POST", body: { critica, motivo } });
+}
+
+export function salvarPlanoAcao(ncId, dados) {
+  return chamarApi(`/nc/${ncId}/plano-acao`, { method: "PUT", body: dados });
+}
+
+export function registrarAcompanhamentoPlano(ncId, texto) {
+  return chamarApi(`/nc/${ncId}/plano-acao/acompanhamentos`, { method: "POST", body: { texto } });
+}
+
+export function concluirPlanoAcao(ncId, verificacaoEficacia) {
+  return chamarApi(`/nc/${ncId}/plano-acao/concluir`, {
+    method: "POST",
+    body: { verificacao_eficacia: verificacaoEficacia },
+  });
+}

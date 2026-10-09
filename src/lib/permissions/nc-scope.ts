@@ -10,6 +10,7 @@ export const SUPERVISOR_VISIBLE_NC_STATUSES = [
   "aguardando_analise",
   "validada",
   "aguardando_aceite",
+  "em_plano_acao",
   "concluida",
   "invalidada",
 ] as const;
