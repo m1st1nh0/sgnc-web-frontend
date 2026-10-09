@@ -1707,7 +1707,7 @@ textarea:focus-visible {
 
 .sg-governanca__catalog-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   gap: 10px;
   padding: 20px 24px 24px;
   margin: 0;
@@ -1730,12 +1730,12 @@ textarea:focus-visible {
 }
 
 .sg-governanca__catalog-list li:hover {
-  transform: translateY(-1px);
   border-color: #b8d5cb;
   background: #f4f9f7;
 }
 
-.sg-governanca__catalog-list li > span {
+/* Só o marcador redondo: o nome da causa também é um <span> e não pode herdar 22px. */
+.sg-governanca__catalog-list li > .sg-governanca__cause-status {
   display: grid;
   flex: 0 0 22px;
   width: 22px;
@@ -2488,3 +2488,12 @@ textarea:focus-visible {
   width: auto;
   max-width: 220px;
 }
+
+/* Catálogo de causas: nome e situação ocupam a linha toda; ações ficam abaixo,
+   alinhadas ao texto, sem disputar espaço com descrições longas. */
+.sg-governanca__catalog-list li { flex-wrap: wrap; align-items: flex-start; }
+.sg-governanca__catalog-list li > .sg-governanca__cause-status { margin-top: 1px; }
+.sg-governanca__cause-copy { flex: 1 1 calc(100% - 32px); }
+.sg-governanca__cause-actions { width: 100%; padding-left: 32px; }
+.sg-governanca__cause-edit { flex-wrap: wrap; }
+.sg-governanca__cause-edit .form-control { flex: 1 1 100%; }
