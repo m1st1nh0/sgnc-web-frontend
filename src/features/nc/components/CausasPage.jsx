@@ -7,6 +7,7 @@ import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 import Modal from "react-bootstrap/Modal";
 
+import Botao from "@/components/ui/Botao.jsx";
 import CabecalhoPagina from "@/components/ui/CabecalhoPagina.jsx";
 import EstadoCarregamento from "@/components/ui/EstadoCarregamento.jsx";
 import {
@@ -252,7 +253,7 @@ export default function CausasPage() {
               <Form.Label htmlFor="nova-causa-catalogo">Nova causa</Form.Label>
               <Form.Control id="nova-causa-catalogo" value={novaCausa} maxLength={120} onChange={(event) => setNovaCausa(event.target.value)} placeholder="Ex.: Falha no retorno ao cliente" disabled={salvandoCatalogo || Boolean(causaEditando)} />
             </Form.Group>
-            <Button type="submit" disabled={salvandoCatalogo || !novaCausa.trim() || Boolean(causaEditando)}>{salvandoCatalogo && !causaEditando ? "Salvando…" : "Adicionar causa"}</Button>
+            <Botao type="submit" variante="primario" disabled={salvandoCatalogo || !novaCausa.trim() || Boolean(causaEditando)}>{salvandoCatalogo && !causaEditando ? "Salvando…" : "Adicionar causa"}</Botao>
           </Form>
           {catalogo.length ? (
             <ul className="sg-governanca__catalog-list">
@@ -261,7 +262,7 @@ export default function CausasPage() {
                   {causaEditando === causa.id ? (
                     <Form className="sg-governanca__cause-edit" onSubmit={salvarCausa}>
                       <Form.Control aria-label={`Editar descrição de ${causa.descricao}`} value={descricaoEditando} maxLength={120} onChange={(event) => setDescricaoEditando(event.target.value)} autoFocus />
-                      <Button type="submit" size="sm" disabled={salvandoCatalogo || !descricaoEditando.trim()}>{salvandoCatalogo ? "Salvando…" : "Salvar"}</Button>
+                      <Botao type="submit" variante="primario" tamanho="sm" disabled={salvandoCatalogo || !descricaoEditando.trim()}>{salvandoCatalogo ? "Salvando…" : "Salvar"}</Botao>
                       <Button type="button" size="sm" variant="outline-secondary" onClick={() => { setCausaEditando(null); setDescricaoEditando(""); }}>Cancelar</Button>
                     </Form>
                   ) : (
