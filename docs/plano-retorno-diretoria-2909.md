@@ -50,13 +50,13 @@ Respondidas pelo responsável em 09/10/2026:
 | D8 | Dias úteis consideram feriados? | **Não. Só segunda a sexta**, que é o expediente. |
 | D9 | O que acontece quando o aceite vence? | **O sistema sinaliza, notifica e a NC passa para o status "Não respondida".** A notificação vai para o colaborador analisado e o supervisor dele. |
 | D13 | Quem abriu a NC recebe notificações? | **Não.** Quem abriu acompanha pela tela de detalhe e por "Minhas NCs". |
+| D11 | Depois de "Não respondida", o colaborador ainda pode registrar o aceite? | **Sim.** A NC fica registrada como "Não respondida" no histórico; o aceite tardio exige a frase, conclui a NC (ou leva ao plano de ação se crítica) e fica marcado **"aceito fora do prazo"** no histórico, no PDF e em Insights. |
+| D12 | A Qualidade é avisada quando uma NC fica "Não respondida"? | **Não.** A Qualidade acompanha pelo card "Não respondidas" no painel. |
 
 Ainda em aberto (não bloqueiam o início):
 
 | ID | Pergunta | Recomendação | Bloqueia |
 |---|---|---|---|
-| D11 | Depois de "Não respondida", o colaborador ainda pode registrar o aceite? | Sim: o aceite tardio continua exigindo a frase, conclui a NC (ou leva ao plano de ação se crítica) e fica marcado "aceito fora do prazo" no histórico, no PDF e em Insights. | Fase 4 |
-| D12 | A Qualidade também é avisada quando uma NC fica "Não respondida"? | Não notificar; a Qualidade vê o card "Não respondidas" no painel. | Fase 5 |
 | D10 | Quem da Qualidade recebe aviso de NC nova? | Todos os usuários com papel Qualidade/Adm, exceto quem for o colaborador analisado. | Fase 5 |
 
 ## Fases
@@ -115,7 +115,7 @@ Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 
 - [ ] 3.5 `MinhasNcsPage.jsx` e tabela do painel: coluna "Aguardando" com o responsável da etapa (Qualidade, nome do colaborador, liderança).
 - [ ] 3.6 Teste unit para o mapeamento status → etapa/responsável (extrair para `statusNc.js`).
 
-### Fase 4: feedback estruturado e aceite com prazo (ponto 9) (D3–D6, D8, D9 decididos; D11 em aberto)
+### Fase 4: feedback estruturado e aceite com prazo (ponto 9) (D3–D6, D8, D9, D11 decididos)
 
 Regras decididas: todos os campos do feedback são obrigatórios, exceto o anexo de evidências; não há contestação; o colaborador tem 2 dias úteis (segunda a sexta, sem feriados) após o envio do feedback para aceitar; o aceite continua exigindo a frase digitada; vencido o prazo, a NC vai para "Não respondida".
 
@@ -128,8 +128,8 @@ Regras decididas: todos os campos do feedback são obrigatórios, exceto o anexo
 - [ ] 4.4 RPC `registrar_feedback_v4(p_nc_id, p_responsavel_id, p_causa_raiz, p_acao, p_responsavel_acao_id, p_prazo_acao, p_combinado)`: mesmas guardas de `aplicar_feedback_nc_v3` (conflito de interesse, status `aguardando_feedback`/`aguardando_analise`); valida todos os campos; `prazo_acao` não pode ser anterior a hoje; responsável da ação deve ser usuário ativo; grava `nc_feedbacks` com `prazo_aceite = somar_dias_uteis(now(), 2)`; preenche `nao_conformidades.feedback` com um resumo legível (compatibilidade com PDF/CSV/dossiê atuais); status → `aguardando_aceite`; histórico. Retorna `feedback_id` para o upload dos anexos.
 - [ ] 4.5 RPC `marcar_nao_respondidas_v1()`: para cada NC `aguardando_aceite` com `prazo_aceite` vencido, muda para `nao_respondida` e grava histórico ("Prazo de aceite vencido sem resposta"; autor nulo = sistema, confirmar se `historico_nc.usuario_id` aceita nulo). Idempotente e com `FOR UPDATE SKIP LOCKED`. Na Fase 5 essa mesma RPC dispara as notificações.
 - [ ] 4.5a Agendamento: instalar `pg_cron` e rodar `marcar_nao_respondidas_v1()` a cada 15 minutos (o prazo tem hora, não só dia). Alternativa sem `pg_cron`: Vercel Cron chamando rota protegida por segredo.
-- [ ] 4.5b `aceitar_nc_v4`: igual à v3 (frase digitada), mas também aceita `nao_respondida` se D11 for aprovado, registrando "aceito fora do prazo" no histórico.
-- [ ] 4.5c Garantir que `nao_respondida` entra nas listas de status válidos (`listarNcsDaPessoa`, relatórios, Insights, CSV) e nas regras de reincidência de `validar_nc_com_ocorrencias_v2` (decidir junto com D11 se conta como ocorrência; recomendação: conta, porque a NC foi validada).
+- [ ] 4.5b `aceitar_nc_v4`: igual à v3 (frase digitada), mas também aceita `nao_respondida` (D11), registrando "Aceite formal do colaborador fora do prazo" no histórico e `aceito_fora_prazo = true` (coluna nova em `nao_conformidades`, padrão `false`).
+- [ ] 4.5c Garantir que `nao_respondida` entra nas listas de status válidos (`listarNcsDaPessoa`, relatórios, Insights, CSV) e nas regras de reincidência de `validar_nc_com_ocorrencias_v2` (recomendação: conta como ocorrência, porque a NC foi validada; confirmar na revisão do PR da Fase 4).
 - [ ] 4.6 Backfill: NCs com `feedback` preenchido ganham `nc_feedbacks` versão 1 com `combinado = feedback` e os demais campos com o texto "Não informado (registro anterior a 10/2026)"; `prazo_aceite` calculado a partir de `feedback_aplicado_em`. Não inventar causa raiz.
 
 **Servidor**
@@ -140,16 +140,16 @@ Regras decididas: todos os campos do feedback são obrigatórios, exceto o anexo
 
 **Interface**
 - [ ] 4.11 `PainelFeedback.jsx`: formulário com causa raiz, ação combinada, responsável pela ação (busca de usuário ativo), prazo da ação, combinado, todos obrigatórios com erro no campo; anexos opcionais (mesmo seletor da abertura) enviados após o registro, com aviso de falha parcial igual ao da abertura. Bloco "Histórico deste colaborador com esta causa" acima do formulário: ocorrência atual ("3ª ocorrência em 12 meses") e NCs anteriores clicáveis. Texto do painel informa: "O colaborador terá 2 dias úteis para registrar o aceite".
-- [ ] 4.12 `PainelAceite.jsx`: mostra o feedback estruturado, os anexos e o prazo ("Responda até qua, 15/10 às 14:30"); mantém a frase digitada. Em `nao_respondida`, mostra "Prazo vencido em …" e, se D11 for aprovado, ainda permite o aceite.
+- [ ] 4.12 `PainelAceite.jsx`: mostra o feedback estruturado, os anexos e o prazo ("Responda até qua, 15/10 às 14:30"); mantém a frase digitada. Em `nao_respondida`, mostra "Prazo vencido em …. O aceite ainda pode ser registrado e ficará marcado como fora do prazo." e mantém a frase digitada (D11).
 - [ ] 4.13 Detalhe: seção "Feedback" com os cinco campos, anexos, prazo e situação do aceite (aguardando, aceito no prazo, não respondida, aceito fora do prazo).
 - [ ] 4.14 Painel e Insights: card "Não respondidas" (Qualidade e supervisor, no escopo de cada um), clicável como os demais; aba de status no painel; `statusNc.js` ganha `nao_respondida` ("Não respondida", cor de alerta); em Insights, taxa de aceite no prazo e total de não respondidas por setor.
 - [ ] 4.15 PDF da NC, CSV e dossiê: incluir causa raiz, ação, responsável, prazo da ação, combinado, prazo do aceite e se foi aceito no prazo.
 
 **Testes**
 - [ ] 4.16 Unit: validação dos campos obrigatórios; `somar_dias_uteis` (sexta 15h + 2 = terça 15h; sábado + 2 = terça; quarta + 2 = sexta); permissão do anexo do feedback.
-- [ ] 4.17 Exercitar no banco do Preview: feedback completo → aceite no prazo; feedback → prazo vencido → job marca "Não respondida" → (se D11) aceite fora do prazo; NC crítica → aceite → plano de ação; tentativa com campo vazio é recusada. Remover dados temporários.
+- [ ] 4.17 Exercitar no banco do Preview: feedback completo → aceite no prazo; feedback → prazo vencido → job marca "Não respondida" → aceite fora do prazo (D11); NC crítica → aceite → plano de ação; tentativa com campo vazio é recusada. Remover dados temporários.
 
-### Fase 5: notificações dentro do aplicativo (D7, D9, D13 decididos; D10, D12 em aberto)
+### Fase 5: notificações dentro do aplicativo (D7, D9, D12, D13 decididos; D10 em aberto)
 
 Ver avaliação abaixo. Entrega mínima:
 - [ ] 5.1 Tabela `public.notificacoes`: `id`, `usuario_id`, `tipo`, `nc_id`, `titulo`, `mensagem`, `criada_em`, `lida_em`. Índice em `(usuario_id, lida_em, criada_em desc)`. RLS ligada sem concessão direta; leitura só pela API.
@@ -160,7 +160,7 @@ Ver avaliação abaixo. Entrega mínima:
   - Aceite registrado → quem registrou o feedback.
   - NC não respondida → ver 5.3.
   - NC crítica marcada / plano de ação concluído → envolvidos do plano.
-- [ ] 5.3 NC não respondida (D9): `marcar_nao_respondidas_v1()` (Fase 4) chama `notificar` para o colaborador analisado ("O prazo para o aceite da NC #X venceu") e para o supervisor direto dele (`usuarios.supervisor_id`), na mesma transação da mudança de status. Sem supervisor cadastrado, só o colaborador.
+- [ ] 5.3 NC não respondida (D9): `marcar_nao_respondidas_v1()` (Fase 4) chama `notificar` para o colaborador analisado ("O prazo para o aceite da NC #X venceu. Você ainda pode registrar o aceite, que ficará marcado como fora do prazo.") e para o supervisor direto dele (`usuarios.supervisor_id`), na mesma transação da mudança de status. Sem supervisor cadastrado, só o colaborador. A Qualidade não é notificada (D12).
 - [ ] 5.4 API: `GET /api/notificacoes` (últimas 30, não lidas primeiro, contador), `POST /api/notificacoes/[id]/lida`, `POST /api/notificacoes/lidas` (marcar todas).
 - [ ] 5.5 Interface: sino no `AppNavigation.jsx` com contador; painel com a lista, cada item leva à NC e marca como lida. Atualização ao carregar a página, ao voltar o foco para a aba e a cada 60 s com a aba visível.
 - [ ] 5.6 Testes: unit da API (só lê as próprias notificações); no banco do Preview, conferir que cada transição gera as notificações certas e nenhuma para o colaborador analisado quando ele é da Qualidade.

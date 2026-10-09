@@ -22,10 +22,12 @@ Decisões do responsável (09/10/2026), valem como regra:
 - Não há contestação do feedback por enquanto.
 - O colaborador tem 2 dias úteis (segunda a sexta, sem feriados) após o envio do feedback para o aceite; o aceite continua exigindo a frase digitada.
 - Vencido o prazo, a NC muda automaticamente para o status "Não respondida" (com histórico), e o colaborador analisado e o supervisor dele recebem notificação.
+- Depois de "Não respondida", o colaborador ainda pode registrar o aceite (com a frase); o aceite fica marcado como "aceito fora do prazo".
+- A Qualidade não é notificada quando uma NC fica "Não respondida".
 - Quem abriu a NC não recebe notificações por ter aberto.
 - Avisos de etapa: notificações dentro do aplicativo (sem e-mail neste ciclo).
 
-Em aberto: D10 (quem da Qualidade recebe aviso de NC nova), D11 (aceite tardio depois de "Não respondida") e D12 (Qualidade é avisada da não resposta?). Não assuma as recomendações do plano como aprovadas.
+Em aberto: D10 (quem da Qualidade recebe aviso de NC nova). Não assuma as recomendações do plano como aprovadas.
 
 ## Convenções
 
