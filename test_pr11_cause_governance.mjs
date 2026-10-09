@@ -32,5 +32,5 @@ assert.match(campo, /Solicitar análise/);
 assert.match(campo, /permitirCriacaoDireta/);
 assert.match(adminPage, /decidirSolicitacaoCausa/);
 assert.match(routeTexts[1], /requireApiUser/);
-assert.match(routeTexts[2], /requireRole\(\["adm"\]\)/);
+assert.match(routeTexts[2], /requireRole\(\["adm", "qualidade"\]\)/);
 console.log("PR11 cause catalog governance regression passed");

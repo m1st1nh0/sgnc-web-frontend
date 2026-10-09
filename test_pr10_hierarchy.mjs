@@ -26,8 +26,8 @@ const api = readFileSync("src/app/api/equipe/[usuarioId]/ncs/route.ts", "utf8");
 const escopo = readFileSync("src/lib/permissions/nc-scope.ts", "utf8");
 const nav = readFileSync("src/components/navigation/BarraNavegacao.jsx", "utf8");
 
-assert.match(equipeRoute, /requireRole\(\["adm", "supervisor"\]\)/);
-assert.match(pessoaRoute, /requireRole\(\["adm", "supervisor"\]\)/);
+assert.match(equipeRoute, /requireRole\(\["adm", "qualidade", "supervisor"\]\)/);
+assert.match(pessoaRoute, /requireRole\(\["adm", "qualidade", "supervisor"\]\)/);
 assert.match(api, /listarNcsDaPessoa/);
 assert.match(escopo, /"invalidada"/);
 assert.match(nav, /href="\/equipe"/);

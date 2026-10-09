@@ -6,8 +6,9 @@ import type { UsuarioAutenticado } from "@/lib/auth/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { listarPessoasAbaixo } from "@/lib/permissions/team-scope";
+import { ehAdminSistema, ehPapelSemLideranca, PAPEIS as LISTA_PAPEIS } from "@/lib/auth/papeis";
 
-const PAPEIS = new Set(["adm", "supervisor", "funcionario"]);
+const PAPEIS = new Set(LISTA_PAPEIS);
 
 type UsuarioInput = {
   nome?: unknown;
@@ -21,8 +22,8 @@ type UsuarioInput = {
 
 async function requireAdmin() {
   const user = await requireApiUser();
-  if (user.papel !== "adm") {
-    throw new ApiError("Apenas o administrador (Qualidade) pode fazer isso.", 403);
+  if (!ehAdminSistema(user.papel)) {
+    throw new ApiError("Apenas o Administrador do sistema pode gerenciar usuários e acessos.", 403);
   }
   return user;
 }
@@ -35,12 +36,12 @@ function parseUsuario(data: UsuarioInput, creating: boolean) {
 
   if (!nome) throw new ApiError("Nome é obrigatório.");
   if (!PAPEIS.has(papel)) throw new ApiError("papel inválido.");
-  if (papel !== "adm" && !supervisorId) {
+  if (!ehPapelSemLideranca(papel) && !supervisorId) {
     throw new ApiError("supervisor_id é obrigatório para papel 'funcionario' ou 'supervisor'.");
   }
 
   if (!creating) {
-    return { nome, papel, setor, supervisor_id: papel === "adm" ? null : supervisorId };
+    return { nome, papel, setor, supervisor_id: ehPapelSemLideranca(papel) ? null : supervisorId };
   }
 
   const email = String(data.email ?? "").trim().toLowerCase();
@@ -52,12 +53,12 @@ function parseUsuario(data: UsuarioInput, creating: boolean) {
     email,
     papel,
     setor,
-    supervisor_id: papel === "adm" ? null : supervisorId,
+    supervisor_id: ehPapelSemLideranca(papel) ? null : supervisorId,
     senha_inicial: senhaInicial,
   };
 }
 
-async function validarResponsavel(supervisorId: string | null, usuarioId?: string) {
+export async function validarResponsavel(supervisorId: string | null, usuarioId?: string) {
   if (!supervisorId) return;
   if (usuarioId && supervisorId === usuarioId) throw new ApiError("Um usuário não pode ser supervisor de si mesmo.");
 
@@ -66,8 +67,8 @@ async function validarResponsavel(supervisorId: string | null, usuarioId?: strin
     .select("id, papel, ativo")
     .eq("id", supervisorId)
     .maybeSingle();
-  if (error || !supervisor || !supervisor.ativo || !["adm", "supervisor"].includes(supervisor.papel)) {
-    throw new ApiError("Selecione uma liderança ativa com perfil de administrador ou supervisor.");
+  if (error || !supervisor || !supervisor.ativo || !["adm", "qualidade", "supervisor"].includes(supervisor.papel)) {
+    throw new ApiError("Selecione uma liderança ativa com perfil de supervisor, Qualidade ou administrador.");
   }
 
   if (usuarioId) {
@@ -136,13 +137,16 @@ export async function criarUsuario(input: UsuarioInput) {
 }
 
 export async function editarUsuario(usuarioId: string, input: UsuarioInput) {
-  await requireAdmin();
+  const requester = await requireAdmin();
   const dados = parseUsuario(input, false);
   await validarResponsavel(dados.supervisor_id, usuarioId);
+  if (requester.id === usuarioId && !ehAdminSistema(dados.papel)) {
+    throw new ApiError("Você não pode remover o seu próprio perfil de administrador.");
+  }
 
   const atual = await createAdminClient()
     .from("usuarios")
-    .select("papel")
+    .select("papel, supervisor_id")
     .eq("id", usuarioId)
     .maybeSingle();
   if (atual.error) throw new ApiError("Não foi possível validar o usuário.", 500);
@@ -163,6 +167,17 @@ export async function editarUsuario(usuarioId: string, input: UsuarioInput) {
     .maybeSingle();
   if (error) throw new ApiError("Não foi possível editar o usuário.");
   if (!data) throw new ApiError("Usuário não encontrado.", 404);
+  if (atual.data.papel !== dados.papel || atual.data.supervisor_id !== dados.supervisor_id) {
+    await registrarHistoricoEquipe({
+      usuario_id: usuarioId,
+      alterado_por: requester.id,
+      papel_anterior: atual.data.papel,
+      papel_novo: dados.papel,
+      supervisor_anterior: atual.data.supervisor_id,
+      supervisor_novo: dados.supervisor_id,
+      origem: "cadastro",
+    });
+  }
   return data;
 }
 
@@ -224,4 +239,10 @@ export async function trocarSenha(input: { senha_atual?: unknown; senha_nova?: u
     .eq("id", user.id);
   if (profileError) throw new ApiError("Senha alterada, mas não foi possível atualizar o perfil.", 500);
   return { status: "senha_alterada" };
+}
+
+/** Trilha de auditoria das mudanças de equipe e de papel (somente inserção). */
+export async function registrarHistoricoEquipe(registro: Record<string, unknown>) {
+  const { error } = await (createAdminClient() as any).from("historico_equipes").insert(registro);
+  if (error) throw new ApiError("A alteração foi salva, mas não foi possível registrar o histórico.", 500);
 }

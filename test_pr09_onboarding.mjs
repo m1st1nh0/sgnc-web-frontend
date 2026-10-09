@@ -7,9 +7,10 @@ import {
   DICAS_ONBOARDING,
 } from "./src/features/onboarding/onboardingConteudo.js";
 
-const papeis = ["adm", "supervisor", "funcionario"];
+const papeis = ["adm", "qualidade", "supervisor", "funcionario"];
 const esperados = {
   adm: ["checklist_avaliar_nc", "checklist_feedback", "checklist_usuarios"],
+  qualidade: ["checklist_avaliar_nc", "checklist_feedback", "checklist_equipes"],
   supervisor: ["checklist_equipe", "checklist_acompanhar_nc"],
   funcionario: ["checklist_evidencias", "checklist_aceite"],
 };

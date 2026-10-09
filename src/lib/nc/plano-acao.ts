@@ -16,6 +16,7 @@ import {
   type PlanoAcao,
 } from "@/lib/permissions/plano-acao";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ehQualidade } from "@/lib/auth/papeis";
 
 type PlanoRegistro = {
   id: number;
@@ -134,7 +135,7 @@ export async function definirCritica(ncId: number, input: { critica?: unknown; m
   const permitido = input.critica ? podeMarcarCritica(nc, user) : podeDesmarcarCritica(nc, plano as PlanoAcao, user);
   if (!permitido) {
     if (nc.colaborador_id === user.id) throw new ApiError(MENSAGEM_CONFLITO, 403);
-    if (user.papel !== "adm") throw new ApiError("Somente a Qualidade pode alterar a criticidade da NC.", 403);
+    if (!ehQualidade(user.papel)) throw new ApiError("Somente a Qualidade pode alterar a criticidade da NC.", 403);
     throw new ApiError(input.critica
       ? "A NC precisa estar validada (e não marcada) para ser marcada como crítica."
       : "Esta NC não pode ter a criticidade removida.", 409);
@@ -192,7 +193,7 @@ export async function concluirPlanoAcao(ncId: number, input: { verificacao_efica
   const { user, nc, plano } = await contexto(ncId);
   if (!podeConcluirPlano(nc, plano as PlanoAcao, user)) {
     if (nc.colaborador_id === user.id) throw new ApiError(MENSAGEM_CONFLITO, 403);
-    if (user.papel !== "adm") throw new ApiError("Somente a Qualidade pode verificar a eficácia e concluir o plano.", 403);
+    if (!ehQualidade(user.papel)) throw new ApiError("Somente a Qualidade pode verificar a eficácia e concluir o plano.", 403);
     if (plano?.responsavel_execucao_id === user.id) rpcError({ erro: "verificador_executor" });
     throw new ApiError("O plano só pode ser concluído após o aceite da NC e com a execução registrada.", 409);
   }

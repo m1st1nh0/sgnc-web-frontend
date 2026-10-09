@@ -2,7 +2,7 @@
 --
 -- Regras de segregação de funções aplicadas também no banco (defesa em profundidade;
 -- a API Next.js aplica as mesmas regras antes de chamar estas funções):
---   * Só a Qualidade (adm) marca/desmarca uma NC como crítica e conclui o plano.
+--   * Só a Qualidade (papéis 'qualidade' e 'adm') marca/desmarca uma NC como crítica e conclui o plano.
 --   * Qualidade e a liderança hierárquica do colaborador alimentam o plano.
 --   * O colaborador analisado (objeto da NC) nunca marca, alimenta, aprova ou decide
 --     nada sobre a própria NC, mesmo que seja adm ou supervisor.
@@ -97,7 +97,7 @@ REVOKE ALL ON SEQUENCE public.planos_acao_id_seq, public.plano_acao_acompanhamen
 GRANT USAGE, SELECT ON SEQUENCE public.planos_acao_id_seq, public.plano_acao_acompanhamentos_id_seq TO service_role;
 
 -- Verdadeiro quando p_usuario_id é supervisor na cadeia hierárquica acima do colaborador.
--- Espelha listarPessoasAbaixo(): adm não entra na hierarquia e só supervisores propagam.
+-- Espelha listarPessoasAbaixo(): Qualidade/adm não entram na hierarquia e só supervisores propagam.
 CREATE OR REPLACE FUNCTION public.nc_lidera_colaborador(p_usuario_id uuid, p_colaborador_id uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -108,7 +108,7 @@ AS $$
   WITH RECURSIVE acima(id, nivel) AS (
     SELECT u.supervisor_id, 1
     FROM public.usuarios u
-    WHERE u.id = p_colaborador_id AND u.papel <> 'adm'::public.papel_usuario
+    WHERE u.id = p_colaborador_id AND u.papel NOT IN ('adm'::public.papel_usuario, 'qualidade'::public.papel_usuario)
     UNION ALL
     SELECT u.supervisor_id, a.nivel + 1
     FROM acima a
@@ -146,7 +146,7 @@ BEGIN
   SELECT * INTO v_nc FROM public.nao_conformidades WHERE id = p_nc_id FOR UPDATE;
   IF NOT FOUND THEN RETURN pg_catalog.jsonb_build_object('ok', false, 'erro', 'nc_nao_encontrada'); END IF;
   IF NOT EXISTS (
-    SELECT 1 FROM public.usuarios WHERE id = p_usuario_id AND ativo AND papel = 'adm'::public.papel_usuario
+    SELECT 1 FROM public.usuarios WHERE id = p_usuario_id AND ativo AND papel IN ('adm'::public.papel_usuario, 'qualidade'::public.papel_usuario)
   ) THEN
     RETURN pg_catalog.jsonb_build_object('ok', false, 'erro', 'sem_permissao');
   END IF;
@@ -232,7 +232,7 @@ AS $$
   SELECT p_usuario_id IS NOT NULL
     AND p_usuario_id IS DISTINCT FROM p_colaborador_id
     AND (
-      EXISTS (SELECT 1 FROM public.usuarios WHERE id = p_usuario_id AND ativo AND papel = 'adm'::public.papel_usuario)
+      EXISTS (SELECT 1 FROM public.usuarios WHERE id = p_usuario_id AND ativo AND papel IN ('adm'::public.papel_usuario, 'qualidade'::public.papel_usuario))
       OR public.nc_lidera_colaborador(p_usuario_id, p_colaborador_id)
     );
 $$;
@@ -374,7 +374,7 @@ BEGIN
   SELECT * INTO v_nc FROM public.nao_conformidades WHERE id = p_nc_id FOR UPDATE;
   IF NOT FOUND THEN RETURN pg_catalog.jsonb_build_object('ok', false, 'erro', 'nc_nao_encontrada'); END IF;
   IF NOT EXISTS (
-    SELECT 1 FROM public.usuarios WHERE id = p_usuario_id AND ativo AND papel = 'adm'::public.papel_usuario
+    SELECT 1 FROM public.usuarios WHERE id = p_usuario_id AND ativo AND papel IN ('adm'::public.papel_usuario, 'qualidade'::public.papel_usuario)
   ) THEN
     RETURN pg_catalog.jsonb_build_object('ok', false, 'erro', 'sem_permissao');
   END IF;

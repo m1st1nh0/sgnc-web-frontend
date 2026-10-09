@@ -33,6 +33,7 @@ import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
 import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
+import { ehQualidade } from "../../../lib/auth/papeis.js";
 
 const EXTENSOES_IMAGEM = new Set([
   "jpg",
@@ -269,17 +270,15 @@ export default function DetalhesNcPage({ retorno = "/" }) {
     }
   }
 
-  const ehAdm = usuario?.papel === "adm";
-  const ehSupervisor = usuario?.papel === "supervisor";
+  const ehAdm = ehQualidade(usuario?.papel);
   const ehAutor = nc && usuario?.id === nc.aberto_por;
   const ehColaboradorDaNc = nc && usuario?.id === nc.colaborador_id;
-  const ehResponsavel = nc && usuario?.id === nc.responsavel_id;
   // Segregação de funções: quem é objeto da NC não exerce os poderes da Qualidade sobre ela.
   const ehQualidadeSemConflito = ehAdm && !ehColaboradorDaNc;
 
   // O backend limita o supervisor à hierarquia autorizada de liderados.
-  const podeVerDetalhesCompletos =
-    ehAdm || ehSupervisor || ehColaboradorDaNc || ehResponsavel;
+  // O servidor calcula o acesso pela hierarquia real: supervisor só vê completo a própria equipe.
+  const podeVerDetalhesCompletos = nc?.acesso_completo === true;
   const podeVerResumo = ehAutor && !podeVerDetalhesCompletos;
   const podeEditar = nc && ehQualidadeSemConflito && nc.status === "aberta";
   const podeExcluirNc = nc && ehQualidadeSemConflito && !nc.critica;

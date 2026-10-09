@@ -30,6 +30,13 @@ const PAPEL = {
       "Você administra usuários, avalia NCs, registra feedbacks e acompanha os indicadores de toda a operação.",
     destaque: "A validação envia a NC diretamente para a etapa de feedback.",
   },
+  qualidade: {
+    chave: "apresentacao_papel_qualidade",
+    titulo: "Sua jornada na Qualidade",
+    texto:
+      "Você avalia NCs, registra feedbacks, conduz planos de ação de NCs críticas, organiza as equipes e acompanha os indicadores de toda a operação.",
+    destaque: "Você nunca conduz uma NC em que é o colaborador analisado: outra pessoa da Qualidade assume.",
+  },
   supervisor: {
     chave: "apresentacao_papel_supervisor",
     titulo: "Sua jornada como supervisor",
@@ -108,6 +115,34 @@ const CHECKLIST_ESPECIFICO = {
       titulo: "Conheça a gestão de usuários",
       descricao: "Cadastre, edite e gerencie acessos.",
       destino: "/usuarios",
+    },
+  ],
+  qualidade: [
+    {
+      chave: "checklist_avaliar_nc",
+      titulo: "Conheça a avaliação de NC",
+      descricao: "Valide ou invalide um registro aberto.",
+      destino: "/#lista-ncs-home",
+      concluirAoAbrir: true,
+    },
+    {
+      chave: "checklist_feedback",
+      titulo: "Conheça o registro de feedback",
+      descricao: "Veja como formalizar o combinado com o colaborador.",
+      destino: "/#lista-ncs-home",
+      concluirAoAbrir: true,
+    },
+    {
+      chave: "checklist_insights",
+      titulo: "Acesse os indicadores",
+      descricao: "Acompanhe backlog, tempos e reincidências.",
+      destino: "/insights",
+    },
+    {
+      chave: "checklist_equipes",
+      titulo: "Organize as equipes",
+      descricao: "Veja as equipes por liderança e mova pessoas quando necessário.",
+      destino: "/equipe",
     },
   ],
   supervisor: [

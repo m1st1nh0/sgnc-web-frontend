@@ -1,3 +1,4 @@
+import { ehQualidade } from "../../../lib/auth/papeis.js";
 const STATUS_FEEDBACK = new Set([
   "aguardando_feedback",
   "validada",
@@ -65,7 +66,7 @@ export function ordenarNcsHome(ncs, prioridades = []) {
 export function criarVisaoHome(usuario, ncs, equipeIds = []) {
   const papel = usuario?.papel;
 
-  if (papel === "adm") {
+  if (ehQualidade(papel)) {
     const prioridades = ncs.filter((nc) =>
       ["aberta", "aguardando_feedback", "validada", "aguardando_analise"].includes(
         nc.status

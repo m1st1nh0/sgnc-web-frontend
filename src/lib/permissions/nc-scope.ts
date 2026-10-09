@@ -1,4 +1,5 @@
 import type { UsuarioAutenticado } from "@/lib/auth/types";
+import { ehQualidade } from "@/lib/auth/papeis";
 
 // Business rule: the analysed collaborator and their leadership follow the whole NC lifecycle,
 // including validated and invalidated NCs, so employees learn from invalidation reasons.
@@ -16,7 +17,7 @@ export const SUPERVISOR_VISIBLE_NC_STATUSES = [
 ] as const;
 
 export function buildNcReadScopeFilter(user: UsuarioAutenticado, teamIds: string[]) {
-  if (user.papel === "adm") return null;
+  if (ehQualidade(user.papel)) return null;
   const collaboratorIds = [...new Set([user.id, ...teamIds])];
   return [
     `aberto_por.eq.${user.id}`,
@@ -26,7 +27,7 @@ export function buildNcReadScopeFilter(user: UsuarioAutenticado, teamIds: string
 
 /** Restringe relatórios de equipe às pessoas da hierarquia e ao próprio líder. */
 export function buildNcTeamScopeFilter(user: UsuarioAutenticado, teamIds: string[]) {
-  if (user.papel === "adm") return null;
+  if (ehQualidade(user.papel)) return null;
   const collaboratorIds = [...new Set([user.id, ...teamIds])];
   return `colaborador_id.in.(${collaboratorIds.join(",")})`;
 }

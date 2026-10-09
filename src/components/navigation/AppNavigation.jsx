@@ -6,9 +6,9 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "../../features/auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../features/onboarding/components/OnboardingContext.jsx";
 import MarcaSgnc from "../ui/MarcaSgnc.jsx";
+import { ehAdminSistema, ehQualidade, NOME_PAPEL } from "../../lib/auth/papeis.js";
 
-const NOME_PAPEL = { adm: "Administrador (Qualidade)", supervisor: "Supervisor", funcionario: "Funcionário" };
-const ROTULO_HOME = { adm: "Gestão de NCs", supervisor: "Minha equipe", funcionario: "Minhas NCs" };
+const ROTULO_HOME = { adm: "Gestão de NCs", qualidade: "Gestão de NCs", supervisor: "Minha equipe", funcionario: "Minhas NCs" };
 const ICONS = {
   home: <><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h3"/></>,
   eye: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></>,
@@ -55,17 +55,17 @@ export default function AppNavigation({ children, compactaInicial = false }) {
   const botaoFecharRef = useRef(null);
   const botaoAlternarRef = useRef(null);
   const menuSobreposto = (faixa === "mobile" && mobileOpen) || (faixa === "tablet" && overlayAberta);
-  const ehGestao = usuario?.papel === "adm" || usuario?.papel === "supervisor";
+  const ehGestao = ehQualidade(usuario?.papel) || usuario?.papel === "supervisor";
   const links = [
     { label: ROTULO_HOME[usuario?.papel] || "Gestão de NCs", href: "/", icon: "home", show: true, active: pathname === "/" },
     { label: "Acompanhar minhas NCs", href: "/minhas-ncs", icon: "eye", show: !!usuario, active: pathname === "/minhas-ncs" },
     { label: "Abrir NC", href: "/abrir-nc", icon: "add", show: true, active: pathname === "/abrir-nc" },
-    { label: "Pessoas e NCs", href: "/equipe", icon: "people", show: ehGestao, active: pathname === "/equipe" || pathname.startsWith("/equipe/") },
+    { label: ehQualidade(usuario?.papel) ? "Pessoas e equipes" : "Minha equipe", href: "/equipe", icon: "people", show: ehGestao, active: pathname === "/equipe" || pathname.startsWith("/equipe/") },
     { label: "Insights", href: "/insights", icon: "chart", show: ehGestao, active: pathname === "/insights" },
     { label: "Relatórios", href: "/relatorios", icon: "report", show: ehGestao, active: pathname === "/relatorios" },
     { label: "Meu dossiê", href: `/usuarios/${usuario?.id}/dossie`, icon: "folder", show: !!usuario, active: pathname === `/usuarios/${usuario?.id}/dossie` },
-    { label: "Causas", href: "/causas", icon: "cause", show: usuario?.papel === "adm", active: pathname === "/causas" },
-    { label: "Usuários", href: "/usuarios", icon: "user", show: usuario?.papel === "adm", active: pathname === "/usuarios" },
+    { label: "Causas", href: "/causas", icon: "cause", show: ehQualidade(usuario?.papel), active: pathname === "/causas" },
+    { label: "Usuários", href: "/usuarios", icon: "user", show: ehAdminSistema(usuario?.papel), active: pathname === "/usuarios" },
   ].filter((link) => link.show);
 
   useEffect(() => {

@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api/error";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildNcReadScopeFilter, buildNcTeamScopeFilter } from "@/lib/permissions/nc-scope";
 import { listarPessoasAbaixo, validarAcessoPessoa } from "@/lib/permissions/team-scope";
+import { ehQualidade } from "@/lib/auth/papeis";
 
 const ACTIVE = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "em_plano_acao", "validada", "aguardando_analise"]);
 const COUNTABLE = new Set(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "em_plano_acao", "concluida"]);
@@ -77,7 +78,7 @@ export async function obterEstatisticasUsuario(userId: string) {
   const startDate = startTwelveMonths(end);
   let ncQuery = admin.from("nao_conformidades").select("id, data")
     .eq("colaborador_id", userId).in("status", [...COUNTABLE]).gte("data", startDate).lte("data", endDate);
-  if (requester.papel !== "adm") {
+  if (!ehQualidade(requester.papel)) {
     const teamIds = requester.papel === "supervisor" ? (await listarPessoasAbaixo(requester.id)).map((person) => person.id) : [];
     const scope = buildNcReadScopeFilter(requester, teamIds);
     if (scope) ncQuery = ncQuery.or(scope);
@@ -105,7 +106,7 @@ export async function obterEstatisticasUsuario(userId: string) {
   }
   const result = [...grouped.values()].map((item) => {
     delete item._last;
-    if (requester.papel === "adm" && item.ultima_ocorrencia_numero != null) item.medida_sugerida = suggestedMeasure(Number(item.ultima_ocorrencia_numero));
+    if (ehQualidade(requester.papel) && item.ultima_ocorrencia_numero != null) item.medida_sugerida = suggestedMeasure(Number(item.ultima_ocorrencia_numero));
     item.medidas = (measures ?? []).filter((measure) => measure.causa_id === item.causa_id);
     return item;
   }).sort((a, b) => b.ocorrencias_12m - a.ocorrencias_12m);
@@ -135,7 +136,7 @@ export async function obterInsights(
   filters: { status?: string | null; colaboradorId?: string | null; setor?: string | null } = {},
 ) {
   const user = await requireUser();
-  if (!["adm", "supervisor"].includes(user.papel)) throw new ApiError("Acesso restrito a administradores e supervisores.", 403);
+  if (!ehQualidade(user.papel) && user.papel !== "supervisor") throw new ApiError("Acesso restrito à Qualidade e às lideranças.", 403);
   const end = endInput || new Date().toISOString().slice(0, 10);
   const start = startInput || startTwelveMonths(new Date(`${end}T12:00:00Z`));
   if (!isIsoDate(start) || !isIsoDate(end)) throw new ApiError("O período informado é inválido.");

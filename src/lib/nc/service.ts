@@ -8,6 +8,7 @@ import "server-only";
 import { ApiError } from "@/lib/api/error";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { ehQualidade } from "@/lib/auth/papeis";
 
 const TEXTO_ACEITE = "li e concordo com a não conformidade e com o feedback aplicado";
 
@@ -23,8 +24,8 @@ type NcInput = {
 
 async function requireAdmin() {
   const user = await requireUser();
-  if (user.papel !== "adm") {
-    throw new ApiError("Apenas o administrador (Qualidade) pode fazer isso.", 403);
+  if (!ehQualidade(user.papel)) {
+    throw new ApiError("Apenas a Qualidade pode fazer isso.", 403);
   }
   return user;
 }
@@ -179,54 +180,56 @@ function durations(nc: Record<string, unknown>) {
 }
 
 
+/** Liderados diretos e indiretos do supervisor; vazio para os demais papéis. */
+async function equipeDoUsuario(user: Awaited<ReturnType<typeof requireUser>>) {
+  if (user.papel !== "supervisor") return [] as string[];
+  return (await listarPessoasAbaixo(user.id)).map((member) => member.id);
+}
+
 export async function listarNcs() {
   const user = await requireUser();
   const admin = createAdminClient();
   let query = admin.from("nao_conformidades").select("*");
-  if (user.papel !== "adm") {
-    let teamIds: string[] = [];
-    if (user.papel === "supervisor") {
-      teamIds = (await listarPessoasAbaixo(user.id)).map((member) => member.id);
-    }
+  const teamIds = await equipeDoUsuario(user);
+  if (!ehQualidade(user.papel)) {
     const scope = buildNcReadScopeFilter(user, teamIds);
     if (scope) query = query.or(scope);
   }
   const { data, error } = await query.order("criado_em", { ascending: false });
   if (error) throw new ApiError("Não foi possível carregar as não conformidades.", 500);
   const rows = await addCauses((data ?? []) as Array<{ id: number }>);
-  return rows.map((nc) => filterSensitive(nc, user));
+  const equipe = new Set(teamIds);
+  return rows.map((nc) => filterSensitive(nc, user, equipe));
 }
 
 export async function listarMinhasNcs() {
   const user = await requireUser();
   const admin = createAdminClient();
   let query = admin.from("nao_conformidades").select("*");
-  if (user.papel !== "adm") {
+  if (!ehQualidade(user.papel)) {
     const scope = buildNcReadScopeFilter(user, []);
     if (scope) query = query.or(scope);
   }
   const { data, error } = await query.order("criado_em", { ascending: false });
   if (error) throw new ApiError("Não foi possível carregar suas não conformidades.", 500);
   const rows = await addCauses((data ?? []) as Array<{ id: number }>);
-  return rows.map((nc) => filterSensitive(nc, user));
+  const equipe = new Set(await equipeDoUsuario(user));
+  return rows.map((nc) => filterSensitive(nc, user, equipe));
 }
 
 export async function buscarNc(id: number) {
   const user = await requireUser();
   const admin = createAdminClient();
   let query = admin.from("nao_conformidades").select("*").eq("id", id);
-  if (user.papel !== "adm") {
-    let teamIds: string[] = [];
-    if (user.papel === "supervisor") {
-      teamIds = (await listarPessoasAbaixo(user.id)).map((member) => member.id);
-    }
+  const teamIds = await equipeDoUsuario(user);
+  if (!ehQualidade(user.papel)) {
     const scope = buildNcReadScopeFilter(user, teamIds);
     if (scope) query = query.or(scope);
   }
   const { data, error } = await query.maybeSingle();
   if (error || !data) throw new ApiError("NC não encontrada.", 404);
   const [withCauses] = await addCauses([data]);
-  const filtered = filterSensitive(withCauses, user);
+  const filtered = filterSensitive(withCauses, user, new Set(teamIds));
   return { ...filtered, duracoes: durations(filtered) };
 }
 
@@ -250,8 +253,8 @@ export async function listarNcsDaPessoa(
 
   const admin = createAdminClient();
   let query = admin.from("nao_conformidades").select("*", { count: "exact" }).eq("colaborador_id", pessoaId);
-  if (user.papel !== "adm") {
-    const teamIds = user.papel === "supervisor" ? (await listarPessoasAbaixo(user.id)).map((member) => member.id) : [];
+  const teamIds = await equipeDoUsuario(user);
+  if (!ehQualidade(user.papel)) {
     const scope = buildNcReadScopeFilter(user, teamIds);
     if (scope) query = query.or(scope);
   }
@@ -265,7 +268,7 @@ export async function listarNcsDaPessoa(
   if (error) throw new ApiError("Não foi possível carregar as NCs deste colaborador.", 500);
   const rows = await addCauses((data ?? []) as Array<{ id: number }>);
   return {
-    items: rows.map((nc) => filterSensitive(nc, user)),
+    items: rows.map((nc) => filterSensitive(nc, user, new Set(teamIds))),
     total: count ?? rows.length,
     pagina,
     por_pagina: pageSize,
@@ -283,7 +286,7 @@ export async function listarCausas() {
 
 export async function solicitarCausa(input: { descricao?: unknown; justificativa?: unknown }) {
   const user = await requireUser();
-  if (user.papel === "adm") throw new ApiError("Administradores podem cadastrar causas diretamente.", 403);
+  if (ehQualidade(user.papel)) throw new ApiError("A Qualidade pode cadastrar causas diretamente.", 403);
   const descricao = String(input.descricao ?? "").trim().replace(/\s+/g, " ");
   const justificativa = String(input.justificativa ?? "").trim();
   if (descricao.length < 3 || descricao.length > 120) throw new ApiError("A causa deve ter entre 3 e 120 caracteres.", 422);
@@ -423,7 +426,7 @@ export async function decidirSolicitacaoCausa(id: number, input: { decisao?: unk
 export async function criarNc(input: NcInput) {
   const user = await requireUser();
   const data = parseInput(input);
-  const [ids, employee] = await Promise.all([causeIds(data.causas, user, { allowCreate: user.papel === "adm" }), collaborator(data.colaborador_id)]);
+  const [ids, employee] = await Promise.all([causeIds(data.causas, user, { allowCreate: ehQualidade(user.papel) }), collaborator(data.colaborador_id)]);
   const admin = createAdminClient();
   const { data: rpcData, error } = await admin.rpc("criar_nc_com_historico_v3", {
     p_data: data.data,
@@ -523,7 +526,6 @@ function suggestedMeasure(occurrence: number) {
 }
 
 export async function obterTimeline(id: number) {
-  const user = await requireUser();
   const nc = (await buscarNc(id)) as Record<string, unknown>;
   const { data, error } = await createAdminClient()
     .from("historico_nc")
@@ -531,12 +533,8 @@ export async function obterTimeline(id: number) {
     .eq("nc_id", id)
     .order("criado_em");
   if (error) throw new ApiError("Não foi possível carregar o histórico da NC.", 500);
-  const isRestrictedAuthor =
-    nc.aberto_por === user.id &&
-    user.papel !== "adm" &&
-    user.papel !== "supervisor" &&
-    nc.colaborador_id !== user.id &&
-    nc.responsavel_id !== user.id;
+  // buscarNc já calcula o acesso considerando a hierarquia real do supervisor.
+  const isRestrictedAuthor = nc.acesso_completo !== true;
   const events = isRestrictedAuthor
     ? (data ?? []).map((event) => ({ ...event, observacao: null }))
     : (data ?? []);

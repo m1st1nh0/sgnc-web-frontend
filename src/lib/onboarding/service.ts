@@ -15,6 +15,7 @@ const SHARED: Record<string, string> = {
 };
 const BY_ROLE: Record<string, Record<string, string>> = {
   adm: { apresentacao_papel_adm: "apresentacao", checklist_avaliar_nc: "checklist", checklist_feedback: "checklist", checklist_insights: "checklist", checklist_usuarios: "checklist", dica_nc_avaliacao: "contextual", dica_nc_feedback: "contextual", dica_gestao_usuarios: "contextual" },
+  qualidade: { apresentacao_papel_qualidade: "apresentacao", checklist_avaliar_nc: "checklist", checklist_feedback: "checklist", checklist_insights: "checklist", checklist_equipes: "checklist", dica_nc_avaliacao: "contextual", dica_nc_feedback: "contextual" },
   supervisor: { apresentacao_papel_supervisor: "apresentacao", checklist_equipe: "checklist", checklist_acompanhar_nc: "checklist", checklist_insights: "checklist", dica_equipe_direta: "contextual", dica_dossie_equipe: "contextual" },
   funcionario: { apresentacao_papel_funcionario: "apresentacao", checklist_evidencias: "checklist", checklist_aceite: "checklist", dica_nc_aceite: "contextual", dica_dossie_pessoal: "contextual" },
 };

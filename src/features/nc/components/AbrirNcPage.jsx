@@ -19,6 +19,7 @@ import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
+import { ehQualidade } from "../../../lib/auth/papeis.js";
 
 const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
 const FORMATOS_EVIDENCIA =
@@ -319,7 +320,7 @@ export default function AbrirNcPage() {
                     aoMudar={setCausas}
                     sugestoes={causasConhecidas}
                     aoSolicitarCausa={solicitarNovaCausa}
-                    permitirCriacaoDireta={usuario?.papel === "adm"}
+                    permitirCriacaoDireta={ehQualidade(usuario?.papel)}
                   />
                   <Form.Text className="sg-helper">
                     Selecione uma causa aprovada ou solicite a inclusão de uma nova.

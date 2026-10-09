@@ -5,6 +5,7 @@ import { requireApiUser as requireUser } from "@/lib/auth/api";
 import { buildNcTeamScopeFilter } from "@/lib/permissions/nc-scope";
 import { listarPessoasAbaixo } from "@/lib/permissions/team-scope";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ehQualidade } from "@/lib/auth/papeis";
 
 type NcRow = {
   id: number;
@@ -49,7 +50,7 @@ function requiredDate(params: URLSearchParams, key: string) {
 
 export async function listarNcsDoIndicador(params: URLSearchParams) {
   const user = await requireUser();
-  if (!["adm", "supervisor"].includes(user.papel)) throw new ApiError("Acesso restrito a administradores e supervisores.", 403);
+  if (!ehQualidade(user.papel) && user.papel !== "supervisor") throw new ApiError("Acesso restrito à Qualidade e às lideranças.", 403);
 
   const kind = params.get("tipo") ?? "";
   let inicio = requiredDate(params, "inicio");

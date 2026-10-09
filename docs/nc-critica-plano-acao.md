@@ -20,9 +20,31 @@ aberta ──validar──▶ aguardando_feedback ──feedback──▶ aguard
 - Remover a criticidade exige justificativa, **cancela** o plano (não apaga nada) e devolve uma NC `em_plano_acao` para `concluida`.
   Se a NC for marcada de novo, o mesmo plano é reaberto com o que já estava registrado.
 
+## Papéis
+
+| Papel | O que faz |
+|---|---|
+| **Administrador do sistema** (`adm`) | Gerencia usuários, perfis e acessos, e exerce também tudo o que a Qualidade faz. |
+| **Qualidade** (`qualidade`) | Exercício pleno da Qualidade: NCs, catálogo de causas, NC crítica e plano de ação, indicadores, relatórios e montagem das equipes. Não gerencia usuários nem acessos. |
+| **Supervisor** | Vê apenas a própria hierarquia (direta e indireta). Numa NC que registrou sobre alguém de fora da equipe, recebe a visão resumida de autor, sem feedback, motivo de invalidação, aceite nem plano. |
+| **Funcionário** | Abre NCs, acompanha as próprias e registra o aceite. |
+
+Na implantação, o usuário administrador atual continua `adm` e os demais administradores passam a `qualidade`.
+
+## Equipes
+
+Em **Pessoas e equipes → Por liderança**, Qualidade e Administrador veem as equipes agrupadas por liderança e podem:
+- mover uma pessoa para outra liderança (destinos que criariam ciclo nem aparecem e também são barrados no banco);
+- transformar um funcionário em liderança, ou uma liderança em funcionário (só depois de transferir os liderados);
+- consultar o histórico de equipe de cada pessoa.
+
+Pessoas sem liderança ativa aparecem destacadas no topo. Perfis de Qualidade e Administrador ficam fora das equipes
+e só mudam pela gestão de usuários. Toda mudança de liderança ou de perfil, feita pelas equipes ou pelo cadastro de
+usuários, grava quem fez e quando em `historico_equipes`, tabela que só aceita inclusão.
+
 ## Quem pode o quê
 
-| Ação | Qualidade (adm) | Liderança do colaborador | Colaborador analisado | Quem só registrou a NC |
+| Ação | Qualidade (e Administrador) | Liderança do colaborador | Colaborador analisado | Quem só registrou a NC |
 |---|---|---|---|---|
 | Marcar ou remover a criticidade | ✅ | ❌ | ❌ | ❌ |
 | Alimentar o plano (planejamento, execução, acompanhamento) | ✅ | ✅ | ❌ | ❌ |
@@ -54,5 +76,6 @@ service role também não consegue contornar a segregação.
 
 Aplique as migrações nesta ordem (o novo valor do enum precisa de commit antes de ser usado):
 
-1. `20261008120000_status_em_plano_acao.sql`
+1. `20261008120000_enums_plano_acao_qualidade.sql`
 2. `20261008121000_nc_critica_plano_acao.sql`
+3. `20261008122000_papel_qualidade_equipes.sql` (migra os perfis, as políticas de leitura e cria o histórico de equipes)

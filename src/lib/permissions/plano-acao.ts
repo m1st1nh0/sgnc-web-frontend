@@ -1,4 +1,5 @@
 import type { UsuarioAutenticado } from "../auth/types";
+import { ehQualidade } from "../auth/papeis";
 
 /**
  * Regras de segregação de funções da NC crítica e do plano de ação.
@@ -43,7 +44,7 @@ export function ehObjetoDaNc(nc: NcPlano, user: UsuarioAutenticado) {
 
 /** Ações reservadas à Qualidade sobre a NC (avaliar, feedback, editar, excluir, medidas). */
 export function podeAtuarComoQualidade(nc: NcPlano, user: UsuarioAutenticado) {
-  return user.papel === "adm" && !ehObjetoDaNc(nc, user);
+  return ehQualidade(user.papel) && !ehObjetoDaNc(nc, user);
 }
 
 function planoEncerrado(plano: PlanoAcao) {
@@ -69,7 +70,7 @@ export function podeAlimentarPlano(
 ) {
   if (nc.critica !== true || !plano || planoEncerrado(plano)) return false;
   if (ehObjetoDaNc(nc, user)) return false;
-  return user.papel === "adm" || (user.papel === "supervisor" && lideraColaborador);
+  return ehQualidade(user.papel) || (user.papel === "supervisor" && lideraColaborador);
 }
 
 export function podeConcluirPlano(nc: NcPlano, plano: PlanoAcao, user: UsuarioAutenticado) {
@@ -90,7 +91,7 @@ export function podeVerPlano(
   user: UsuarioAutenticado,
   lideraColaborador: boolean,
 ) {
-  if (user.papel === "adm") return true;
+  if (ehQualidade(user.papel)) return true;
   if (ehObjetoDaNc(nc, user)) return true;
   if (user.papel === "supervisor" && lideraColaborador) return true;
   return !!plano && plano.responsavel_execucao_id === user.id;
