@@ -11,7 +11,7 @@ Resumo das fases:
 1. Correções rápidas: causa só do catálogo, erros apontando o campo, primeiros passos recolhidos, botão de próxima ação filtrando.
 2. Desempenho: região `gru1`, `cache()` na sessão, causas em lote, sem esperar onboarding.
 3. Acompanhamento: etapas da NC e linha do tempo no detalhe.
-4. Feedback estruturado e aceite com prazo de 2 dias úteis.
+4. Feedback estruturado, aceite com prazo de 2 dias úteis e status "Não respondida".
 5. Notificações dentro do aplicativo (tabela + consulta pela API).
 6. UAT nos três perfis e devolutiva para a diretoria.
 
@@ -20,10 +20,12 @@ Decisões do responsável (09/10/2026), valem como regra:
 - "Primeiros passos" recolhido por padrão depois do primeiro acesso.
 - Feedback: causa raiz, ação combinada, responsável pela ação, prazo da ação e combinado são obrigatórios; anexo de evidências é opcional.
 - Não há contestação do feedback por enquanto.
-- O colaborador tem 2 dias úteis após o envio do feedback para o aceite; o aceite continua exigindo a frase digitada.
+- O colaborador tem 2 dias úteis (segunda a sexta, sem feriados) após o envio do feedback para o aceite; o aceite continua exigindo a frase digitada.
+- Vencido o prazo, a NC muda automaticamente para o status "Não respondida" (com histórico), e o colaborador analisado e o supervisor dele recebem notificação.
+- Quem abriu a NC não recebe notificações por ter aberto.
 - Avisos de etapa: notificações dentro do aplicativo (sem e-mail neste ciclo).
 
-D8 (feriados nos dias úteis), D9 (efeito do aceite vencido) e D10 (quem da Qualidade recebe aviso de NC nova) seguem em aberto. Não assuma as recomendações do plano como aprovadas.
+Em aberto: D10 (quem da Qualidade recebe aviso de NC nova), D11 (aceite tardio depois de "Não respondida") e D12 (Qualidade é avisada da não resposta?). Não assuma as recomendações do plano como aprovadas.
 
 ## Convenções
 
