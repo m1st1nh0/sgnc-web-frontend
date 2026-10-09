@@ -20,18 +20,16 @@ WHERE u.id = oe.usuario_id
   AND oe.papel = 'adm'::public.papel_usuario;
 
 -- 2. Políticas de leitura legadas (defesa em profundidade): Qualidade vê o mesmo que o adm via.
-DROP POLICY IF EXISTS usuarios_select_escopo ON public.usuarios;
-CREATE POLICY usuarios_select_escopo ON public.usuarios
-  FOR SELECT TO authenticated
+ALTER POLICY usuarios_select_escopo ON public.usuarios
+  TO authenticated
   USING (
     id = (SELECT auth.uid())
     OR private.meu_papel() IN ('adm'::public.papel_usuario, 'qualidade'::public.papel_usuario)
     OR supervisor_id = (SELECT auth.uid())
   );
 
-DROP POLICY IF EXISTS nc_select_escopo ON public.nao_conformidades;
-CREATE POLICY nc_select_escopo ON public.nao_conformidades
-  FOR SELECT TO authenticated
+ALTER POLICY nc_select_escopo ON public.nao_conformidades
+  TO authenticated
   USING (
     private.meu_papel() IN ('adm'::public.papel_usuario, 'qualidade'::public.papel_usuario)
     OR aberto_por = (SELECT auth.uid())
@@ -41,9 +39,8 @@ CREATE POLICY nc_select_escopo ON public.nao_conformidades
     )
   );
 
-DROP POLICY IF EXISTS medidas_select_escopo ON public.medidas_disciplinares;
-CREATE POLICY medidas_select_escopo ON public.medidas_disciplinares
-  FOR SELECT TO authenticated
+ALTER POLICY medidas_select_escopo ON public.medidas_disciplinares
+  TO authenticated
   USING (
     private.meu_papel() IN ('adm'::public.papel_usuario, 'qualidade'::public.papel_usuario)
     OR colaborador_id = (SELECT auth.uid())
