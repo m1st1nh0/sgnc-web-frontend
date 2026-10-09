@@ -4,7 +4,7 @@ Fonte: avaliação de Cristiano A. Canestraro (diretoria), 29/09/2026, com 9 pon
 
 ## Goal
 
-> **Fechar os 9 pontos levantados pela diretoria em 29/09/2026: o gestor abre uma NC escolhendo causas só do catálogo, entende em qualquer momento em que etapa ela está e quem precisa agir, recebe erros que apontam o campo a corrigir, navega sem controles redundantes, e o feedback registra causa raiz, ação, responsável, prazo, reincidência e a resposta do colaborador (aceite ou contestação), com as telas principais visivelmente mais rápidas.**
+> **Fechar os 9 pontos levantados pela diretoria em 29/09/2026: o gestor abre uma NC escolhendo causas só do catálogo, entende em qualquer momento em que etapa ela está e quem precisa agir (inclusive por notificações dentro do aplicativo), recebe erros que apontam o campo a corrigir, navega sem controles redundantes, e o feedback registra causa raiz, ação, responsável, prazo, combinado e reincidência, com o aceite do colaborador controlado por prazo de 2 dias úteis, e as telas principais visivelmente mais rápidas.**
 
 O goal só está concluído quando todos os critérios abaixo forem verdadeiros:
 
@@ -13,8 +13,9 @@ O goal só está concluído quando todos os critérios abaixo forem verdadeiros:
 3. O bloco "Seus primeiros passos" não ocupa o topo do painel depois do primeiro acesso.
 4. Nenhum botão de "Próxima ação" apenas rola para a seção de baixo: ele aplica o filtro correspondente.
 5. O detalhe da NC mostra as etapas do fluxo, a etapa atual, quem deve agir, e a linha do tempo com autor e data de cada transição.
-6. O registro de feedback tem campos estruturados (causa raiz, ação combinada, responsável, prazo, combinado) e mostra as NCs anteriores do mesmo colaborador com a mesma causa nos últimos 12 meses.
-7. O colaborador pode aceitar **ou contestar** o feedback com justificativa. A contestação volta para a Qualidade, que mantém ou revisa o feedback, e tudo fica no histórico. Aceite pendente além do prazo aparece como "aceite vencido".
+6. O registro de feedback tem campos estruturados e obrigatórios (causa raiz, ação combinada, responsável pela ação, prazo da ação, combinado), aceita anexar evidências de forma opcional e mostra as NCs anteriores do mesmo colaborador com a mesma causa nos últimos 12 meses.
+7. O colaborador tem 2 dias úteis após o envio do feedback para registrar o aceite, digitando a frase de confirmação (mantida). Aceite pendente além do prazo aparece como "aceite vencido" no painel, em Insights e no detalhe. Não há contestação neste ciclo.
+7a. Cada pessoa recebe notificações dentro do aplicativo para as etapas em que precisa agir ou que acompanha (sino no menu, contador de não lidas, link direto para a NC).
 8. As funções da Vercel rodam na mesma região do banco (`gru1`, São Paulo) e o tempo das rotas `/api/nc`, `/api/nc/[id]` e da abertura de NC foi medido antes e depois, com ganho registrado neste documento.
 9. Lint, typecheck, `npm test` e os novos testes passam. Cada fase foi validada no Preview com os perfis Qualidade, supervisor e funcionário.
 10. A devolutiva para a diretoria (seção "Devolutiva" ao final) foi preenchida com o que mudou em cada ponto.
@@ -33,21 +34,31 @@ O goal só está concluído quando todos os critérios abaixo forem verdadeiros:
 | 8 | Cards deveriam filtrar a lista | Resolvido | Cards filtram e rolam até a lista (`b11fc1d`). |
 | 9 | Feedback sem controle | Procede | `aplicar_feedback_nc_v3` grava um único texto. `aceitar_nc_v3` só aceita; não há recusa nem contestação. Reincidência é calculada na validação (`nc_causas.ocorrencia_numero`, `nao_conformidades.reincidencia`), mas a tela de feedback não mostra as NCs anteriores. |
 
-## Decisões em aberto (precisam de resposta antes da fase indicada)
+## Decisões
 
-| ID | Decisão | Recomendação | Bloqueia |
+Respondidas pelo responsável em 09/10/2026:
+
+| ID | Pergunta | Decisão |
+|---|---|---|
+| D1 | Onde a Qualidade cadastra causa nova? | **Só no módulo de gestão de causas (`/causas`).** A abertura e a edição de NC não criam causa. |
+| D2 | Comportamento dos "Primeiros passos". | **Recolhido por padrão depois do primeiro acesso.** |
+| D3 | Campos obrigatórios do feedback. | **Todos obrigatórios** (causa raiz, ação combinada, responsável pela ação, prazo da ação, combinado), **exceto o anexo de evidências**, que é opcional. |
+| D4 | Contestação do feedback. | **Não há contestação por enquanto.** O colaborador só aceita. |
+| D5 | Prazo para o colaborador responder. | **2 dias úteis após o envio do feedback.** Depois disso, "aceite vencido". |
+| D6 | Frase digitada no aceite. | **Mantida.** |
+| D7 | Avisos sobre mudança de etapa. | **Avaliar notificações dentro do aplicativo** (ver seção "Avaliação: notificações no aplicativo" e Fase 5). |
+
+Ainda em aberto (não bloqueiam o início):
+
+| ID | Pergunta | Recomendação | Bloqueia |
 |---|---|---|---|
-| D1 | Qualidade pode cadastrar causa na tela de abertura (via modal que grava no catálogo) ou só em `/causas`? | Só em `/causas`, com link "Cadastrar no catálogo" no campo. | Fase 1 |
-| D2 | Primeiros passos: recolher por padrão ou sumir sozinho após N acessos? | Recolhido em uma barra fina ("Primeiros passos 5/9 · Continuar") após o primeiro acesso. | Fase 1 |
-| D3 | Campos obrigatórios do feedback estruturado. | Obrigatórios: causa raiz, ação combinada, combinado. Opcionais: responsável da ação e prazo. | Fase 4 |
-| D4 | Quem decide uma contestação e quais saídas existem? | Qualidade (outra pessoa que não o colaborador) escolhe "manter feedback" (conclui com registro) ou "revisar feedback" (volta para aguardando aceite). | Fase 4 |
-| D5 | Prazo para o colaborador responder. | 5 dias corridos; depois disso aparece "aceite vencido" no painel e em Insights. Sem mudança automática de status. | Fase 4 |
-| D6 | Manter a frase digitada no aceite? | Trocar por caixa de confirmação + botão; a frase não agrega controle e gera atrito. | Fase 4 |
-| D7 | Avisar quem abriu a NC quando ela muda de etapa (e-mail)? | Fora deste ciclo; o painel e "Minhas NCs" passam a mostrar a etapa e o responsável. | — |
+| D8 | Dias úteis consideram feriados? | Começar com segunda a sexta. Se precisar de feriados, criar tabela `feriados` cadastrada pela Qualidade. | Fase 4 |
+| D9 | O que acontece quando o aceite vence? | Só sinalizar ("aceite vencido") e notificar colaborador, liderança direta e Qualidade. Sem mudança automática de status. | Fase 4 |
+| D10 | Quem da Qualidade recebe aviso de NC nova? | Todos os usuários com papel Qualidade/Adm, exceto quem for o colaborador analisado. | Fase 5 |
 
 ## Fases
 
-Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 1 → 2 → 3 → 4 → 5. As fases 1 e 2 são independentes e podem andar em paralelo.
+Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 1 → 2 → 3 → 4 → 5 → 6. As fases 1 e 2 são independentes e podem andar em paralelo. A Fase 5 (notificações) depende da 4, porque os eventos de feedback e prazo nascem lá.
 
 ### Fase 0: linha de base (pontos 1 e 4)
 
@@ -57,7 +68,7 @@ Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 
 
 ### Fase 1: correções rápidas (pontos 2, 4, 6, 7)
 
-**1.1 Causa só do catálogo (ponto 2)**
+**1.1 Causa só do catálogo (ponto 2)** (D1 decidido)
 - `src/features/nc/components/AbrirNcPage.jsx` e `EditarNcPage.jsx`: remover `permitirCriacaoDireta`. Para Qualidade, o campo oferece link "Cadastrar no catálogo" que abre `/causas` em nova aba; para os demais perfis, mantém "Solicitar análise".
 - `src/features/nc/components/CampoCausas.jsx`: remover o ramo de criação direta (botão "Adicionar causa ao catálogo" e Enter criando causa).
 - `src/lib/nc/service.ts`: `criarNc` e `editarNc` chamam `causeIds` com `allowCreate: false`. A edição mantém `allowInactive: true` para não quebrar NCs antigas com causa arquivada.
@@ -71,8 +82,8 @@ Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 
 - `AbrirNcPage.jsx`: erro com `campo` vai para `errosCampo[campo]`; após qualquer erro, rolar e focar o primeiro campo com problema; o banner do topo passa a listar os campos ("Revise: Colaborador, Causas"). Erro 5xx mantém mensagem com referência de suporte.
 - Testes: unit de `apiErrorResponse` com `campo`; cenário de causa pendente no regression `test_pr11_cause_governance.mjs` ou novo spec.
 
-**1.3 Primeiros passos recolhidos (ponto 6)** (depende de D2)
-- `src/features/onboarding/components/OnboardingChecklist.jsx`: modo recolhido (barra com progresso e botão "Continuar") quando já houve interação anterior (`progresso.status === "em_andamento"` e alguma etapa concluída). Expandir/recolher guardado em `localStorage` (com try/catch).
+**1.3 Primeiros passos recolhidos (ponto 6)** (D2 decidido)
+- `src/features/onboarding/components/OnboardingChecklist.jsx`: expandido só no primeiro acesso. A partir do segundo acesso, aparece recolhido numa barra fina com o progresso e o botão "Continuar". "Primeiro acesso" = execução de onboarding criada nesta sessão do navegador ou `iniciado_em` de hoje; a regra exata fica no PR. Expandir/recolher manual guardado em `localStorage` (com try/catch).
 - Manter "Ocultar primeiros passos" e o acesso via "Rever apresentação" no menu do usuário.
 
 **1.4 Botão de próxima ação filtra (ponto 7)**
@@ -95,46 +106,78 @@ Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 
 ### Fase 3: acompanhamento da NC (ponto 3)
 
 - [ ] 3.1 `obterTimeline` (`service.ts`): incluir o nome do autor de cada evento (join em `usuarios`), respeitando a regra atual de ocultar `observacao` para acesso restrito.
-- [ ] 3.2 Novo componente `src/features/nc/components/EtapasNc.jsx`: trilha Aberta → Avaliação → Feedback → Aceite → Concluída (com "Plano de ação" quando `critica`, e "Contestada" após a Fase 4), etapa atual destacada, responsável da etapa. Usado no topo do detalhe, substituindo o bloco "Próxima ação".
+- [ ] 3.2 Novo componente `src/features/nc/components/EtapasNc.jsx`: trilha Aberta → Avaliação → Feedback → Aceite → Concluída (com "Plano de ação" quando `critica`), etapa atual destacada, responsável da etapa e, em "Aceite", o prazo e a marca "vencido" após a Fase 4. Usado no topo do detalhe, substituindo o bloco "Próxima ação".
 - [ ] 3.3 Seção "Histórico" no detalhe consumindo `/api/nc/[id]/timeline`: data/hora, autor, de → para, observação.
 - [ ] 3.4 Após abrir a NC, o detalhe mostra uma confirmação única: "NC #X registrada. Próximo passo: a Qualidade avalia. Você acompanha por aqui ou em Minhas NCs."
 - [ ] 3.5 `MinhasNcsPage.jsx` e tabela do painel: coluna "Aguardando" com o responsável da etapa (Qualidade, nome do colaborador, liderança).
 - [ ] 3.6 Teste unit para o mapeamento status → etapa/responsável (extrair para `statusNc.js`).
 
-### Fase 4: feedback estruturado e resposta do colaborador (ponto 9) (depende de D3, D4, D5, D6)
+### Fase 4: feedback estruturado e aceite com prazo (ponto 9) (D3–D6 decididos; D8, D9 em aberto)
 
-**Banco (migrações aditivas em `supabase/migrations/`, aplicadas primeiro no branch/Preview)**
-- [ ] 4.1 Migração só de enum (separada, como em `20261008120000_enums_plano_acao_qualidade.sql`): `ALTER TYPE public.status_nc ADD VALUE 'contestada'`.
-- [ ] 4.2 Tabela `public.nc_feedbacks` (histórico de versões do feedback): `id`, `nc_id`, `versao`, `causa_raiz`, `acao_combinada`, `responsavel_acao_id` (uuid, nulo), `prazo_acao` (date, nulo), `combinado`, `registrado_por`, `registrado_em`. RLS ligada sem concessão direta a `authenticated` (mesmo padrão da revogação de 07/10).
-- [ ] 4.3 Tabela `public.nc_respostas_colaborador`: `id`, `nc_id`, `feedback_id`, `decisao` (`aceite` | `contestacao`), `justificativa`, `respondido_por`, `respondido_em`; e para contestação: `decisao_qualidade` (`mantido` | `revisado`), `decidido_por`, `decidido_em`, `observacao_qualidade`.
-- [ ] 4.4 RPC `registrar_feedback_v4(p_nc_id, p_responsavel_id, p_causa_raiz, p_acao, p_responsavel_acao_id, p_prazo, p_combinado)`: mesmas guardas de `aplicar_feedback_nc_v3` (conflito de interesse, status), aceita também `contestada` (revisão), grava nova versão em `nc_feedbacks`, preenche `nao_conformidades.feedback` com um resumo (compatibilidade com PDF/CSV), vai para `aguardando_aceite`, grava histórico.
-- [ ] 4.5 RPC `responder_feedback_v1(p_nc_id, p_colaborador_id, p_decisao, p_justificativa)`: só o colaborador analisado, só em `aguardando_aceite`. Aceite → mesma saída de `aceitar_nc_v3` (concluída ou plano de ação se crítica). Contestação (justificativa obrigatória, mín. 10 caracteres) → `contestada`. Histórico em ambos.
-- [ ] 4.6 RPC `decidir_contestacao_v1(p_nc_id, p_responsavel_id, p_decisao, p_observacao)`: Qualidade sem conflito. `mantido` → concluída (ou plano de ação se crítica) com registro "mantida após contestação"; `revisado` → volta para `aguardando_feedback` para nova versão.
-- [ ] 4.7 Backfill: para NCs com `feedback` preenchido, criar `nc_feedbacks` versão 1 com `combinado = feedback`; para NCs com `aceito_em`, criar resposta `aceite`. Não inventar causa raiz.
+Regras decididas: todos os campos do feedback são obrigatórios, exceto o anexo de evidências; não há contestação; o colaborador tem 2 dias úteis após o envio do feedback para aceitar; o aceite continua exigindo a frase digitada.
+
+**Banco (migrações aditivas em `supabase/migrations/`, aplicadas primeiro no Preview)**
+- [ ] 4.1 Tabela `public.nc_feedbacks`: `id`, `nc_id`, `versao`, `causa_raiz`, `acao_combinada`, `responsavel_acao_id` (uuid → `usuarios`), `prazo_acao` (date), `combinado`, `prazo_aceite` (timestamptz), `registrado_por`, `registrado_em`. Todos `not null`, com `check` de texto não vazio. Uma linha por envio (versão 1 neste ciclo; a coluna `versao` deixa o caminho aberto para revisão futura). RLS ligada sem concessão direta a `authenticated` (padrão da revogação de 07/10).
+- [ ] 4.2 `public.evidencias`: coluna nova `feedback_id bigint null references nc_feedbacks(id)`. Evidência com `feedback_id` é anexo do feedback; sem, é evidência da abertura. Anexo é opcional.
+- [ ] 4.3 Função `public.somar_dias_uteis(p_inicio timestamptz, p_dias int)`: soma dias de segunda a sexta (fuso `America/Sao_Paulo`), mantendo a hora do envio. Se D8 pedir feriados, passa a consultar uma tabela `feriados`.
+- [ ] 4.4 RPC `registrar_feedback_v4(p_nc_id, p_responsavel_id, p_causa_raiz, p_acao, p_responsavel_acao_id, p_prazo_acao, p_combinado)`: mesmas guardas de `aplicar_feedback_nc_v3` (conflito de interesse, status `aguardando_feedback`/`aguardando_analise`); valida todos os campos; `prazo_acao` não pode ser anterior a hoje; responsável da ação deve ser usuário ativo; grava `nc_feedbacks` com `prazo_aceite = somar_dias_uteis(now(), 2)`; preenche `nao_conformidades.feedback` com um resumo legível (compatibilidade com PDF/CSV/dossiê atuais); status → `aguardando_aceite`; histórico. Retorna `feedback_id` para o upload dos anexos.
+- [ ] 4.5 `aceitar_nc_v3` continua como está (frase digitada). Grava também `aceito_em` comparável com `prazo_aceite` para marcar "aceite fora do prazo" no histórico.
+- [ ] 4.6 Backfill: NCs com `feedback` preenchido ganham `nc_feedbacks` versão 1 com `combinado = feedback` e os demais campos com o texto "Não informado (registro anterior a 10/2026)"; `prazo_aceite` calculado a partir de `feedback_aplicado_em`. Não inventar causa raiz.
 
 **Servidor**
-- [ ] 4.8 `src/lib/nc/service.ts`: `aplicarFeedback` valida e chama `registrar_feedback_v4`; nova `responderFeedback`; nova `decidirContestacao`; `buscarNc` passa a trazer o feedback vigente e as respostas; `aceitarNc` vira atalho de `responderFeedback` com `aceite` (rota antiga continua funcionando).
-- [ ] 4.9 Nova função `obterContextoReincidencia(id)`: NCs anteriores do mesmo colaborador com as mesmas causas nos 12 meses anteriores (mesma regra de `validar_nc_com_ocorrencias_v2`), com status, data, feedback vigente (causa raiz e ação) e resposta. Rota `GET /api/nc/[ncId]/reincidencia`, só para quem tem acesso completo.
-- [ ] 4.10 Rotas novas: `POST /api/nc/[ncId]/resposta`, `POST /api/nc/[ncId]/contestacao/decidir`.
-- [ ] 4.11 `transitionError`: mapear os novos códigos de erro.
+- [ ] 4.7 `src/lib/nc/service.ts`: `aplicarFeedback` valida os campos e chama `registrar_feedback_v4`; `buscarNc` traz o feedback vigente (com nome do responsável da ação), `prazo_aceite` e `aceite_vencido` (calculado: `aguardando_aceite` e `now() > prazo_aceite`).
+- [ ] 4.8 `src/lib/nc/evidence.ts` e rota de evidências: aceitar `feedback_id` opcional no upload, só para quem registra o feedback e só para feedback da mesma NC; listagem separa "Evidências da abertura" e "Anexos do feedback".
+- [ ] 4.9 Nova `obterContextoReincidencia(id)`: NCs anteriores do mesmo colaborador com as mesmas causas nos 12 meses anteriores (mesma regra de `validar_nc_com_ocorrencias_v2`), com status, data, causa raiz, ação e se houve aceite no prazo. Rota `GET /api/nc/[ncId]/reincidencia`, só para quem tem acesso completo.
+- [ ] 4.10 `transitionError`: mapear os novos códigos (`campo_obrigatorio`, `prazo_invalido`, `responsavel_invalido`) com `campo` para a interface (padrão da Fase 1.2).
 
 **Interface**
-- [ ] 4.12 `PainelFeedback.jsx`: formulário estruturado (causa raiz, ação combinada, responsável pela ação com busca de usuário, prazo, combinado). Bloco "Histórico deste colaborador com esta causa" acima do formulário, com ocorrência atual ("3ª ocorrência em 12 meses") e as NCs anteriores clicáveis. Medida disciplinar sugerida continua vindo da validação.
-- [ ] 4.13 `PainelAceite.jsx` → `PainelResposta.jsx`: mostra o feedback estruturado e oferece "Aceitar" (caixa de confirmação, se D6 aprovado) ou "Contestar" (justificativa obrigatória).
-- [ ] 4.14 Novo `PainelContestacao.jsx` para a Qualidade quando status `contestada`: mostra justificativa, opções manter/revisar.
-- [ ] 4.15 Detalhe: seção "Feedback" exibe a versão vigente e versões anteriores; `statusNc.js` ganha `contestada`; `EtapasNc` mostra o desvio.
-- [ ] 4.16 Painel e Insights: card "Contestadas" para Qualidade; indicador "Aceite vencido" (prazo D5, calculado por `feedback_aplicado_em`), clicável como os demais cards.
-- [ ] 4.17 PDF da NC, CSV e dossiê: incluir causa raiz, ação, responsável, prazo, resposta do colaborador e decisão da contestação.
+- [ ] 4.11 `PainelFeedback.jsx`: formulário com causa raiz, ação combinada, responsável pela ação (busca de usuário ativo), prazo da ação, combinado, todos obrigatórios com erro no campo; anexos opcionais (mesmo seletor da abertura) enviados após o registro, com aviso de falha parcial igual ao da abertura. Bloco "Histórico deste colaborador com esta causa" acima do formulário: ocorrência atual ("3ª ocorrência em 12 meses") e NCs anteriores clicáveis. Texto do painel informa: "O colaborador terá 2 dias úteis para registrar o aceite".
+- [ ] 4.12 `PainelAceite.jsx`: mostra o feedback estruturado, os anexos e o prazo ("Responda até qua, 15/10 às 14:30"); mantém a frase digitada. Depois do prazo, mostra aviso "Prazo vencido" mas ainda permite o aceite (D9).
+- [ ] 4.13 Detalhe: seção "Feedback" com os cinco campos, anexos, prazo e situação do aceite (no prazo, fora do prazo, vencido).
+- [ ] 4.14 Painel e Insights: card "Aceite vencido" (Qualidade e supervisor, no escopo de cada um), clicável como os demais; em Insights, taxa de aceite no prazo.
+- [ ] 4.15 PDF da NC, CSV e dossiê: incluir causa raiz, ação, responsável, prazo da ação, combinado, prazo do aceite e se foi aceito no prazo.
 
 **Testes**
-- [ ] 4.18 Unit: permissões de resposta (só colaborador), decisão de contestação (Qualidade sem conflito), validação dos campos obrigatórios.
-- [ ] 4.19 Exercitar as RPCs no banco do Preview: feedback → aceite; feedback → contestação → mantido; feedback → contestação → revisado → aceite; NC crítica → aceite → plano de ação. Remover dados temporários.
+- [ ] 4.16 Unit: validação dos campos obrigatórios; `somar_dias_uteis` (sexta 15h + 2 = terça 15h; sábado + 2 = terça; quarta + 2 = sexta); permissão do anexo do feedback.
+- [ ] 4.17 Exercitar no banco do Preview: feedback completo → aceite no prazo; feedback → aceite vencido → aceite fora do prazo; NC crítica → aceite → plano de ação; tentativa com campo vazio é recusada. Remover dados temporários.
 
-### Fase 5: validação e devolutiva
+### Fase 5: notificações dentro do aplicativo (D7; D10 em aberto)
 
-- [ ] 5.1 UAT no Preview com Qualidade, supervisor e funcionário, cobrindo os 9 pontos, desktop e mobile.
-- [ ] 5.2 Atualizar `backlog-melhorias-operacionais.md` com o estado final.
-- [ ] 5.3 Preencher a seção "Devolutiva" abaixo, em linguagem de negócio, ponto a ponto.
+Ver avaliação abaixo. Entrega mínima:
+- [ ] 5.1 Tabela `public.notificacoes`: `id`, `usuario_id`, `tipo`, `nc_id`, `titulo`, `mensagem`, `criada_em`, `lida_em`. Índice em `(usuario_id, lida_em, criada_em desc)`. RLS ligada sem concessão direta; leitura só pela API.
+- [ ] 5.2 Função `public.notificar(p_usuarios uuid[], p_tipo, p_nc_id, p_titulo, p_mensagem)`, chamada **dentro** das RPCs de transição para que a notificação nasça na mesma transação do evento:
+  - NC aberta → Qualidade (D10), exceto o colaborador analisado.
+  - NC validada / invalidada → quem abriu.
+  - Feedback registrado → colaborador ("Você tem até … para registrar o aceite") e quem abriu; responsável pela ação ("Você é responsável por … até …").
+  - Aceite registrado → quem abriu e quem registrou o feedback.
+  - NC crítica marcada / plano de ação concluído → envolvidos do plano.
+- [ ] 5.3 Aceite vencido: job diário (extensão `pg_cron`, disponível e ainda não instalada no projeto) que, para NCs `aguardando_aceite` com prazo vencido e ainda sem aviso, notifica colaborador, liderança direta e quem registrou o feedback. Alternativa sem `pg_cron`: Vercel Cron chamando uma rota protegida.
+- [ ] 5.4 API: `GET /api/notificacoes` (últimas 30, não lidas primeiro, contador), `POST /api/notificacoes/[id]/lida`, `POST /api/notificacoes/lidas` (marcar todas).
+- [ ] 5.5 Interface: sino no `AppNavigation.jsx` com contador; painel com a lista, cada item leva à NC e marca como lida. Atualização ao carregar a página, ao voltar o foco para a aba e a cada 60 s com a aba visível.
+- [ ] 5.6 Testes: unit da API (só lê as próprias notificações); no banco do Preview, conferir que cada transição gera as notificações certas e nenhuma para o colaborador analisado quando ele é da Qualidade.
+- [ ] 5.7 Fora deste ciclo: e-mail e notificação push do navegador.
+
+### Fase 6: validação e devolutiva
+
+- [ ] 6.1 UAT no Preview com Qualidade, supervisor e funcionário, cobrindo os 9 pontos e as notificações, desktop e mobile.
+- [ ] 6.2 Atualizar `backlog-melhorias-operacionais.md` com o estado final.
+- [ ] 6.3 Preencher a seção "Devolutiva" abaixo, em linguagem de negócio, ponto a ponto.
+
+## Avaliação: notificações no aplicativo
+
+**Situação atual.** Não existe nenhum mecanismo de aviso: a pessoa só descobre que precisa agir abrindo o painel. O banco não publica tabelas no Realtime do Supabase e a leitura direta pelo navegador foi revogada em 07/10 (toda leitura passa pela API Next). As extensões `pg_cron` e `pg_net` estão disponíveis, mas não instaladas.
+
+**Opções avaliadas.**
+
+| Opção | Como funciona | Prós | Contras |
+|---|---|---|---|
+| A. Tabela + consulta periódica pela API (recomendada) | RPCs gravam em `notificacoes`; o navegador consulta `/api/notificacoes` ao abrir a página, ao focar a aba e a cada 60 s | Mantém toda leitura pela API (mesma segurança de hoje); simples; notificação nasce na mesma transação do evento, sem perda | Atraso de até 60 s; uma chamada leve por minuto por aba aberta |
+| B. Tabela + Supabase Realtime | Mesma tabela, entregue por websocket | Aviso instantâneo | Exige reabrir leitura direta com RLS só para `notificacoes` e manter sessão Supabase no navegador; mais superfície de segurança para pouco ganho neste volume |
+| C. Calculadas na hora, sem tabela | API monta os avisos a partir do status das NCs | Nada novo no banco | Sem "lida/não lida", sem histórico, não avisa eventos passados (ex.: NC validada) |
+
+**Recomendação:** opção A. O volume é pequeno (dezenas de NCs por mês), o atraso de um minuto é aceitável para o fluxo, e a opção preserva a decisão de segurança de 07/10. Se depois houver necessidade de aviso instantâneo, a mesma tabela serve para a opção B sem retrabalho.
+
+**Esforço estimado:** 1 PR médio (migração, gatilhos nas RPCs, 3 rotas, componente do sino, job diário).
 
 ## Medições
 
