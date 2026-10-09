@@ -9,15 +9,11 @@ import { useAuth } from "../../features/auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../features/onboarding/components/OnboardingContext.jsx";
 import Botao from "../ui/Botao.jsx";
 import MarcaSgnc from "../ui/MarcaSgnc.jsx";
-
-const NOME_PAPEL = {
-  adm: "Administrador (Qualidade)",
-  supervisor: "Supervisor",
-  funcionario: "Funcionário",
-};
+import { ehAdminSistema, ehQualidade, NOME_PAPEL } from "../../lib/auth/papeis.js";
 
 const ROTULO_HOME = {
   adm: "Gestão de NCs",
+  qualidade: "Gestão de NCs",
   supervisor: "Minha equipe",
   funcionario: "Minhas NCs",
 };
@@ -53,7 +49,7 @@ export default function BarraNavegacao() {
     return nome[0].toUpperCase();
   }
 
-  const ehGestao = usuario?.papel === "adm" || usuario?.papel === "supervisor";
+  const ehGestao = ehQualidade(usuario?.papel) || usuario?.papel === "supervisor";
 
   return (
     <Navbar className="sg-navbar" expand="xxl" expanded={expandido}>
@@ -102,12 +98,12 @@ export default function BarraNavegacao() {
                 Meu dossiê
               </Nav.Link>
             )}
-            {usuario?.papel === "adm" && (
+            {ehQualidade(usuario?.papel) && (
               <Nav.Link as={Link} href="/causas" onClick={aoNavegar} active={pathname === "/causas"}>
                 Causas
               </Nav.Link>
             )}
-            {usuario?.papel === "adm" && (
+            {ehAdminSistema(usuario?.papel) && (
               <Nav.Link as={Link} href="/usuarios" onClick={aoNavegar} active={pathname === "/usuarios"}>
                 Usuários
               </Nav.Link>

@@ -35,6 +35,7 @@ import GraficoLinha from "../../../components/graficos/GraficoLinha.jsx";
 import { CORES_GRAFICO } from "../../../components/graficos/cores.js";
 import ModalNcsIndicador from "./ModalNcsIndicador.jsx";
 import { urlComFiltros } from "../../../lib/utils/retorno.js";
+import { ehQualidade } from "../../../lib/auth/papeis.js";
 
 const CORES_CRITICIDADE = {
   baixa: CORES_GRAFICO.verde,
@@ -270,7 +271,7 @@ export default function InsightsPage() {
   }, [dados, kpis, porReincidenciaCausa]);
 
   const podeVer =
-    usuario && (usuario.papel === "adm" || usuario.papel === "supervisor");
+    usuario && (ehQualidade(usuario.papel) || usuario.papel === "supervisor");
   if (!podeVer) return null; // O gate server-side da rota valida o papel.
 
   const maisAntiga = dados?.aged_backlog?.mais_antiga;

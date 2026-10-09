@@ -12,11 +12,18 @@ import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import { listarEquipe } from "../client/usuarioService.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
+import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
+import { ehQualidade } from "../../../lib/auth/papeis.js";
+import Botao from "../../../components/ui/Botao.jsx";
+import GestaoEquipes from "./GestaoEquipes.jsx";
 
 const ROTULOS_PAPEL = { supervisor: "Liderança", funcionario: "Funcionário" };
 
 export default function EquipePage() {
   const { usuario } = useAuth();
+  const { concluirEtapa } = useOnboarding();
+  const gestorEquipes = ehQualidade(usuario?.papel);
+  const [visao, setVisao] = useState("equipes");
   const [pessoas, setPessoas] = useState([]);
   const [busca, setBusca] = useState("");
   const [incluirInativos, setIncluirInativos] = useState(true);
@@ -31,6 +38,11 @@ export default function EquipePage() {
       .finally(() => { if (ativa) setCarregando(false); });
     return () => { ativa = false; };
   }, []);
+
+  useEffect(() => {
+    if (usuario?.papel === "qualidade") concluirEtapa("checklist_equipes", "checklist")?.catch?.(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario?.papel]);
 
   const porId = useMemo(() => new Map(pessoas.map((pessoa) => [pessoa.id, pessoa])), [pessoas]);
   const visiveis = useMemo(() => {
@@ -47,11 +59,23 @@ export default function EquipePage() {
     <div>
       <Container className="sg-container">
         <CabecalhoPagina
-          titulo={usuario?.papel === "adm" ? "Pessoas e equipes" : "Minha equipe"}
-          subtitulo={usuario?.papel === "adm"
-            ? "Consulte as NCs e o histórico individual sem abrir o cadastro de usuários."
+          titulo={gestorEquipes ? "Pessoas e equipes" : "Minha equipe"}
+          subtitulo={gestorEquipes
+            ? "Organize as equipes por liderança e consulte as NCs e o histórico de cada pessoa."
             : "Abra cada liderado para consultar suas NCs, indicadores e histórico autorizado."}
+          acoes={gestorEquipes && (
+            <div className="d-flex gap-2" role="group" aria-label="Modo de visualização">
+              <Botao tamanho="sm" variante={visao === "equipes" ? "primario" : "secundario"} aria-pressed={visao === "equipes"} onClick={() => setVisao("equipes")}>
+                Por liderança
+              </Botao>
+              <Botao tamanho="sm" variante={visao === "lista" ? "primario" : "secundario"} aria-pressed={visao === "lista"} onClick={() => setVisao("lista")}>
+                Lista
+              </Botao>
+            </div>
+          )}
         />
+
+        {gestorEquipes && visao === "equipes" ? <GestaoEquipes /> : (<>
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
         <div className="sg-card mb-3">
@@ -83,7 +107,7 @@ export default function EquipePage() {
                 <tr key={pessoa.id}>
                   <th scope="row">{pessoa.nome}<div className="texto-xs texto-suave fw-normal">{ROTULOS_PAPEL[pessoa.papel] ?? pessoa.papel}</div></th>
                   <td>{pessoa.setor || "—"}</td>
-                  <td>{pessoa.supervisor_id === usuario?.id ? usuario.nome : porId.get(pessoa.supervisor_id)?.nome || (usuario?.papel === "adm" ? "Sem liderança atribuída" : "—")}</td>
+                  <td>{pessoa.supervisor_id === usuario?.id ? usuario.nome : porId.get(pessoa.supervisor_id)?.nome || (gestorEquipes ? "Sem liderança atribuída" : "—")}</td>
                   <td>{pessoa.nivel ? `Nível ${pessoa.nivel}` : "Organização"}</td>
                   <td><span className={`sg-badge ${pessoa.ativo ? "sg-badge--verde" : "sg-badge--cinza"}`}>{pessoa.ativo ? "Ativa" : "Inativa · histórico"}</span></td>
                   <td><Link className="sg-btn sg-btn--secundario sg-btn--sm" href={`/equipe/${pessoa.id}`}>Ver NCs e indicadores</Link></td>
@@ -93,6 +117,7 @@ export default function EquipePage() {
           </div>
         )}
         <p className="texto-xs texto-suave mt-3 mb-0">Exibindo {visiveis.length} de {pessoas.length} pessoa(s). O acesso segue a liderança atual; após uma transferência, o histórico acompanha a nova cadeia.</p>
+        </>)}
       </Container>
     </div>
   );

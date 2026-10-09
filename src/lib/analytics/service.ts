@@ -6,14 +6,16 @@ import { ApiError } from "@/lib/api/error";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildNcReadScopeFilter, buildNcTeamScopeFilter } from "@/lib/permissions/nc-scope";
 import { listarPessoasAbaixo, validarAcessoPessoa } from "@/lib/permissions/team-scope";
+import { ehQualidade } from "@/lib/auth/papeis";
 
-const ACTIVE = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "validada", "aguardando_analise"]);
-const COUNTABLE = new Set(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "concluida"]);
-const STATUS_ORDER = ["aberta", "aguardando_feedback", "aguardando_aceite", "concluida", "invalidada"];
+const ACTIVE = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "em_plano_acao", "validada", "aguardando_analise"]);
+const COUNTABLE = new Set(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "em_plano_acao", "concluida"]);
+const STATUS_ORDER = ["aberta", "aguardando_feedback", "aguardando_aceite", "em_plano_acao", "concluida", "invalidada"];
 const FILTER_STATUS_ALIASES: Record<string, string[]> = {
   aberta: ["aberta"],
   aguardando_feedback: ["aguardando_feedback", "aguardando_analise", "validada"],
   aguardando_aceite: ["aguardando_aceite"],
+  em_plano_acao: ["em_plano_acao"],
   concluida: ["concluida"],
   invalidada: ["invalidada"],
 };
@@ -76,7 +78,7 @@ export async function obterEstatisticasUsuario(userId: string) {
   const startDate = startTwelveMonths(end);
   let ncQuery = admin.from("nao_conformidades").select("id, data")
     .eq("colaborador_id", userId).in("status", [...COUNTABLE]).gte("data", startDate).lte("data", endDate);
-  if (requester.papel !== "adm") {
+  if (!ehQualidade(requester.papel)) {
     const teamIds = requester.papel === "supervisor" ? (await listarPessoasAbaixo(requester.id)).map((person) => person.id) : [];
     const scope = buildNcReadScopeFilter(requester, teamIds);
     if (scope) ncQuery = ncQuery.or(scope);
@@ -104,7 +106,7 @@ export async function obterEstatisticasUsuario(userId: string) {
   }
   const result = [...grouped.values()].map((item) => {
     delete item._last;
-    if (requester.papel === "adm" && item.ultima_ocorrencia_numero != null) item.medida_sugerida = suggestedMeasure(Number(item.ultima_ocorrencia_numero));
+    if (ehQualidade(requester.papel) && item.ultima_ocorrencia_numero != null) item.medida_sugerida = suggestedMeasure(Number(item.ultima_ocorrencia_numero));
     item.medidas = (measures ?? []).filter((measure) => measure.causa_id === item.causa_id);
     return item;
   }).sort((a, b) => b.ocorrencias_12m - a.ocorrencias_12m);
@@ -134,7 +136,7 @@ export async function obterInsights(
   filters: { status?: string | null; colaboradorId?: string | null; setor?: string | null } = {},
 ) {
   const user = await requireUser();
-  if (!["adm", "supervisor"].includes(user.papel)) throw new ApiError("Acesso restrito a administradores e supervisores.", 403);
+  if (!ehQualidade(user.papel) && user.papel !== "supervisor") throw new ApiError("Acesso restrito à Qualidade e às lideranças.", 403);
   const end = endInput || new Date().toISOString().slice(0, 10);
   const start = startInput || startTwelveMonths(new Date(`${end}T12:00:00Z`));
   if (!isIsoDate(start) || !isIsoDate(end)) throw new ApiError("O período informado é inválido.");
@@ -195,7 +197,7 @@ export async function obterInsights(
   const kpis = { total_ncs: period.length, ncs_abertas: count(periodStatus, "aberta"), ncs_pendentes: count(periodStatus, "aguardando_feedback") + count(periodStatus, "aguardando_aceite"), ncs_concluidas: count(periodStatus, "concluida"), ncs_invalidadas: count(periodStatus, "invalidada"), taxa_invalidacao: period.length ? Math.round(count(periodStatus, "invalidada") / period.length * 10000) / 10000 : null, ncs_sem_chamado: period.filter((nc) => !String(nc.chamado ?? "").trim()).length, backlog_ativo_atual: active.length, abertas_atuais: count(backlogStatus, "aberta"), aguardando_feedback_atual: count(backlogStatus, "aguardando_feedback"), aguardando_aceite_atual: count(backlogStatus, "aguardando_aceite"), concluidas_no_periodo: all.filter((nc) => nc.status === "concluida" && inPeriod(nc.aceito_em)).length, invalidadas_no_periodo: all.filter((nc) => nc.status === "invalidada" && inPeriod(nc.decidido_em)).length };
   const durations = { criacao_ate_validacao: timeSummary(all.filter((nc) => inPeriod(nc.validado_em)).map((nc) => seconds(nc.criado_em, nc.validado_em))), validacao_ate_feedback: timeSummary(all.filter((nc) => inPeriod(nc.feedback_aplicado_em)).map((nc) => seconds(nc.validado_em, nc.feedback_aplicado_em))), feedback_ate_aceite: timeSummary(all.filter((nc) => inPeriod(nc.aceito_em)).map((nc) => seconds(nc.feedback_aplicado_em, nc.aceito_em))), ciclo_total: timeSummary(all.filter((nc) => inPeriod(nc.aceito_em)).map((nc) => seconds(nc.criado_em, nc.aceito_em))), criacao_ate_decisao: timeSummary(all.filter((nc) => inPeriod(nc.decidido_em)).map((nc) => seconds(nc.criado_em, nc.decidido_em))) };
   const ranges = new Map([['0-1d',0],['2-3d',0],['4-7d',0],['8+d',0]]); let oldest: Row | null = null; const now = Date.now();
-  for (const nc of active) { const since = nc.status === 'aberta' ? nc.criado_em : nc.status === 'aguardando_aceite' ? (nc.feedback_aplicado_em || nc.validado_em || nc.criado_em) : (nc.validado_em || nc.enviado_em || nc.criado_em); const days = Math.floor((now - Date.parse(since)) / 86400000); const range = days < 2 ? '0-1d' : days < 4 ? '2-3d' : days < 8 ? '4-7d' : '8+d'; ranges.set(range, (ranges.get(range) ?? 0) + 1); if (!oldest || days > oldest.dias_na_etapa) oldest = { nc_id:nc.id,status:canonicalStatus(nc.status),dias_na_etapa:days,desde:new Date(since).toISOString() }; }
+  for (const nc of active) { const since = nc.status === 'aberta' ? nc.criado_em : nc.status === 'aguardando_aceite' ? (nc.feedback_aplicado_em || nc.validado_em || nc.criado_em) : nc.status === 'em_plano_acao' ? (nc.aceito_em || nc.validado_em || nc.criado_em) : (nc.validado_em || nc.enviado_em || nc.criado_em); const days = Math.floor((now - Date.parse(since)) / 86400000); const range = days < 2 ? '0-1d' : days < 4 ? '2-3d' : days < 8 ? '4-7d' : '8+d'; ranges.set(range, (ranges.get(range) ?? 0) + 1); if (!oldest || days > oldest.dias_na_etapa) oldest = { nc_id:nc.id,status:canonicalStatus(nc.status),dias_na_etapa:days,desde:new Date(since).toISOString() }; }
   const months = new Map(monthKeys(start,end).map((month) => [month,{mes:month,total:0,concluidas:0,invalidadas:0,reincidentes:0}]));
   const collaborators = new Map<string,Row>(), sectors = new Map<string,Row>(), causeTotals = new Map<number,Row>();
   for (const nc of period) { const recurring = (causes.get(nc.id) ?? []).some((cause) => Number(cause.ocorrencia_numero) > 1); const month=months.get((isoDate(nc.data)||isoDate(nc.criado_em))!.slice(0,7)); if(month){month.total++;if(nc.status==='concluida')month.concluidas++;if(nc.status==='invalidada')month.invalidadas++;if(recurring)month.reincidentes++;} const key=nc.colaborador_id||nc.colaborador||'Não informado'; const person=collaborators.get(key)??{colaborador_id:nc.colaborador_id,colaborador:nc.colaborador||'Não informado',setor:nc.setor,total:0,invalidadas:0,reincidencias:0,reincidencias_12m:0,backlog_ativo:0}; person.total++;if(nc.status==='invalidada')person.invalidadas++;if(recurring){person.reincidencias++;person.reincidencias_12m++;}collaborators.set(key,person); const sector=nc.setor||'Não informado';const si=sectors.get(sector)??{setor:sector,total:0,invalidadas:0,backlog_ativo:0};si.total++;if(nc.status==='invalidada')si.invalidadas++;sectors.set(sector,si); for(const cause of causes.get(nc.id)??[]){const ci=causeTotals.get(cause.causa_id)??{causa_id:cause.causa_id,causa:cause.descricao||`Causa ${cause.causa_id}`,total:0,total_reincidentes:0,ocorrencias:0,reincidencias_12m:0};ci.total++;if(COUNTABLE.has(nc.status)){ci.ocorrencias++;if(Number(cause.ocorrencia_numero)>1){ci.total_reincidentes++;ci.reincidencias_12m++;}}causeTotals.set(cause.causa_id,ci);}}

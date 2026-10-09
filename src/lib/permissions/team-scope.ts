@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api/error";
 import type { UsuarioAutenticado } from "@/lib/auth/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mapearProfundidadeLiderados } from "./hierarchy.js";
+import { ehQualidade } from "@/lib/auth/papeis";
 
 export type PessoaEquipe = {
   id: string;
@@ -28,7 +29,7 @@ async function carregarFilhos(supervisorIds: string[]) {
         .from("usuarios")
         .select("id, nome, papel, setor, supervisor_id, ativo")
         .in("supervisor_id", ids)
-        .neq("papel", "adm")
+        .not("papel", "in", "(adm,qualidade)")
         .order("id")
         .range(offset, offset + 499);
 
@@ -69,7 +70,7 @@ export async function listarPessoasAbaixo(supervisorId: string): Promise<PessoaE
 
 export async function listarPessoasGerenciaveis(user: UsuarioAutenticado): Promise<PessoaEquipe[]> {
   if (user.papel === "supervisor") return listarPessoasAbaixo(user.id);
-  if (user.papel !== "adm") throw new ApiError("Acesso restrito a administradores e lideranças.", 403);
+  if (!ehQualidade(user.papel)) throw new ApiError("Acesso restrito à Qualidade e às lideranças.", 403);
 
   const admin = createAdminClient();
   const pessoas: PessoaEquipe[] = [];
@@ -77,7 +78,7 @@ export async function listarPessoasGerenciaveis(user: UsuarioAutenticado): Promi
     const { data, error } = await admin
       .from("usuarios")
       .select("id, nome, papel, setor, supervisor_id, ativo")
-      .neq("papel", "adm")
+      .not("papel", "in", "(adm,qualidade)")
       .order("nome")
       .order("id")
       .range(offset, offset + 499);
@@ -90,7 +91,7 @@ export async function listarPessoasGerenciaveis(user: UsuarioAutenticado): Promi
 }
 
 export async function validarAcessoPessoa(user: UsuarioAutenticado, pessoaId: string) {
-  if (user.papel === "adm") return;
+  if (ehQualidade(user.papel)) return;
   if (user.id === pessoaId) return;
   if (user.papel !== "supervisor") {
     throw new ApiError("Você não tem permissão para acessar este colaborador.", 403);

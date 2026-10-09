@@ -10,6 +10,7 @@ import { buscarNc, obterTimeline } from "@/lib/nc/service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildNcReadScopeFilter, buildNcTeamScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
 import { listarPessoasAbaixo } from "@/lib/permissions/team-scope";
+import { ehQualidade } from "@/lib/auth/papeis";
 
 type Row = Record<string, any>;
 const A4: [number, number] = [595.28, 841.89];
@@ -87,7 +88,7 @@ export async function gerarPdfDossie(userId: string) {
   writer.heading("Causas e recorrencia");
   for(const cause of stats.causas ?? []) { writer.line(String(cause.causa), `${cause.ocorrencias_12m} ocorrencia(s); ultima NC #${cause.ultima_ocorrencia_nc_id ?? "-"}; medida sugerida: ${cause.medida_sugerida ?? "nenhuma"}`); }
   const admin=createAdminClient(); let historyQuery=admin.from("nao_conformidades").select("id, data, status, criticidade, criado_em").eq("colaborador_id",userId);
-  if(requester.papel!=="adm")historyQuery=historyQuery.or(`status.in.(${SUPERVISOR_VISIBLE_NC_STATUSES.join(",")}),aberto_por.eq.${requester.id}`);
+  if(!ehQualidade(requester.papel))historyQuery=historyQuery.or(`status.in.(${SUPERVISOR_VISIBLE_NC_STATUSES.join(",")}),aberto_por.eq.${requester.id}`);
   const {data:ncs}=await historyQuery.order("data",{ascending:false}).limit(12);
   writer.heading("Historico recente"); for(const nc of ncs??[]) writer.line(`NC #${nc.id}`, `${brDate(nc.data||nc.criado_em)} | ${canonical(nc.status)} | ${nc.criticidade||"-"}`);
   writer.heading("Medidas disciplinares"); const measures=(stats.causas??[]).flatMap((cause:Row)=>cause.medidas??[]); if(!measures.length)writer.line("Registro","Nenhuma medida disciplinar registrada");for(const measure of measures)writer.line(measure.tipo,`ocorrencia ${measure.ocorrencia_gatilho}; ${brDate(measure.data_aplicacao)}`);
@@ -95,7 +96,7 @@ export async function gerarPdfDossie(userId: string) {
 }
 
 async function reportScope() {
-  const user=await requireUser(); if(!["adm","supervisor"].includes(user.papel))throw new ApiError("Acesso restrito a administradores e supervisores.",403);
+  const user=await requireUser(); if(!ehQualidade(user.papel)&&user.papel!=="supervisor")throw new ApiError("Acesso restrito à Qualidade e às lideranças.",403);
   const admin=createAdminClient(); let teamIds:string[]|null=null;
   if(user.papel==="supervisor"){teamIds=(await listarPessoasAbaixo(user.id)).map((person)=>person.id);}
   return {admin,teamIds,user};

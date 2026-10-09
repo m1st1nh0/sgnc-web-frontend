@@ -22,6 +22,7 @@ import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
 import ModalRegistrarMedida from "../../nc/components/ModalRegistrarMedida.jsx";
+import { ehQualidade } from "../../../lib/auth/papeis.js";
 
 const ROTULOS_MEDIDA = {
   advertencia: "Advertência",
@@ -126,7 +127,7 @@ export default function EstatisticasUsuarioPage() {
   }, [usuarioId]);
 
   const ehPropriaEstatistica = usuario?.id === usuarioId;
-  const ehAdm = usuario?.papel === "adm";
+  const ehAdm = ehQualidade(usuario?.papel);
 
   const [causaEmRegistro, setCausaEmRegistro] = useState(null);
   const [vezAberturaModal, setVezAberturaModal] = useState(0);

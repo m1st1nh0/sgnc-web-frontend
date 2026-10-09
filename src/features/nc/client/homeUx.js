@@ -1,3 +1,4 @@
+import { ehQualidade } from "../../../lib/auth/papeis.js";
 const STATUS_FEEDBACK = new Set([
   "aguardando_feedback",
   "validada",
@@ -10,6 +11,7 @@ const STATUS_ATIVOS = new Set([
   "validada",
   "aguardando_analise",
   "aguardando_aceite",
+  "em_plano_acao",
 ]);
 
 export function normalizarStatusHome(status) {
@@ -36,6 +38,7 @@ function contar(ncs, status) {
 function porPrioridade(a, b) {
   const ordem = {
     aguardando_aceite: 0,
+    em_plano_acao: 1,
     aberta: 1,
     aguardando_feedback: 2,
     validada: 2,
@@ -63,7 +66,7 @@ export function ordenarNcsHome(ncs, prioridades = []) {
 export function criarVisaoHome(usuario, ncs, equipeIds = []) {
   const papel = usuario?.papel;
 
-  if (papel === "adm") {
+  if (ehQualidade(papel)) {
     const prioridades = ncs.filter((nc) =>
       ["aberta", "aguardando_feedback", "validada", "aguardando_analise"].includes(
         nc.status

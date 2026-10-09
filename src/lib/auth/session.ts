@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import type { PapelUsuario, UsuarioAutenticado } from "./types";
 export type { PapelUsuario, UsuarioAutenticado } from "./types";
+import { PAPEIS } from "./papeis";
 
 export async function getUser(): Promise<UsuarioAutenticado | null> {
   const supabase = await createClient();
@@ -16,7 +17,7 @@ export async function getUser(): Promise<UsuarioAutenticado | null> {
     .eq("id", authData.user.id)
     .maybeSingle();
 
-  if (error || !data || !data.ativo || !["adm", "supervisor", "funcionario"].includes(data.papel)) return null;
+  if (error || !data || !data.ativo || !PAPEIS.includes(data.papel)) return null;
   return data as UsuarioAutenticado;
 }
 

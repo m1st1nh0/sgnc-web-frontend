@@ -39,3 +39,15 @@ export function reativarUsuario(id) {
 export function buscarEstatisticasUsuario(usuarioId) {
   return chamarApi(`/usuarios/${usuarioId}/estatisticas`);
 }
+
+export function listarLiderancas() {
+  return chamarApi("/equipe/liderancas");
+}
+
+export function alterarEquipe(usuarioId, dados) {
+  return chamarApi(`/equipe/${encodeURIComponent(usuarioId)}`, { method: "PATCH", body: dados });
+}
+
+export function listarHistoricoEquipe(usuarioId) {
+  return chamarApi(`/equipe/${encodeURIComponent(usuarioId)}/historico`);
+}

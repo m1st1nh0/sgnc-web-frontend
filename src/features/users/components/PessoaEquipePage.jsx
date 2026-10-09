@@ -23,6 +23,7 @@ const STATUS = {
   validada: "Aguardando feedback",
   aguardando_feedback: "Aguardando feedback",
   aguardando_aceite: "Aguardando aceite",
+  em_plano_acao: "Em plano de ação",
   concluida: "Concluída",
   invalidada: "Invalidada",
 };

@@ -98,7 +98,7 @@ assert.ok(
 
 const app = readFileSync("src/app/(app)/usuarios/page.tsx", "utf8") + readFileSync("src/app/(app)/insights/page.tsx", "utf8");
 assert.match(app, /requireRole\(\["adm"\]\)/);
-assert.match(app, /requireRole\(\["adm", "supervisor"\]\)/);
+assert.match(app, /requireRole\(\["adm", "qualidade", "supervisor"\]\)/);
 
 const home = readFileSync("src/features/nc/components/HomePage.jsx", "utf8");
 assert.match(home, /listarOpcoesNc/);

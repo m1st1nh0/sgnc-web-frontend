@@ -29,6 +29,7 @@ import { formatarData } from "../../../lib/utils/formato.js";
 const STATUS_EM_ANDAMENTO = [
   "aguardando_feedback",
   "aguardando_aceite",
+  "em_plano_acao",
   "validada",
   "aguardando_analise",
 ];

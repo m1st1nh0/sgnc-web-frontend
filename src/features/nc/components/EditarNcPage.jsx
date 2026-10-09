@@ -20,6 +20,7 @@ import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
 import CampoTextoArea from "../../../components/ui/CampoTextoArea.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
+import { ehQualidade } from "../../../lib/auth/papeis.js";
 
 const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
 
@@ -55,7 +56,7 @@ export default function EditarNcPage() {
 
         // Verifica permissão: autor enquanto aberta, ou ADM qualquer status
         const ehAutor = nc.aberto_por === usuario?.id;
-        const ehAdm = usuario?.papel === "adm";
+        const ehAdm = ehQualidade(usuario?.papel) && nc.colaborador_id !== usuario?.id;
         const podeEditar = ehAdm || (ehAutor && nc.status === "aberta");
 
         if (!podeEditar) {
@@ -225,7 +226,7 @@ export default function EditarNcPage() {
                     aoMudar={setCausas}
                     sugestoes={causasConhecidas}
                     aoSolicitarCausa={solicitarNovaCausa}
-                    permitirCriacaoDireta={usuario?.papel === "adm"}
+                    permitirCriacaoDireta={ehQualidade(usuario?.papel)}
                   />
                   <Form.Text className="sg-helper">
                     Selecione uma causa aprovada ou solicite a inclusão de uma nova.

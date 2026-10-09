@@ -28,15 +28,11 @@ import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
 import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
-
-const NOME_PAPEL = {
-  adm: "Administrador",
-  supervisor: "Supervisor",
-  funcionario: "Funcionário",
-};
+import { ehPapelSemLideranca, ehQualidade, NOME_PAPEL, podeLiderar } from "../../../lib/auth/papeis.js";
 
 const COR_PAPEL = {
   adm: "sg-badge--escuro",
+  qualidade: "sg-badge--verde",
   supervisor: "sg-badge--azul",
   funcionario: "sg-badge--cinza",
 };
@@ -44,7 +40,8 @@ const COR_PAPEL = {
 const PAPEIS_OPCOES = [
   { value: "funcionario", label: "Funcionário" },
   { value: "supervisor", label: "Supervisor" },
-  { value: "adm", label: "Administrador (Qualidade)" },
+  { value: "qualidade", label: "Qualidade" },
+  { value: "adm", label: "Administrador do sistema (inclui Qualidade)" },
 ];
 
 function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
@@ -61,7 +58,8 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
 
   const supervisoresDisponiveis = usuarios.filter(
     (u) =>
-      (u.papel === "supervisor" || u.papel === "adm") &&
+      u.ativo !== false &&
+      podeLiderar(u.papel) &&
       u.id !== usuario?.id
   );
 
@@ -69,7 +67,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
     evento.preventDefault();
     setErro("");
 
-    if (papel !== "adm" && !supervisorId) {
+    if (!ehPapelSemLideranca(papel) && !supervisorId) {
       setErro("Selecione o supervisor.");
       return;
     }
@@ -90,7 +88,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
           nome,
           papel,
           setor: setor || null,
-          supervisor_id: papel === "adm" ? null : supervisorId,
+          supervisor_id: ehPapelSemLideranca(papel) ? null : supervisorId,
         });
       } else {
         await cadastrarUsuario({
@@ -98,7 +96,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
           email,
           papel,
           setor: setor || null,
-          supervisor_id: papel === "adm" ? null : supervisorId,
+          supervisor_id: ehPapelSemLideranca(papel) ? null : supervisorId,
           senha_inicial: senhaInicial,
         });
       }
@@ -152,7 +150,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
         ))}
       </CampoSelecao>
 
-      {papel !== "adm" && (
+      {!ehPapelSemLideranca(papel) && (
         <CampoSelecao
           rotulo="Supervisor"
           obrigatorio
@@ -168,7 +166,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
         </CampoSelecao>
       )}
 
-      {editando && usuario.supervisor_id !== (papel === "adm" ? null : supervisorId) && (
+      {editando && usuario.supervisor_id !== (ehPapelSemLideranca(papel) ? null : supervisorId) && (
         <p className="texto-xs texto-suave" role="status">
           Ao salvar a transferência, o acesso ao histórico de NCs passa a seguir a liderança atual: a nova cadeia poderá consultar o histórico; a anterior deixa de vê-lo. A Qualidade mantém a visão organizacional.
         </p>
@@ -259,7 +257,7 @@ export default function UsuariosPage() {
   function podeVerEstatisticasDoUsuario(usuario) {
     if (!usuarioLogado) return false;
 
-    const ehAdm = usuarioLogado.papel === "adm";
+    const ehAdm = ehQualidade(usuarioLogado.papel);
     const ehProprioUsuario = usuarioLogado.id === usuario.id;
     const ehSupervisorDireto =
       usuarioLogado.papel === "supervisor" &&

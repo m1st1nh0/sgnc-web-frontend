@@ -71,7 +71,7 @@ assert.match(reportPage, /<BadgeStatus status=\{nc\.status\}/);
 assert.match(barChart, /corChave/);
 
 assert.match(app, /RelatoriosPage/);
-assert.match(app, /requireRole\(\["adm", "supervisor"\]\)/);
+assert.match(app, /requireRole\(\["adm", "qualidade", "supervisor"\]\)/);
 assert.match(nav, /href="\/relatorios"/);
 assert.match(nav, /const ehGestao/);
 

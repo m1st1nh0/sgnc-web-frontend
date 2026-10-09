@@ -1,4 +1,4 @@
-export type PapelUsuario = "adm" | "supervisor" | "funcionario";
+export type PapelUsuario = "adm" | "qualidade" | "supervisor" | "funcionario";
 
 export type UsuarioAutenticado = {
   id: string;
