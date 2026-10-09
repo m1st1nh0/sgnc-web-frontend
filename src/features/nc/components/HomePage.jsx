@@ -261,7 +261,10 @@ export default function HomePage() {
             <span className="sg-dashboard__eyebrow">Próxima ação</span>
             <h2 id="proxima-acao-titulo">{visao.destaque.titulo}</h2>
             <p>{visao.destaque.descricao}</p>
-            {visao.destaque.acao.destino.startsWith("#") ? <a href={visao.destaque.acao.destino} className="sg-btn sg-btn--secundario">{visao.destaque.acao.rotulo}</a> : <Link href={visao.destaque.acao.destino} className="sg-btn sg-btn--secundario">{visao.destaque.acao.rotulo}</Link>}
+            {visao.destaque.acao.filtro
+              ? <button type="button" className="sg-btn sg-btn--secundario" aria-controls="lista-ncs-home"
+                  onClick={() => { if (filtroCardAtivo !== visao.destaque.acao.filtro) filtrarPeloCard(visao.destaque.acao.filtro); }}>{visao.destaque.acao.rotulo}</button>
+              : <Link href={visao.destaque.acao.destino} className="sg-btn sg-btn--secundario">{visao.destaque.acao.rotulo}</Link>}
           </section>
           <section className="sg-dashboard__shortcuts" aria-labelledby="atalhos-do-papel">
             <h2 id="atalhos-do-papel" className="sg-dashboard__eyebrow">Atalhos</h2>

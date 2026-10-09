@@ -14,7 +14,7 @@ export const NOME_PAPEL = {
   adm: "Administrador do sistema",
   qualidade: "Qualidade",
   supervisor: "Supervisor",
-  funcionario: "Funcionário",
+  funcionario: "Colaborador",
 };
 
 /** Exerce a função de Qualidade (o Administrador do sistema também exerce). */

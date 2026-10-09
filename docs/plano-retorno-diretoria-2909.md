@@ -65,11 +65,15 @@ Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 
 
 ### Fase 0: linha de base (pontos 1 e 4)
 
-- [ ] 0.1 Confirmar na Vercel (Settings → Functions → Function Region) a região atual.
-- [ ] 0.2 Medir tempo de resposta (10 chamadas, p50 e p95) de `GET /api/nc`, `GET /api/nc/[id]`, `GET /api/nc/[id]/evidencias` e `POST /api/nc` no Preview, com sessão de Qualidade. Registrar na seção "Medições".
-- [ ] 0.3 Reproduzir o erro do ponto 4 no Preview: abrir NC como Qualidade com (a) causa digitada sem Enter, (b) causa arquivada, (c) causa inexistente, (d) sem colaborador, (e) sem descrição. Registrar o que cada caso mostra hoje.
+- [x] 0.1 Confirmar na Vercel (Settings → Functions → Function Region) a região atual. **Resultado (09/10):** as funções rodam em `iad1` (Washington, EUA), confirmado no deployment `dpl_4hoNLSSMSXQo867JzFjeonjzbzDv`; o banco está em `sa-east-1` (São Paulo).
+- [ ] 0.2 **Bloqueado em 09/10:** o ambiente de desenvolvimento do Claude não alcança `*.vercel.app` (política de rede) e o plano Hobby guarda só 1 h de logs. Script de medição pronto; rodar quando o domínio for liberado. Medir tempo de resposta (10 chamadas, p50 e p95) de `GET /api/nc`, `GET /api/nc/[id]`, `GET /api/nc/[id]/evidencias` e `POST /api/nc` no Preview, com sessão de Qualidade. Registrar na seção "Medições".
+- [x] 0.3 (por análise de código, sem criar NCs na base de produção) Reproduzir o erro do ponto 4 no Preview: abrir NC como Qualidade com (a) causa digitada sem Enter, (b) causa arquivada, (c) causa inexistente, (d) sem colaborador, (e) sem descrição. Registrar o que cada caso mostra hoje.
+
+  Comportamento antes da Fase 1: (a) causa digitada sem Enter era descartada sem aviso e a NC era aberta sem ela; (b) causa arquivada e (c) causa inexistente para não-Qualidade: 422 com mensagem só no topo; (c) para Qualidade a causa era criada no catálogo; (d) e (e) validadas só no navegador, com erro no campo mas sem foco nem resumo; falha do servidor: mensagem genérica no topo.
 
 ### Fase 1: correções rápidas (pontos 2, 4, 6, 7)
+
+**Status (09/10): implementada** (1.1 a 1.5; 1.6 opcional não feita). Itens extras: recarrega o catálogo de causas ao voltar para a aba do formulário; servidor valida colaborador, descrição e criticidade ao abrir NC.
 
 **1.1 Causa só do catálogo (ponto 2)** (D1 decidido)
 - `src/features/nc/components/AbrirNcPage.jsx` e `EditarNcPage.jsx`: remover `permitirCriacaoDireta`. Para Qualidade, o campo oferece link "Cadastrar no catálogo" que abre `/causas` em nova aba; para os demais perfis, mantém "Solicitar análise".

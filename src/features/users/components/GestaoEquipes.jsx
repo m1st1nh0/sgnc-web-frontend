@@ -37,7 +37,7 @@ function descendentes(id, porLider) {
 
 /**
  * Montagem das equipes (Qualidade e Administrador): visão por liderança, transferência
- * entre lideranças e alternância entre Supervisor e Funcionário, com histórico auditável.
+ * entre lideranças e alternância entre Supervisor e Colaborador, com histórico auditável.
  */
 export default function GestaoEquipes() {
   const [pessoas, setPessoas] = useState([]);
@@ -167,9 +167,9 @@ export default function GestaoEquipes() {
               tamanho="sm"
               disabled={ocupado || temLiderados || !pessoa.supervisor_id}
               title={temLiderados ? "Transfira os liderados antes" : undefined}
-              onClick={() => aplicar(pessoa, { papel: "funcionario" }, `${pessoa.nome} agora é funcionário.`)}
+              onClick={() => aplicar(pessoa, { papel: "funcionario" }, `${pessoa.nome} agora é colaborador.`)}
             >
-              Tornar funcionário
+              Tornar colaborador
             </Botao>
           )}
           <Botao variante="subtle" tamanho="sm" onClick={() => abrirHistorico(pessoa)}>Histórico</Botao>

@@ -37,7 +37,7 @@ function parseUsuario(data: UsuarioInput, creating: boolean) {
   if (!nome) throw new ApiError("Nome é obrigatório.");
   if (!PAPEIS.has(papel)) throw new ApiError("papel inválido.");
   if (!ehPapelSemLideranca(papel) && !supervisorId) {
-    throw new ApiError("supervisor_id é obrigatório para papel 'funcionario' ou 'supervisor'.");
+    throw new ApiError("Informe a liderança (supervisor) para perfis Colaborador ou Supervisor.");
   }
 
   if (!creating) {
