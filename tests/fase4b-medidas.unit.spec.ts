@@ -81,6 +81,20 @@ test("4B.4: tela de medidas esconde as ações da própria pessoa e o registro m
   expect(situacaoDaMedida("aprovada").rotulo).toBe("Aprovada, a aplicar");
 });
 
+test("4B (10/10): ao aprovar, a Qualidade pode trocar o tipo sugerido, com justificativa", () => {
+  expect(migracao).toContain("ADD COLUMN tipo_sugerido text");
+  expect(migracao).toContain("tipo_sugerido IS NULL OR tipo = tipo_sugerido OR motivo_decisao IS NOT NULL");
+  expect(migracao).toContain("p_tipo text DEFAULT NULL");
+  expect(migracao).toContain("'justificativa_tipo'");
+  expect(migracao).toContain("v_medida, v_medida, 'sugerida'");
+  const servidor = read("src/lib/nc/medidas.ts");
+  expect(servidor).toContain("tipo !== (medida.tipo_sugerido ?? medida.tipo) && motivo.length < 10");
+  expect(servidor).toContain("p_tipo: tipo");
+  const pagina = read("src/features/nc/components/MedidasPage.jsx");
+  expect(pagina).toContain("Justifique a troca do tipo sugerido");
+  expect(pagina).toContain('rotulo="Medida aprovada"');
+});
+
 test("4B: Insights conta como aplicadas só as medidas aplicadas", () => {
   expect(read("src/lib/analytics/service.ts")).toContain("if(measure.status!=='aplicada')continue;");
 });

@@ -10,6 +10,7 @@ import { ErroApi } from "../../../lib/api/client/api.js";
 import { formatarData, formatarDataHora } from "../../../lib/utils/formato.js";
 import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
+import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
 import CampoTextoArea from "../../../components/ui/CampoTextoArea.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
@@ -22,8 +23,11 @@ function hojeEmSaoPaulo() {
 
 /** Uma medida com as ações da etapa atual; as ações não aparecem para o próprio colaborador (D19). */
 function CartaoMedida({ medida, aoAlterar }) {
-  const [modo, setModo] = useState(null); // "reprovar" | "aplicar"
+  const [modo, setModo] = useState(null); // "aprovar" | "reprovar" | "aplicar"
   const [motivo, setMotivo] = useState("");
+  const [tipo, setTipo] = useState(medida.tipo);
+  const tipoSugerido = medida.tipo_sugerido || medida.tipo;
+  const trocouTipo = tipo !== tipoSugerido;
   const [data, setData] = useState(hojeEmSaoPaulo());
   const [dias, setDias] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -48,6 +52,15 @@ function CartaoMedida({ medida, aoAlterar }) {
     } finally {
       setEnviando(false);
     }
+  }
+
+  function aprovar() {
+    // Trocar o tipo sugerido exige justificativa (decisão de 10/10).
+    if (trocouTipo && motivo.trim().length < 10) {
+      setErrosCampo({ motivo: "Justifique a troca do tipo sugerido (mínimo de 10 caracteres)." });
+      return;
+    }
+    executar(() => decidirMedida(medida.id, "aprovar", motivo.trim() || null, tipo));
   }
 
   function reprovar() {
@@ -112,14 +125,51 @@ function CartaoMedida({ medida, aoAlterar }) {
           </div>
         )}
 
-        {medida.permissoes?.decidir && modo !== "reprovar" && (
+        {medida.tipo_sugerido && medida.tipo !== medida.tipo_sugerido && (
+          <p className="texto-xs texto-secundario mb-1">
+            Tipo sugerido pelo sistema: {ROTULO_TIPO_MEDIDA[medida.tipo_sugerido]} (trocado na aprovação).
+          </p>
+        )}
+        {medida.permissoes?.decidir && !modo && (
           <div className="d-flex gap-2 mt-2">
-            <Botao variante="primario" tamanho="sm" carregando={enviando} onClick={() => executar(() => decidirMedida(medida.id, "aprovar"))}>
+            <Botao variante="primario" tamanho="sm" disabled={enviando} onClick={() => setModo("aprovar")}>
               Aprovar
             </Botao>
             <Botao variante="secundario" tamanho="sm" disabled={enviando} onClick={() => setModo("reprovar")}>
               Reprovar
             </Botao>
+          </div>
+        )}
+        {medida.permissoes?.decidir && modo === "aprovar" && (
+          <div className="mt-2">
+            <CampoSelecao
+              id={`tipo-medida-${medida.id}`}
+              rotulo="Medida aprovada"
+              obrigatorio
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+              erro={errosCampo.tipo}
+              helper={`Sugerida pelo sistema: ${ROTULO_TIPO_MEDIDA[tipoSugerido]}.`}
+            >
+              {Object.entries(ROTULO_TIPO_MEDIDA).map(([valor, rotulo]) => (
+                <option key={valor} value={valor}>{rotulo}</option>
+              ))}
+            </CampoSelecao>
+            <CampoTextoArea
+              id={`justificativa-medida-${medida.id}`}
+              rotulo={trocouTipo ? "Justificativa da troca" : "Observação da decisão"}
+              obrigatorio={trocouTipo}
+              rows={2}
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              erro={errosCampo.motivo}
+              helper={trocouTipo ? "Obrigatória ao trocar o tipo sugerido." : "Opcional."}
+              maxLength={1000}
+            />
+            <div className="d-flex gap-2">
+              <Botao variante="primario" tamanho="sm" carregando={enviando} onClick={aprovar}>Confirmar aprovação</Botao>
+              <Botao variante="secundario" tamanho="sm" disabled={enviando} onClick={() => { setModo(null); setTipo(medida.tipo); }}>Cancelar</Botao>
+            </div>
           </div>
         )}
         {medida.permissoes?.decidir && modo === "reprovar" && (

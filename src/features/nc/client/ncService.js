@@ -116,10 +116,11 @@ export function listarMedidas(situacao = "pendentes") {
   return chamarApi(`/nc/medidas-disciplinares?situacao=${encodeURIComponent(situacao)}`);
 }
 
-export function decidirMedida(medidaId, decisao, motivo) {
+/** Ao aprovar, `tipo` pode trocar o tipo sugerido (exige `motivo`). */
+export function decidirMedida(medidaId, decisao, motivo, tipo = null) {
   return chamarApi(`/nc/medidas-disciplinares/${medidaId}/decidir`, {
     method: "POST",
-    body: { decisao, motivo },
+    body: { decisao, motivo, tipo },
   });
 }
 

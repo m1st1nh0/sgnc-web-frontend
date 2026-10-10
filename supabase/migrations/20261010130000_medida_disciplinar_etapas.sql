@@ -6,6 +6,8 @@
 --     A regra vale também no banco (CHECK), além das RPCs e da API.
 --   * A medida sugerida nasce na mesma transação da validação (validar_nc_com_ocorrencias_v2).
 --   * Duplicidade (mesma NC, causa e ocorrência) já é barrada pelo índice único uq_medida_por_nc_causa_ocorrencia.
+--   * Ao aprovar, a Qualidade pode trocar o tipo sugerido, com justificativa (decisão de 10/10);
+--     tipo_sugerido guarda a sugestão original para auditoria.
 -- A tabela estava vazia em 10/10 (0 linhas), então não há dado a migrar.
 
 ALTER TABLE public.medidas_disciplinares
@@ -21,6 +23,7 @@ ALTER TABLE public.medidas_disciplinares
   ADD COLUMN decidida_em timestamptz,
   ADD COLUMN motivo_decisao text CHECK (motivo_decisao IS NULL OR length(btrim(motivo_decisao)) BETWEEN 1 AND 1000),
   ADD COLUMN aplicada_em timestamptz,
+  ADD COLUMN tipo_sugerido text CHECK (tipo_sugerido IS NULL OR tipo_sugerido IN ('advertencia', 'suspensao', 'avaliar_justa_causa')),
   -- D19 no banco: o colaborador da NC nunca decide nem aplica a própria medida.
   ADD CONSTRAINT medidas_disciplinares_segregacao CHECK (
     decidida_por IS DISTINCT FROM colaborador_id AND aplicada_por IS DISTINCT FROM colaborador_id
@@ -33,6 +36,10 @@ ALTER TABLE public.medidas_disciplinares
   ),
   ADD CONSTRAINT medidas_disciplinares_aplicacao_consistente CHECK (
     status <> 'aplicada' OR (aplicada_por IS NOT NULL AND aplicada_em IS NOT NULL AND data_aplicacao IS NOT NULL)
+  ),
+  -- Tipo diferente do sugerido só com justificativa registrada.
+  ADD CONSTRAINT medidas_disciplinares_troca_justificada CHECK (
+    tipo_sugerido IS NULL OR tipo = tipo_sugerido OR motivo_decisao IS NOT NULL
   ),
   ADD CONSTRAINT medidas_disciplinares_suspensao_com_dias CHECK (
     status <> 'aplicada' OR tipo <> 'suspensao' OR dias_suspensao IS NOT NULL
@@ -144,8 +151,8 @@ begin
 
         v_medida := public.medida_sugerida_para(v_numero);
         if v_medida is not null then
-            insert into public.medidas_disciplinares (colaborador_id, causa_id, nc_id, ocorrencia_gatilho, tipo, status)
-            values (v_nc.colaborador_id, v_causa.causa_id, p_nc_id, v_numero, v_medida, 'sugerida')
+            insert into public.medidas_disciplinares (colaborador_id, causa_id, nc_id, ocorrencia_gatilho, tipo, tipo_sugerido, status)
+            values (v_nc.colaborador_id, v_causa.causa_id, p_nc_id, v_numero, v_medida, v_medida, 'sugerida')
             on conflict (nc_id, causa_id, ocorrencia_gatilho) do nothing;
         end if;
 
@@ -179,9 +186,9 @@ begin
 end;
 $$;
 
--- ═══ Decisão (4B.3): aprovar ou reprovar uma medida sugerida ═══
+-- ═══ Decisão (4B.3): aprovar (mantendo ou trocando o tipo, com justificativa) ou reprovar (com motivo) ═══
 
-CREATE OR REPLACE FUNCTION public.decidir_medida_v1(p_medida_id bigint, p_usuario_id uuid, p_decisao text, p_motivo text)
+CREATE OR REPLACE FUNCTION public.decidir_medida_v1(p_medida_id bigint, p_usuario_id uuid, p_decisao text, p_motivo text, p_tipo text DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -191,6 +198,7 @@ DECLARE
   v_medida public.medidas_disciplinares%ROWTYPE;
   v_motivo text := nullif(pg_catalog.btrim(coalesce(p_motivo, '')), '');
   v_novo text;
+  v_tipo text;
 BEGIN
   SELECT * INTO v_medida FROM public.medidas_disciplinares WHERE id = p_medida_id FOR UPDATE;
   IF NOT FOUND THEN RETURN pg_catalog.jsonb_build_object('ok', false, 'erro', 'medida_nao_encontrada'); END IF;
@@ -214,12 +222,21 @@ BEGIN
   IF length(coalesce(v_motivo, '')) > 1000 THEN
     RETURN pg_catalog.jsonb_build_object('ok', false, 'erro', 'motivo_longo', 'campo', 'motivo');
   END IF;
+  v_tipo := coalesce(nullif(p_tipo, ''), v_medida.tipo);
+  IF p_decisao = 'reprovar' THEN v_tipo := v_medida.tipo; END IF;
+  IF v_tipo NOT IN ('advertencia', 'suspensao', 'avaliar_justa_causa') THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'erro', 'tipo_invalido', 'campo', 'tipo');
+  END IF;
+  -- Trocar o tipo sugerido exige justificativa.
+  IF v_tipo <> coalesce(v_medida.tipo_sugerido, v_medida.tipo) AND (v_motivo IS NULL OR length(v_motivo) < 10) THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'erro', 'justificativa_tipo', 'campo', 'motivo');
+  END IF;
 
   v_novo := CASE WHEN p_decisao = 'aprovar' THEN 'aprovada' ELSE 'reprovada' END;
   UPDATE public.medidas_disciplinares
-     SET status = v_novo, decidida_por = p_usuario_id, decidida_em = pg_catalog.now(), motivo_decisao = v_motivo
+     SET status = v_novo, tipo = v_tipo, decidida_por = p_usuario_id, decidida_em = pg_catalog.now(), motivo_decisao = v_motivo
    WHERE id = p_medida_id;
-  RETURN pg_catalog.jsonb_build_object('ok', true, 'medida_id', p_medida_id, 'status', v_novo, 'nc_id', v_medida.nc_id);
+  RETURN pg_catalog.jsonb_build_object('ok', true, 'medida_id', p_medida_id, 'status', v_novo, 'tipo', v_tipo, 'nc_id', v_medida.nc_id);
 END;
 $$;
 
@@ -279,8 +296,8 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.medida_sugerida_para(integer) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.decidir_medida_v1(bigint, uuid, text, text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.decidir_medida_v1(bigint, uuid, text, text, text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.aplicar_medida_v1(bigint, uuid, date, integer, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.medida_sugerida_para(integer) TO service_role;
-GRANT EXECUTE ON FUNCTION public.decidir_medida_v1(bigint, uuid, text, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.decidir_medida_v1(bigint, uuid, text, text, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.aplicar_medida_v1(bigint, uuid, date, integer, text) TO service_role;

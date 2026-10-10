@@ -192,7 +192,7 @@ Itens:
 - [x] 4B.4 Tela: lista de medidas pendentes para a Qualidade (sugeridas e aprovadas a aplicar), com aprovar/reprovar/aplicar; esconder as ações quando a pessoa é o próprio colaborador.
 - [x] 4B.5 Testes: unit de permissão (Qualidade acusada não decide nem aplica); no banco do Preview, sugerida → aprovada → aplicada e sugerida → reprovada.
 
-**Status (10/10):** código e migração `20261010130000_medida_disciplinar_etapas.sql` prontos e testados no Postgres local; **migração aguardando o "pode aplicar" do responsável**. Divergência: o índice único contra duplicidade (`uq_medida_por_nc_causa_ocorrencia`) já existia em produção; a validação usa `ON CONFLICT` nele. O registro manual direto como "aplicada" (botão "Registrar medida" nas estatísticas) foi removido porque pulava as etapas.
+**Status (10/10):** implementada. Migração `20261010130000_medida_disciplinar_etapas.sql` aplicada no Supabase com autorização do responsável. Decisão de 10/10: ao aprovar, a Qualidade pode trocar o tipo sugerido, com justificativa obrigatória (`tipo_sugerido` guarda a sugestão original; CHECK no banco). Fluxos exercitados no Supabase em transação desfeita: 4ª ocorrência sugere advertência; troca sem justificativa recusada; aprovação trocando para suspensão; aplicação exige dias; Qualidade acusada barrada (RPC e CHECK); reprovação exige motivo. Divergência: o índice único contra duplicidade (`uq_medida_por_nc_causa_ocorrencia`) já existia em produção; a validação usa `ON CONFLICT` nele. O registro manual direto como "aplicada" (botão "Registrar medida" nas estatísticas) foi removido porque pulava as etapas.
 
 ### Fase 5: notificações dentro do aplicativo (D7, D9, D10, D12, D13, D16–D22 decididos)
 

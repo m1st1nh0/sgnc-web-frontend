@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { MENSAGEM_CONFLITO, normalizeRpc } from "@/lib/nc/service";
 
 const STATUS_PENDENTES = ["sugerida", "aprovada"];
+const TIPOS_MEDIDA = ["advertencia", "suspensao", "avaliar_justa_causa"];
 
 async function requireQualidade() {
   const user = await requireUser();
@@ -23,6 +24,8 @@ function erroDaMedida(result: Record<string, unknown>): never {
   if (result.erro === "decisao_invalida") throw new ApiError("Decisão deve ser 'aprovar' ou 'reprovar'.", 422);
   if (result.erro === "motivo_ausente") throw new ApiError("Informe o motivo da reprovação (mínimo de 10 caracteres).", 422, "motivo");
   if (result.erro === "motivo_longo") throw new ApiError("O motivo deve ter no máximo 1.000 caracteres.", 422, "motivo");
+  if (result.erro === "justificativa_tipo") throw new ApiError("Justifique a troca do tipo sugerido (mínimo de 10 caracteres).", 422, "motivo");
+  if (result.erro === "tipo_invalido") throw new ApiError("Tipo de medida inválido.", 422, "tipo");
   if (result.erro === "data_futura") throw new ApiError("A data da aplicação não pode ser futura.", 422, "data");
   if (result.erro === "dias_invalidos") throw new ApiError("A suspensão deve ter entre 1 e 30 dias; os outros tipos não têm dias.", 422, "dias_suspensao");
   if (result.erro === "observacao_longa") throw new ApiError("A observação deve ter no máximo 1.000 caracteres.", 422, "observacao");
@@ -45,7 +48,7 @@ export async function listarMedidas(situacao: string | null) {
   const user = await requireQualidade();
   const admin = createAdminClient() as any;
   let query = admin.from("medidas_disciplinares")
-    .select("id, colaborador_id, causa_id, nc_id, ocorrencia_gatilho, tipo, status, dias_suspensao, data_aplicacao, observacao, decidida_por, decidida_em, motivo_decisao, aplicada_por, aplicada_em, criado_em");
+    .select("id, colaborador_id, causa_id, nc_id, ocorrencia_gatilho, tipo, tipo_sugerido, status, dias_suspensao, data_aplicacao, observacao, decidida_por, decidida_em, motivo_decisao, aplicada_por, aplicada_em, criado_em");
   if (situacao === "historico") query = query.not("status", "in", `(${STATUS_PENDENTES.join(",")})`).order("criado_em", { ascending: false }).limit(50);
   else query = query.in("status", STATUS_PENDENTES).order("criado_em", { ascending: true });
   const { data, error } = await query;
@@ -75,13 +78,14 @@ export async function listarMedidas(situacao: string | null) {
 
 async function carregarMedida(id: number) {
   const { data, error } = await (createAdminClient() as any).from("medidas_disciplinares")
-    .select("id, colaborador_id, status").eq("id", id).maybeSingle();
+    .select("id, colaborador_id, status, tipo, tipo_sugerido").eq("id", id).maybeSingle();
   if (error) throw new ApiError("Não foi possível carregar a medida disciplinar.", 500);
   if (!data) throw new ApiError("Medida disciplinar não encontrada.", 404);
-  return data as { id: number; colaborador_id: string; status: string };
+  return data as { id: number; colaborador_id: string; status: string; tipo: string; tipo_sugerido: string | null };
 }
 
-export async function decidirMedida(id: number, input: { decisao?: unknown; motivo?: unknown }) {
+/** Aprovar (pode trocar o tipo sugerido, com justificativa) ou reprovar (com motivo). */
+export async function decidirMedida(id: number, input: { decisao?: unknown; motivo?: unknown; tipo?: unknown }) {
   const user = await requireQualidade();
   const medida = await carregarMedida(id);
   if (medida.colaborador_id === user.id) throw new ApiError(MENSAGEM_CONFLITO, 403);
@@ -92,7 +96,12 @@ export async function decidirMedida(id: number, input: { decisao?: unknown; moti
   if (decisao === "reprovar" && motivo.length < 10) {
     throw new ApiError("Informe o motivo da reprovação (mínimo de 10 caracteres).", 422, "motivo");
   }
-  return medidaRpc("decidir_medida_v1", { p_medida_id: id, p_usuario_id: user.id, p_decisao: decisao, p_motivo: motivo || null });
+  const tipo = decisao === "aprovar" && input.tipo ? String(input.tipo) : null;
+  if (tipo && !TIPOS_MEDIDA.includes(tipo)) throw new ApiError("Tipo de medida inválido.", 422, "tipo");
+  if (tipo && tipo !== (medida.tipo_sugerido ?? medida.tipo) && motivo.length < 10) {
+    throw new ApiError("Justifique a troca do tipo sugerido (mínimo de 10 caracteres).", 422, "motivo");
+  }
+  return medidaRpc("decidir_medida_v1", { p_medida_id: id, p_usuario_id: user.id, p_decisao: decisao, p_motivo: motivo || null, p_tipo: tipo });
 }
 
 export async function aplicarMedida(id: number, input: { data?: unknown; dias_suspensao?: unknown; observacao?: unknown }) {
