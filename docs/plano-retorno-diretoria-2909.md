@@ -118,7 +118,7 @@ Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 
 
 ### Fase 2: desempenho (ponto 1)
 
-- [x] 2.1 Criar `vercel.json` com `"regions": ["gru1"]` (mesma região do Supabase). Validar no Preview que as funções rodam em `gru1` (pendente de conferência no deployment do Preview: cabeçalho `x-vercel-id` ou Settings → Functions).
+- [x] 2.1 Criar `vercel.json` com `"regions": ["gru1"]` (mesma região do Supabase). Validar no Preview que as funções rodam em `gru1`. **Resultado (10/10):** o deployment do Preview deste PR (`dpl_JCQJ8K56bsJZCVFix7UksSrX7F67`) roda em `gru1`, conferido pela API da Vercel.
 - [x] 2.2 `src/lib/auth/session.ts`: envolver `getUser` com `cache()` do React para não repetir sessão + leitura de usuário quando a mesma requisição chama `requireUser` mais de uma vez (ex.: `criarNc` → `buscarNc`; `obterTimeline` → `buscarNc`).
   **Divergência (10/10):** testado num build local, o `cache()` do React só memoriza durante a renderização (layout + página); em Route Handlers ele chama a função toda vez. Por isso, além do `cache()`, `buscarNc(id, usuario?)` recebe o usuário já carregado: abertura, edição, avaliação, feedback, aceite, evidências (listar, anexar, excluir), plano de ação e PDF da NC deixam de repetir sessão + leitura do usuário.
 - [x] 2.3 `src/lib/nc/service.ts`, `causeIds`: buscar todas as causas numa consulta (`.in("descricao_normalizada", lista)`) em vez de uma por vez. A conferência com o catálogo ficou em `src/lib/nc/causasCatalogo.ts` (função pura, com teste); a lista do filtro vai entre aspas e com escape, para causas com vírgula, parênteses ou aspas.
