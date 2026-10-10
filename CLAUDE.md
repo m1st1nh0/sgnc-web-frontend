@@ -31,6 +31,14 @@ Decisões do responsável (09/10/2026), valem como regra:
 - NC "Não respondida" conta como ocorrência para reincidência.
 - Na interface, o papel "Funcionário" se chama **"Colaborador"**. O valor interno `funcionario` no banco e na API não muda.
 
+Decisões de conformidade com o processo (10/10/2026, ver [`docs/revisao-tecnica-2026-10.md`](docs/revisao-tecnica-2026-10.md)):
+- Criticidade unificada em Leve/Crítica; NC crítica continua exigindo plano de ação e verificação de eficácia.
+- Medida disciplinar pela regra do documento, contando em 12 meses: 3 NCs da mesma causa geram medida e zeram o contador (histórico mantido); 3 medidas levam a suspensão; 3 suspensões levam o caso a RH e Diretoria.
+- NC ganha tipo (cobrança/orientativa) e natureza da causa (individual/sistêmica); só cobrança com causa individual conta para a medida. Status novos: Reaberta e Escalada.
+- Supervisor e colaborador continuam abrindo NC; a Qualidade avalia se procede.
+- NC leve encerra no aceite do feedback.
+- NC não é excluída: é cancelada com motivo e histórico.
+
 Todas as decisões do plano estão respondidas. Decisão nova que surgir deve ser perguntada ao responsável, não assumida.
 
 ## Convenções

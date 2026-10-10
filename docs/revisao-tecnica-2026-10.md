@@ -161,12 +161,14 @@ Ordem pensada para a entrega e a migração. Cada linha vira um PR (convenção 
 | 5 | **Conformidade com o processo** | Após as decisões C1–C7: origem, procedimento + link, tipo (cobrança/orientativa), causa individual/sistêmica, criticidade Leve/Crítica única, prazos por criticidade, reabertura, escalonamento (RH/gestores), janela de 30 dias, novos indicadores | decisões |
 | 6 | **Refatoração estrutural** | `lib/nc/status.ts`, `rpcOuErro`, tipos gerados, reescrita de relatórios/insights, CSS único, testes de banco | pode correr em paralelo a 5 |
 
-### Decisões que preciso do responsável
+### Decisões do responsável (10/10/2026)
 
-1. **C1:** unificar a criticidade em Leve/Crítica definida pela Qualidade na validação? O que acontece com Baixa/Média/Alta das NCs existentes?
-2. **C2:** adotar a regra do documento (medida na 3ª NC da mesma causa, contador zerando) no lugar da atual (4ª, 7ª, 10ª em 12 meses)?
-3. **C3/C4:** criar os campos "tipo de NC" (cobrança/orientativa) e "natureza da causa" (individual/sistêmica), e os status Reaberta e Escalada?
-4. **C5:** supervisor e colaborador continuam abrindo NC diretamente, ou passam a "reportar ocorrência" para a Qualidade registrar?
-5. **C6:** a NC leve encerra no feedback (documento) ou no aceite (decisões D5/D11 de 09/10)? Hoje há conflito entre o documento e as decisões.
-6. **C7:** trocar a exclusão de NC por cancelamento com motivo?
-7. O documento do processo fala em prazo de feedback (5 d.u./1 d.u.), análise (2 d.u.) e verificação (30 dias). Implementar todos neste ciclo ou só o prazo de aceite da Fase 4?
+| ID | Divergência | Decisão |
+|---|---|---|
+| D16 (C1) | Criticidade | **Unificar em Leve/Crítica**, mantendo a regra atual do plano de ação: NC crítica exige plano de ação e verificação de eficácia. Em aberto: o que fazer com o Baixa/Média/Alta das NCs existentes (proposta: Alta → Crítica só se já marcada como crítica; demais → Leve, com o valor antigo preservado no histórico). |
+| D17 (C2) | Medida disciplinar | **Regra do documento, contando ocorrências em 12 meses:** 3 NCs da mesma causa → medida e o contador zera (histórico mantido); 3 medidas → suspensão; 3 suspensões → desligamento avaliado por RH e Diretoria. |
+| D18 (C3/C4) | Novos campos e status | **Sim:** tipo da NC (cobrança/orientativa), natureza da causa (individual/sistêmica) e status Reaberta e Escalada. Orientativas e sistêmicas não entram na contagem do D17. |
+| D19 (C5) | Quem registra | **Supervisor e colaborador continuam abrindo NC diretamente**; a Qualidade avalia se procede (valida) ou não (invalida). |
+| D20 (C6) | Encerramento da NC leve | **No aceite do feedback** pelo colaborador (mantém D5/D11). |
+| D21 (C7) | Exclusão de NC | **Trocar por cancelamento com motivo**, registrado no histórico. Nada é apagado. |
+| — | Prazos das demais etapas (item 7) | Aguardando o responsável, depois da explicação das opções. |
