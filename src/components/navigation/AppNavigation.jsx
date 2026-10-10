@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "../../features/auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../features/onboarding/components/OnboardingContext.jsx";
 import MarcaSgnc from "../ui/MarcaSgnc.jsx";
+import SinoNotificacoes from "../../features/notificacoes/components/SinoNotificacoes.jsx";
 import { ehAdminSistema, ehQualidade, NOME_PAPEL } from "../../lib/auth/papeis.js";
 
 const ROTULO_HOME = { adm: "Gestão de NCs", qualidade: "Gestão de NCs", supervisor: "Minha equipe", funcionario: "Minhas NCs" };
@@ -120,6 +121,7 @@ export default function AppNavigation({ children, compactaInicial = false }) {
     <header className="sg-mobile-bar">
       <button ref={botaoMenuRef} className="sg-mobile-toggle" type="button" onClick={abrirMenuMobile} aria-label="Abrir menu" aria-expanded={mobileOpen} aria-controls="sg-app-nav"><Icon name="menu" /></button>
       <Link href="/" className="sg-mobile-brand" aria-label="SGNC - início"><MarcaSgnc /><strong>SGNC</strong></Link>
+      {usuario && faixa === "mobile" && <SinoNotificacoes variante="barra" />}
       <span className="sg-mobile-avatar" role="img" aria-label={usuario?.nome}>{iniciais(usuario?.nome)}</span>
     </header>
     <button className={`sg-nav-scrim${mobileOpen ? " is-visible" : ""}`} onClick={fecharMenuNavegacao} aria-label="Fechar menu" tabIndex={-1} />
@@ -132,6 +134,7 @@ export default function AppNavigation({ children, compactaInicial = false }) {
       <nav className="sg-app-nav__links">{links.map((link) => <Link key={link.href} href={link.href} className={`sg-app-nav__link${link.active ? " is-active" : ""}`} onClick={fecharMenuNavegacao} aria-current={link.active ? "page" : undefined} title={mostrarDicas ? link.label : undefined}><Icon name={link.icon} /><span>{link.label}</span></Link>)}</nav>
       <div className="sg-app-nav__footer">
         <div className="sg-app-nav__profile"><span className="sg-app-nav__avatar">{iniciais(usuario?.nome)}</span><div className="sg-app-nav__profile-copy"><strong>{usuario?.nome}</strong><small>{NOME_PAPEL[usuario?.papel] ?? usuario?.papel}</small></div></div>
+        {usuario && faixa !== "mobile" && <SinoNotificacoes variante="menu" mostrarDica={mostrarDicas} />}
         <button type="button" className="sg-app-nav__link" onClick={guia} title={mostrarDicas ? "Guia" : undefined}><Icon name="guide"/><span>Guia</span></button>
         <button type="button" className="sg-app-nav__link" onClick={() => sair()} title={mostrarDicas ? "Sair" : undefined}><Icon name="exit"/><span>Sair</span></button>
       </div>
