@@ -2490,6 +2490,11 @@ textarea:focus-visible {
   gap: 1rem;
 }
 
+/* O menu de ações da última pessoa não pode ficar cortado pela borda do card. */
+.sg-card.sg-equipe-grupo {
+  overflow: visible;
+}
+
 .sg-equipe-grupo--alerta {
   border-color: var(--status-invalidada-borda);
 }
@@ -2528,9 +2533,56 @@ textarea:focus-visible {
   align-items: center;
 }
 
-.sg-equipe-membro__acoes .form-select {
-  width: auto;
-  max-width: 220px;
+.sg-equipe-membro__alterado {
+  font-size: 0.75rem;
+  color: var(--sucesso);
+  background: var(--sucesso-fundo);
+  border: 1px solid var(--sucesso-borda);
+  border-radius: 999px;
+  padding: 0.125rem 0.625rem;
+}
+
+.sg-equipe-menu .dropdown-item {
+  font-size: 0.8125rem;
+}
+
+/* Motivo de uma ação indisponível, logo abaixo do nome dela. */
+.sg-equipe-menu .dropdown-item small {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--texto-suave);
+}
+
+.sg-equipe-sem-equipe {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sg-equipe-sem-equipe li {
+  font-size: 0.8125rem;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 0.25rem 0.625rem;
+  background: var(--fundo-card);
+}
+
+.sg-equipe-de-para {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--fundo-pagina);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.sg-equipe-de-para > div,
+.sg-equipe-de-para > .form-group {
+  flex: 1 1 160px;
 }
 
 /* Catálogo de causas: nome e situação ocupam a linha toda; ações ficam abaixo,
