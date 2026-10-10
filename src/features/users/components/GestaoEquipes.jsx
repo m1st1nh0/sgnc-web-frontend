@@ -352,7 +352,7 @@ export default function GestaoEquipes() {
           </div>
           <p className="texto-xs texto-suave mt-2 mb-0">
             Toda transferência e mudança de perfil fica registrada no histórico da pessoa. Qualidade e
-            Administrador podem liderar equipes, mas não respondem a uma liderança; o perfil deles é alterado em Usuários.
+            Administrador podem liderar equipes, mas não respondem a uma liderança; o perfil deles é alterado na aba Acessos.
           </p>
         </div>
       </div>
