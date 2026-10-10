@@ -53,11 +53,13 @@ assert.deepEqual(
     abertas_atuais: 3,
     aguardando_feedback_atual: 2,
     aguardando_aceite_atual: 1,
+    nao_respondidas_atual: 4,
   }),
   [
     { status: "Aguardando avaliação", quantidade: 3 },
     { status: "Aguardando feedback", quantidade: 2 },
     { status: "Aguardando aceite", quantidade: 1 },
+    { status: "Não respondidas", quantidade: 4 },
   ]
 );
 

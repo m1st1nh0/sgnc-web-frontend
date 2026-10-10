@@ -11,6 +11,7 @@ const STATUS_ATIVOS = new Set([
   "validada",
   "aguardando_analise",
   "aguardando_aceite",
+  "nao_respondida",
   "em_plano_acao",
 ]);
 
@@ -22,7 +23,10 @@ export function filtrarNcsPorCardHome(ncs, rotulo, usuarioId) {
   const feedback = ["aguardando_feedback", "validada", "aguardando_analise"];
   if (rotulo === "Aguardando avaliação") return ncs.filter((nc) => nc.status === "aberta");
   if (rotulo === "Aguardando feedback") return ncs.filter((nc) => feedback.includes(nc.status));
-  if (["Aguardando aceite", "Aguardando meu aceite"].includes(rotulo)) return ncs.filter((nc) => nc.status === "aguardando_aceite");
+  if (rotulo === "Aguardando aceite") return ncs.filter((nc) => nc.status === "aguardando_aceite");
+  // O colaborador ainda pode aceitar depois do prazo (D11): "Não respondida" segue pendente para ele.
+  if (rotulo === "Aguardando meu aceite") return ncs.filter((nc) => ["aguardando_aceite", "nao_respondida"].includes(nc.status));
+  if (rotulo === "Não respondidas") return ncs.filter((nc) => nc.status === "nao_respondida");
   if (rotulo === "Concluídas") return ncs.filter((nc) => nc.status === "concluida");
   if (rotulo === "Abertas por mim") return ncs.filter((nc) => nc.aberto_por === usuarioId);
   if (rotulo === "Minhas NCs ativas") {
@@ -37,6 +41,7 @@ function contar(ncs, status) {
 
 function porPrioridade(a, b) {
   const ordem = {
+    nao_respondida: 0,
     aguardando_aceite: 0,
     em_plano_acao: 1,
     aberta: 1,
@@ -120,6 +125,12 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
           cor: "azul",
         },
         {
+          rotulo: "Não respondidas",
+          valor: contar(ncs, "nao_respondida"),
+          descricao: "Prazo de aceite vencido",
+          cor: "vermelha",
+        },
+        {
           rotulo: "Concluídas",
           valor: contar(ncs, "concluida"),
           descricao: "Ciclos encerrados",
@@ -182,6 +193,12 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
           cor: "amarela",
         },
         {
+          rotulo: "Não respondidas",
+          valor: contar(equipe, "nao_respondida"),
+          descricao: "Prazo de aceite vencido",
+          cor: "vermelha",
+        },
+        {
           rotulo: "Concluídas",
           valor: contar(equipe, "concluida"),
           descricao: "Ciclos encerrados da equipe",
@@ -193,6 +210,7 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
   }
 
   const minhasNcs = ncs.filter((nc) => nc.colaborador_id === usuario?.id);
+  const meusAceitesPendentes = contar(minhasNcs, "aguardando_aceite") + contar(minhasNcs, "nao_respondida");
   const abertasPorMim = ncs.filter((nc) => nc.aberto_por === usuario?.id);
   const prioridades = ncs.filter(
     (nc) =>
@@ -206,15 +224,15 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
     destaque: {
       rotulo: "Seu próximo passo",
       titulo:
-        contar(minhasNcs, "aguardando_aceite") > 0
-          ? `${contar(minhasNcs, "aguardando_aceite")} feedback(s) aguardam seu aceite`
+        meusAceitesPendentes > 0
+          ? `${meusAceitesPendentes} feedback(s) aguardam seu aceite`
           : "Nenhum aceite pendente",
       descricao:
         prioridades.length > 0
           ? `Você possui ${prioridades.length} NC(s) ativa(s) para acompanhar.`
           : "Você está em dia. Continue acompanhando seu histórico pessoal.",
       acao:
-        contar(minhasNcs, "aguardando_aceite") > 0
+        meusAceitesPendentes > 0
           ? { rotulo: "Ver feedbacks aguardando meu aceite", filtro: "Aguardando meu aceite" }
           : { rotulo: "Consultar minhas estatísticas", destino: `/usuarios/${usuario.id}/estatisticas` },
     },
@@ -234,7 +252,7 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
       },
       {
         rotulo: "Aguardando meu aceite",
-        valor: contar(minhasNcs, "aguardando_aceite"),
+        valor: meusAceitesPendentes,
         descricao: "Feedbacks para confirmar",
         cor: "amarela",
       },

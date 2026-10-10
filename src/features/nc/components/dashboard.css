@@ -72,7 +72,7 @@
 .sg-dashboard__refresh { justify-self: start; font-size: .73rem; }
 .sg-dashboard :is(a, button, input):focus-visible { outline: 3px solid #287c82; outline-offset: 3px; }
 @container dashboard (min-width: 640px) {
-  .sg-dashboard__metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .sg-dashboard__metrics { grid-template-columns: repeat(var(--metricas, 4), minmax(0, 1fr)); }
   .sg-dashboard__aside { grid-template-columns: 1fr 1fr; }
 }
 @container dashboard (min-width: 760px) {

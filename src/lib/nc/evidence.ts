@@ -4,7 +4,7 @@ import "server-only";
 import { ApiError } from "@/lib/api/error";
 
 import { buscarNc } from "@/lib/nc/service";
-import { podeAnexarEvidencia, podeExcluirEvidencia } from "@/lib/permissions/nc";
+import { podeAnexarAoFeedback, podeAnexarEvidencia, podeExcluirEvidencia } from "@/lib/permissions/nc";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const BUCKET = "evidencias";
@@ -35,9 +35,22 @@ export async function listarEvidencias(ncId: number) {
 export async function anexarEvidencia(ncId: number, formData: FormData) {
   const user = await requireUser();
   const nc = await buscarNc(ncId, user) as Record<string, unknown>;
-  if (nc.status !== "aberta") throw new ApiError("Só é possível anexar evidências enquanto a NC está em 'aberta'.");
-  if (!podeAnexarEvidencia(nc, user)) {
-    throw new ApiError("Somente a Qualidade, quem registrou a NC ou o colaborador analisado podem anexar evidências.", 403);
+  const feedbackInformado = formData.get("feedback_id");
+  const feedbackId = feedbackInformado == null || feedbackInformado === "" ? null : Number(feedbackInformado);
+  if (feedbackId !== null) {
+    // Anexo do feedback: valida que o feedback é desta NC e foi registrado por quem envia.
+    if (!Number.isInteger(feedbackId)) throw new ApiError("Feedback informado é inválido.", 422);
+    const { data: feedback, error: feedbackError } = await (createAdminClient() as any).from("nc_feedbacks")
+      .select("id, nc_id, registrado_por").eq("id", feedbackId).maybeSingle();
+    if (feedbackError) throw new ApiError("Não foi possível validar o feedback.", 500);
+    if (!podeAnexarAoFeedback(nc, feedback, user)) {
+      throw new ApiError("Somente quem registrou o feedback pode anexar evidências a ele, logo após o registro.", 403);
+    }
+  } else {
+    if (nc.status !== "aberta") throw new ApiError("Só é possível anexar evidências enquanto a NC está em 'aberta'.");
+    if (!podeAnexarEvidencia(nc, user)) {
+      throw new ApiError("Somente a Qualidade, quem registrou a NC ou o colaborador analisado podem anexar evidências.", 403);
+    }
   }
   const file = formData.get("arquivo");
   if (!(file instanceof File)) throw new ApiError("Selecione um arquivo para anexar.");
@@ -51,7 +64,7 @@ export async function anexarEvidencia(ncId: number, formData: FormData) {
   });
   if (uploadError) throw new ApiError("Não foi possível enviar a evidência.", 500);
   const { data, error } = await admin.from("evidencias").insert({
-    nc_id: ncId, caminho_storage: path, nome_original: file.name, enviado_por: user.id,
+    nc_id: ncId, caminho_storage: path, nome_original: file.name, enviado_por: user.id, feedback_id: feedbackId,
   }).select("*").single();
   if (error || !data) {
     await admin.storage.from(BUCKET).remove([path]);

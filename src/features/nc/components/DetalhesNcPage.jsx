@@ -13,6 +13,7 @@ import PainelAceite from "./PainelAceite.jsx";
 import PainelPlanoAcao from "./PainelPlanoAcao.jsx";
 import EtapasNc from "./EtapasNc.jsx";
 import HistoricoNc from "./HistoricoNc.jsx";
+import FeedbackNc from "./FeedbackNc.jsx";
 import {
   buscarNc,
   listarEvidencias,
@@ -251,8 +252,10 @@ export default function DetalhesNcPage({ retorno = "/" }) {
     concluirEtapa("checklist_avaliar_nc", "checklist", { nc_id: id });
   }
 
-  function aoConcluirFeedback(ncAtualizada) {
+  function aoConcluirFeedback(ncAtualizada, avisoAnexos = "") {
     setNc(ncAtualizada);
+    if (avisoAnexos) setAvisoUploadInicial(avisoAnexos);
+    void carregarEvidencias();
     concluirEtapa("checklist_feedback", "checklist", { nc_id: id });
   }
 
@@ -300,6 +303,9 @@ export default function DetalhesNcPage({ retorno = "/" }) {
   const podeVerResumo = ehAutor && !podeVerDetalhesCompletos;
   const podeEditar = nc && ehQualidadeSemConflito && nc.status === "aberta";
   const podeExcluirNc = nc && ehQualidadeSemConflito && !nc.critica;
+  // Anexos do feedback aparecem na seção Feedback; aqui ficam só as evidências da abertura.
+  const anexosFeedback = evidencias.filter((ev) => ev.feedback_id != null);
+  const evidenciasAbertura = evidencias.filter((ev) => ev.feedback_id == null);
   const aguardandoFeedback =
     nc && ["aguardando_feedback", "aguardando_analise"].includes(nc.status);
   return (
@@ -434,7 +440,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                       </dd>
                     </div>
                   )}
-                  {podeVerDetalhesCompletos && nc.feedback && (
+                  {podeVerDetalhesCompletos && nc.feedback && !nc.feedback_estruturado && (
                     <div className="sg-detalhe">
                       <dt className="sg-detalhe__rotulo">Feedback</dt>
                       <dd className="sg-detalhe__valor">{nc.feedback}</dd>
@@ -501,6 +507,10 @@ export default function DetalhesNcPage({ retorno = "/" }) {
               </div>
             </div>
 
+            {podeVerDetalhesCompletos && (
+              <FeedbackNc nc={nc} anexos={anexosFeedback} aoVisualizarAnexo={setEvidenciaVisualizada} />
+            )}
+
             <div>
               {ehAdm && ehColaboradorDaNc && !["concluida", "invalidada"].includes(nc.status) && (
                 <div className="sg-alerta sg-alerta--atencao mb-3" role="status">
@@ -526,7 +536,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
               )}
               {podeVerDetalhesCompletos &&
                 ehColaboradorDaNc &&
-                nc.status === "aguardando_aceite" && (
+                ["aguardando_aceite", "nao_respondida"].includes(nc.status) && (
                   <>
                     <DicaContextual chave="dica_nc_aceite" className="mb-3" />
                     <PainelAceite nc={nc} aoConcluir={aoConcluirAceite} />
@@ -544,7 +554,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                 <div className="sg-card-body p-4">
                   <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                     <div>
-                      <h2 className="h6 mb-1">Evidências</h2>
+                      <h2 className="h6 mb-1">Evidências da abertura</h2>
                       {enviandoArquivo && (
                         <div className="texto-xs texto-suave">
                           Enviando arquivo. Aguarde antes de avaliar a NC.
@@ -592,15 +602,15 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                       compacto
                     />
                   )}
-                  {!carregandoEvidencias && evidencias.length === 0 && (
+                  {!carregandoEvidencias && evidenciasAbertura.length === 0 && (
                     <EstadoVazio
                       titulo="Nenhuma evidência anexada"
                       descricao="As evidências enviadas aparecerão aqui."
                     />
                   )}
-                  {!carregandoEvidencias && evidencias.length > 0 && (
+                  {!carregandoEvidencias && evidenciasAbertura.length > 0 && (
                     <div className="sg-evidencias-lista">
-                      {evidencias.map((ev) => (
+                      {evidenciasAbertura.map((ev) => (
                         <div key={ev.id} className="sg-evidencia-item">
                           <div className="me-3 min-w-0">
                             <div className="sg-evidencia-item__nome">

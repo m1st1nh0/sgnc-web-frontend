@@ -35,3 +35,25 @@ export function formatarPeriodo(inicio, fim) {
   if (!inicio || !fim) return "";
   return `${formatarData(inicio)} a ${formatarData(fim)}`;
 }
+
+/**
+ * Prazo com dia da semana, sempre no fuso da operação: "qua, 15/10 às 14:30".
+ */
+export function formatarPrazo(dataIso) {
+  if (!dataIso) return "-";
+  const data = new Date(dataIso);
+  if (Number.isNaN(data.getTime())) return "-";
+  const partes = Object.fromEntries(
+    new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(data).map((parte) => [parte.type, parte.value])
+  );
+  const dia = String(partes.weekday || "").replace(".", "");
+  return `${dia}, ${partes.day}/${partes.month} às ${partes.hour}:${partes.minute}`;
+}

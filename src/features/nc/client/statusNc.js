@@ -7,6 +7,7 @@ export const STATUS_INFO = {
   invalidada: { rotulo: "Invalidada", cor: "danger", etapa: "invalidada" },
   aguardando_feedback: { rotulo: "Aguardando feedback", cor: "warning", etapa: "aguardando-feedback" },
   aguardando_aceite: { rotulo: "Aguardando aceite", cor: "warning", etapa: "aguardando-aceite" },
+  nao_respondida: { rotulo: "Não respondida", cor: "danger", etapa: "nao-respondida" },
   em_plano_acao: { rotulo: "Em plano de ação", cor: "danger", etapa: "em-plano-acao" },
   concluida: { rotulo: "Concluída", cor: "success", etapa: "concluida" },
   validada: { rotulo: "Validada (legado)", cor: "info", etapa: "validada" },
@@ -29,6 +30,7 @@ const ETAPA_DO_STATUS = {
   aguardando_analise: "feedback",
   validada: "feedback",
   aguardando_aceite: "aceite",
+  nao_respondida: "aceite",
   em_plano_acao: "plano_acao",
   concluida: "concluida",
 };
@@ -55,17 +57,19 @@ export function acaoPendente(nc, visualizadorId) {
     aguardando_analise: ["Qualidade", "Registrar o feedback e o combinado com o colaborador."],
     validada: ["Qualidade", "Registrar o feedback e o combinado com o colaborador."],
     aguardando_aceite: [colaborador, "Ler o feedback e registrar o aceite formal."],
+    nao_respondida: [colaborador, "O prazo do aceite venceu. O aceite ainda pode ser registrado e ficará marcado como fora do prazo."],
     em_plano_acao: ["Qualidade e liderança", "Executar e acompanhar o plano de ação; a Qualidade verifica a eficácia para concluir."],
   };
   const acao = acoes[nc.status];
   if (!acao) return null;
-  const ehVoce = nc.status === "aguardando_aceite" && !!visualizadorId && nc.colaborador_id === visualizadorId;
+  const ehVoce = ["aguardando_aceite", "nao_respondida"].includes(nc.status) && !!visualizadorId && nc.colaborador_id === visualizadorId;
   return { responsavel: ehVoce ? "Você" : acao[0], descricao: acao[1] };
 }
 
 /**
  * Trilha de etapas da NC: Aberta → Avaliação → Feedback → Aceite → (Plano de ação, se crítica) → Concluída.
- * Cada etapa vem com `situacao`: "feita", "atual", "pendente" ou "encerrada" (NC invalidada na avaliação).
+ * Cada etapa vem com `situacao`: "feita", "atual", "atrasada" (aceite vencido, NC "Não respondida"),
+ * "pendente" ou "encerrada" (NC invalidada na avaliação). A etapa Aceite atual traz o `prazo`.
  */
 export function etapasDaNc(nc, visualizadorId) {
   if (!nc) return [];
@@ -84,12 +88,14 @@ export function etapasDaNc(nc, visualizadorId) {
   return chaves.map((chave, indice) => {
     let situacao = "pendente";
     if (nc.status === "concluida" || indice < indiceAtual) situacao = "feita";
-    else if (indice === indiceAtual) situacao = "atual";
+    else if (indice === indiceAtual) situacao = nc.status === "nao_respondida" ? "atrasada" : "atual";
+    const ehAtual = situacao === "atual" || situacao === "atrasada";
     return {
       chave,
-      rotulo: ROTULO_ETAPA[chave],
+      rotulo: situacao === "atrasada" ? "Não respondida" : ROTULO_ETAPA[chave],
       situacao,
-      responsavel: situacao === "atual" ? pendente?.responsavel ?? null : null,
+      responsavel: ehAtual ? pendente?.responsavel ?? null : null,
+      prazo: ehAtual && chave === "aceite" ? nc.feedback_estruturado?.prazo_aceite ?? null : null,
     };
   });
 }

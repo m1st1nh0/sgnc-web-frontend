@@ -140,7 +140,7 @@ export async function definirCritica(ncId: number, input: { critica?: unknown; m
       ? "A NC precisa estar validada (e não marcada) para ser marcada como crítica."
       : "Esta NC não pode ter a criticidade removida.", 409);
   }
-  await rpc("definir_nc_critica_v1", { p_nc_id: ncId, p_usuario_id: user.id, p_critica: input.critica, p_motivo: motivo });
+  await rpc("definir_nc_critica_v2", { p_nc_id: ncId, p_usuario_id: user.id, p_critica: input.critica, p_motivo: motivo });
   return obterPlanoAcao(ncId);
 }
 

@@ -12,6 +12,8 @@ import { ehQualidade } from "@/lib/auth/papeis";
 import type { UsuarioAutenticado } from "@/lib/auth/types";
 import { eventosDaTimeline, type AutorTimeline } from "@/lib/nc/timeline";
 import { listaFiltroIn, chaveCatalogoCausa, resolverCausasDoCatalogo } from "@/lib/nc/causasCatalogo";
+import { erroDoFeedback, validarFeedback, type FeedbackInput } from "@/lib/nc/feedback";
+import { STATUS_CONTAM_OCORRENCIA, inicioJanelaReincidencia, montarAnteriores } from "@/lib/nc/reincidencia";
 
 const TEXTO_ACEITE = "li e concordo com a não conformidade e com o feedback aplicado";
 
@@ -65,6 +67,8 @@ function transitionError(result: Record<string, unknown>): never {
   }
   if (result.erro === "motivo_ausente") throw new ApiError("Informe o motivo da invalidação.");
   if (result.erro === "feedback_ausente") throw new ApiError("Informe o feedback.");
+  const erroFeedback = erroDoFeedback(result);
+  if (erroFeedback) throw erroFeedback;
   if (result.erro === "nc_nao_aberta" || result.erro === "status_invalido") {
     throw new ApiError("A NC já foi alterada por outro processo.", 409);
   }
@@ -143,7 +147,7 @@ function durations(nc: Record<string, unknown>) {
   if (status === "aberta") currentStart = criado;
   else if (["validada", "aguardando_analise", "aguardando_feedback"].includes(status)) {
     currentStart = validado ?? (nc.enviado_em as string | null) ?? criado;
-  } else if (status === "aguardando_aceite") currentStart = feedback ?? validado ?? criado;
+  } else if (status === "aguardando_aceite" || status === "nao_respondida") currentStart = feedback ?? validado ?? criado;
   else if (status === "em_plano_acao") currentStart = aceito ?? (nc.critica_marcada_em as string | null) ?? criado;
   return {
     criacao_ate_validacao_segundos: secondsBetween(criado, validado),
@@ -209,7 +213,32 @@ export async function buscarNc(id: number, usuario?: UsuarioAutenticado) {
   if (error || !data) throw new ApiError("NC não encontrada.", 404);
   const [withCauses] = await addCauses([data]);
   const filtered = filterSensitive(withCauses, user, new Set(teamIds));
-  return { ...filtered, duracoes: durations(filtered) };
+  // Feedback estruturado só para quem tem acesso completo (quem só registrou a NC não vê o feedback).
+  const feedback = filtered.acesso_completo === true && data.feedback_aplicado_em
+    ? await feedbackVigente(id)
+    : null;
+  return { ...filtered, feedback_estruturado: feedback, duracoes: durations(filtered) };
+}
+
+/** Último feedback registrado da NC, com os nomes do responsável pela ação e de quem registrou. */
+async function feedbackVigente(ncId: number) {
+  const admin = createAdminClient() as any;
+  const { data, error } = await admin.from("nc_feedbacks")
+    .select("id, versao, causa_raiz, acao_combinada, responsavel_acao_id, prazo_acao, combinado, prazo_aceite, registrado_por, registrado_em, legado")
+    .eq("nc_id", ncId).order("versao", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new ApiError("Não foi possível carregar o feedback da NC.", 500);
+  if (!data) return null;
+  const ids = [data.responsavel_acao_id, data.registrado_por].filter((valor): valor is string => !!valor);
+  const { data: pessoas, error: pessoasError } = ids.length
+    ? await admin.from("usuarios").select("id, nome").in("id", ids)
+    : { data: [], error: null };
+  if (pessoasError) throw new ApiError("Não foi possível carregar o feedback da NC.", 500);
+  const nomes = new Map<string, string>((pessoas ?? []).map((pessoa: { id: string; nome: string }) => [pessoa.id, pessoa.nome]));
+  return {
+    ...data,
+    responsavel_acao_nome: data.responsavel_acao_id ? nomes.get(data.responsavel_acao_id) ?? null : null,
+    registrado_por_nome: data.registrado_por ? nomes.get(data.registrado_por) ?? null : null,
+  };
 }
 
 export async function listarNcsDaPessoa(
@@ -224,7 +253,7 @@ export async function listarNcsDaPessoa(
   const status = options.status?.trim() || null;
   const inicio = options.inicio?.trim() || null;
   const fim = options.fim?.trim() || null;
-  const validStatuses = ["aberta", "aguardando_feedback", "aguardando_analise", "validada", "aguardando_aceite", "em_plano_acao", "concluida", "invalidada"];
+  const validStatuses = ["aberta", "aguardando_feedback", "aguardando_analise", "validada", "aguardando_aceite", "nao_respondida", "em_plano_acao", "concluida", "invalidada"];
   if (status && !validStatuses.includes(status)) throw new ApiError("O status selecionado é inválido.", 422);
   const isDate = (value: string | null) => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
   if ((inicio || fim) && (!isDate(inicio) || !isDate(fim))) throw new ApiError("Informe o período completo para filtrar as NCs.", 422);
@@ -591,12 +620,23 @@ export async function registrarMedidaDisciplinar(input: DisciplinaryMeasureInput
   return data;
 }
 
-export async function aplicarFeedback(id: number, input: { feedback?: unknown }) {
+/**
+ * Feedback estruturado (D3): causa raiz, ação combinada, responsável, prazo da ação e combinado.
+ * Abre o prazo de aceite de 18 horas de expediente (D5, D22). Devolve `feedback_id` para os anexos.
+ */
+export async function aplicarFeedback(id: number, input: FeedbackInput) {
   const user = await requireQualidadeSemConflito(id);
-  const feedback = String(input.feedback ?? "").trim();
-  if (!feedback) throw new ApiError("Informe o feedback.");
-  await rpcTransition("aplicar_feedback_nc_v3", { p_nc_id: id, p_responsavel_id: user.id, p_feedback: feedback });
-  return buscarNc(id, user);
+  const campos = validarFeedback(input);
+  const result = await rpcTransition("registrar_feedback_v4", {
+    p_nc_id: id,
+    p_responsavel_id: user.id,
+    p_causa_raiz: campos.causa_raiz,
+    p_acao: campos.acao_combinada,
+    p_responsavel_acao_id: campos.responsavel_acao_id,
+    p_prazo_acao: campos.prazo_acao,
+    p_combinado: campos.combinado,
+  });
+  return { ...(await buscarNc(id, user)), feedback_id: Number(result.feedback_id) };
 }
 
 export async function aceitarNc(id: number, input: { texto_aceite?: unknown }) {
@@ -609,6 +649,54 @@ export async function aceitarNc(id: number, input: { texto_aceite?: unknown }) {
   if (current.colaborador_id !== user.id) {
     throw new ApiError("Somente o colaborador analisado pode registrar o aceite.", 403);
   }
-  await rpcTransition("aceitar_nc_v3", { p_nc_id: id, p_colaborador_id: user.id, p_texto_aceite: texto });
+  // v4 também aceita NC "Não respondida" (D11) e marca o aceite fora do prazo.
+  await rpcTransition("aceitar_nc_v4", { p_nc_id: id, p_colaborador_id: user.id, p_texto_aceite: texto });
   return buscarNc(id, user);
+}
+
+/**
+ * Histórico do colaborador com as causas desta NC nos 12 meses anteriores (mesma regra de
+ * validar_nc_com_ocorrencias_v2): ocorrência atual por causa e NCs anteriores com o que foi combinado.
+ */
+export async function obterContextoReincidencia(id: number) {
+  const user = await requireUser();
+  const nc = await buscarNc(id, user) as Record<string, unknown>;
+  if (nc.acesso_completo !== true) {
+    throw new ApiError("Você não tem permissão para ver o histórico de reincidência desta NC.", 403);
+  }
+  const vazio = { nc_id: id, ocorrencias: [] as Array<{ causa: string; ocorrencia_numero: number | null }>, anteriores: [] as ReturnType<typeof montarAnteriores> };
+  const colaboradorId = typeof nc.colaborador_id === "string" ? nc.colaborador_id : null;
+  if (!colaboradorId || typeof nc.data !== "string") return vazio;
+
+  const admin = createAdminClient() as any;
+  const { data: causasNc, error: causasError } = await admin.from("nc_causas")
+    .select("causa_id, ocorrencia_numero, causas(descricao)").eq("nc_id", id);
+  if (causasError) throw new ApiError("Não foi possível carregar a reincidência.", 500);
+  const nomesCausas = new Map<number, string>();
+  const ocorrencias = (causasNc ?? []).map((item: { causa_id: number; ocorrencia_numero: number | null; causas: { descricao?: string } | null }) => {
+    const causa = item.causas?.descricao ?? "Causa removida";
+    nomesCausas.set(item.causa_id, causa);
+    return { causa, ocorrencia_numero: item.ocorrencia_numero };
+  });
+  if (!nomesCausas.size) return { ...vazio, ocorrencias };
+
+  const { data: anteriores, error: anterioresError } = await admin.from("nao_conformidades")
+    .select("id, data, status, aceito_em, aceito_fora_prazo")
+    .eq("colaborador_id", colaboradorId).neq("id", id)
+    .in("status", [...STATUS_CONTAM_OCORRENCIA])
+    .gte("data", inicioJanelaReincidencia(nc.data)).lte("data", nc.data);
+  if (anterioresError) throw new ApiError("Não foi possível carregar a reincidência.", 500);
+  const ids = (anteriores ?? []).map((item: { id: number }) => item.id);
+  if (!ids.length) return { ...vazio, ocorrencias };
+
+  const [relacoes, feedbacks] = await Promise.all([
+    admin.from("nc_causas").select("nc_id, causa_id").in("nc_id", ids).in("causa_id", [...nomesCausas.keys()]),
+    admin.from("nc_feedbacks").select("nc_id, versao, causa_raiz, acao_combinada").in("nc_id", ids),
+  ]);
+  if (relacoes.error || feedbacks.error) throw new ApiError("Não foi possível carregar a reincidência.", 500);
+  return {
+    nc_id: id,
+    ocorrencias,
+    anteriores: montarAnteriores(anteriores ?? [], relacoes.data ?? [], feedbacks.data ?? [], nomesCausas),
+  };
 }
