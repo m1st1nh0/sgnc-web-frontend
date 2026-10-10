@@ -84,9 +84,9 @@ function parseInput(input: NcInput) {
 
 async function causeIds(
   causas: string[],
-  user: Awaited<ReturnType<typeof requireUser>>,
-  options: { allowCreate?: boolean; allowInactive?: boolean } = {},
+  options: { allowInactive?: boolean } = {},
 ) {
+  // Causas só entram pelo catálogo (/causas): abertura e edição de NC nunca criam causa.
   const admin = createAdminClient() as any;
   const ids: number[] = [];
   for (const descricao of causas) {
@@ -94,28 +94,13 @@ async function causeIds(
     const { data: existing, error: lookupError } = await admin.from("causas")
       .select("id, ativo").eq("descricao_normalizada", normalized).maybeSingle();
     if (lookupError) throw new ApiError("Não foi possível validar o catálogo de causas.", 500);
-    if (existing) {
-      if (!existing.ativo && !options.allowInactive) {
-        throw new ApiError("Esta causa está arquivada. Solicite sua reativação ao administrador.", 422);
-      }
-      ids.push(existing.id);
-      continue;
+    if (!existing) {
+      throw new ApiError(`A causa “${descricao}” não está no catálogo. Selecione uma causa da lista ou cadastre-a em Gestão de causas.`, 422, "causas");
     }
-    if (!options.allowCreate) {
-      throw new ApiError("Esta causa não está no catálogo aprovado. Solicite sua inclusão ao administrador.", 422);
+    if (!existing.ativo && !options.allowInactive) {
+      throw new ApiError(`A causa “${descricao}” está arquivada. Solicite sua reativação à Qualidade.`, 422, "causas");
     }
-    const { data, error } = await admin
-      .from("causas")
-      .insert({ descricao, criado_por: user.id, ativo: true })
-      .select("id")
-      .single();
-    if (error?.code === "23505") {
-      const { data: concurrent } = await admin.from("causas").select("id, ativo")
-        .eq("descricao_normalizada", normalized).maybeSingle();
-      if (concurrent && (concurrent.ativo || options.allowInactive)) { ids.push(concurrent.id); continue; }
-    }
-    if (error || !data) throw new ApiError("Não foi possível cadastrar a causa.", 500);
-    ids.push(data.id);
+    ids.push(existing.id);
   }
   return ids;
 }
@@ -127,7 +112,7 @@ async function collaborator(id: string | null) {
     .select("nome, setor")
     .eq("id", id)
     .maybeSingle();
-  if (error || !data) throw new ApiError("Colaborador informado não existe.");
+  if (error || !data) throw new ApiError("Colaborador informado não existe.", 400, "colaborador");
   return data;
 }
 
@@ -426,7 +411,10 @@ export async function decidirSolicitacaoCausa(id: number, input: { decisao?: unk
 export async function criarNc(input: NcInput) {
   const user = await requireUser();
   const data = parseInput(input);
-  const [ids, employee] = await Promise.all([causeIds(data.causas, user, { allowCreate: ehQualidade(user.papel) }), collaborator(data.colaborador_id)]);
+  if (!data.colaborador_id) throw new ApiError("Selecione o colaborador sobre quem é a Não Conformidade.", 422, "colaborador");
+  if (!data.descricao) throw new ApiError("Descreva o que aconteceu.", 422, "descricao");
+  if (!["Baixa", "Média", "Alta"].includes(data.criticidade)) throw new ApiError("Selecione uma criticidade válida.", 422, "criticidade");
+  const [ids, employee] = await Promise.all([causeIds(data.causas), collaborator(data.colaborador_id)]);
   const admin = createAdminClient();
   const { data: rpcData, error } = await admin.rpc("criar_nc_com_historico_v3", {
     p_data: data.data,
@@ -449,7 +437,7 @@ export async function criarNc(input: NcInput) {
 export async function editarNc(id: number, input: NcInput) {
   const user = await requireQualidadeSemConflito(id);
   const data = parseInput(input);
-  const [ids, employee] = await Promise.all([causeIds(data.causas, user, { allowCreate: true, allowInactive: true }), collaborator(data.colaborador_id)]);
+  const [ids, employee] = await Promise.all([causeIds(data.causas, { allowInactive: true }), collaborator(data.colaborador_id)]);
   const { data: rpcData, error } = await createAdminClient().rpc("editar_nc_v3", {
     p_nc_id: id,
     p_data: data.data,

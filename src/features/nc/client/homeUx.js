@@ -86,7 +86,10 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
           contar(ncs, "aguardando_feedback") > 0
             ? `${contar(ncs, "aguardando_feedback")} NC(s) procedentes ainda aguardam feedback.`
             : "O fluxo administrativo está sem feedbacks pendentes.",
-        acao: { rotulo: "Ver ações da Qualidade", destino: "#lista-ncs-home" },
+        acao:
+          contar(ncs, "aberta") > 0 || contar(ncs, "aguardando_feedback") === 0
+            ? { rotulo: "Ver NCs aguardando avaliação", filtro: "Aguardando avaliação" }
+            : { rotulo: "Ver NCs aguardando feedback", filtro: "Aguardando feedback" },
       },
       atalhos: [
         { rotulo: "Analisar indicadores", descricao: "Backlog, tempos e reincidência", destino: "/insights", icone: "↗" },
@@ -145,7 +148,10 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
           contar(equipe, "aguardando_aceite") > 0
             ? `${contar(equipe, "aguardando_aceite")} NC(s) aguardam confirmação após o feedback.`
             : "Não há aceites pendentes na sua equipe.",
-        acao: { rotulo: "Ver equipe em acompanhamento", destino: "#lista-ncs-home" },
+        acao:
+          contar(equipe, "aguardando_aceite") > 0
+            ? { rotulo: "Ver aceites pendentes", filtro: "Aguardando aceite" }
+            : { rotulo: "Ver NCs da equipe", filtro: "NCs da equipe" },
       },
       atalhos: [
         { rotulo: "Ver pessoas e NCs", descricao: "Abra cada liderado para ver suas NCs e histórico", destino: "/equipe", icone: "◉" },
@@ -207,16 +213,10 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
         prioridades.length > 0
           ? `Você possui ${prioridades.length} NC(s) ativa(s) para acompanhar.`
           : "Você está em dia. Continue acompanhando seu histórico pessoal.",
-      acao: {
-        rotulo:
-          contar(minhasNcs, "aguardando_aceite") > 0
-            ? "Ver o que precisa de atenção"
-            : "Consultar minhas estatísticas",
-        destino:
-          contar(minhasNcs, "aguardando_aceite") > 0
-            ? "#lista-ncs-home"
-            : `/usuarios/${usuario.id}/estatisticas`,
-      },
+      acao:
+        contar(minhasNcs, "aguardando_aceite") > 0
+          ? { rotulo: "Ver feedbacks aguardando meu aceite", filtro: "Aguardando meu aceite" }
+          : { rotulo: "Consultar minhas estatísticas", destino: `/usuarios/${usuario.id}/estatisticas` },
     },
     atalhos: [
       { rotulo: "Minhas estatísticas", descricao: "Histórico por causa e recorrência", destino: `/usuarios/${usuario.id}/estatisticas`, icone: "≡" },

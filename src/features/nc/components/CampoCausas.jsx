@@ -7,7 +7,10 @@ export default function CampoCausas({
   aoMudar,
   sugestoes = [],
   aoSolicitarCausa,
-  permitirCriacaoDireta = false,
+  linkCatalogo = false,
+  aoMudarPendente,
+  erro,
+  idCampo = "campo-causas",
 }) {
   const [textoDigitado, setTextoDigitado] = useState("");
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
@@ -18,6 +21,12 @@ export default function CampoCausas({
   const referenciaCaixa = useRef(null);
 
   const termo = normalizar(textoDigitado);
+  const mensagemErroId = `${idCampo}-erro`;
+
+  function atualizarTexto(valorTexto) {
+    setTextoDigitado(valorTexto);
+    aoMudarPendente?.(valorTexto.trim());
+  }
   const causaExistente = sugestoes.find((causa) => normalizar(causa) === termo);
   const sugestoesFiltradas = sugestoes.filter((sugestao) => {
     const jaEscolhida = valor.some((v) => normalizar(v) === normalizar(sugestao));
@@ -29,7 +38,7 @@ export default function CampoCausas({
     if (!causaLimpa) return;
     const jaExiste = valor.some((v) => normalizar(v) === normalizar(causaLimpa));
     if (!jaExiste) aoMudar([...valor, causaLimpa]);
-    setTextoDigitado("");
+    atualizarTexto("");
     setMostrarSugestoes(false);
     setMostrarSolicitacao(false);
     setJustificativa("");
@@ -43,8 +52,7 @@ export default function CampoCausas({
     if (evento.key === "Enter") {
       evento.preventDefault();
       if (causaExistente) adicionarCausa(causaExistente);
-      else if (permitirCriacaoDireta) adicionarCausa(textoDigitado);
-      else if (aoSolicitarCausa) setMostrarSolicitacao(true);
+      else if (!linkCatalogo && aoSolicitarCausa && termo) setMostrarSolicitacao(true);
     } else if (evento.key === "Backspace" && textoDigitado === "" && valor.length > 0) {
       removerCausa(valor[valor.length - 1]);
     }
@@ -55,7 +63,7 @@ export default function CampoCausas({
     setEnviandoSolicitacao(true);
     try {
       await aoSolicitarCausa({ descricao: textoDigitado.trim(), justificativa });
-      setTextoDigitado("");
+      atualizarTexto("");
       setJustificativa("");
       setMostrarSolicitacao(false);
       setMostrarSugestoes(false);
@@ -91,8 +99,9 @@ export default function CampoCausas({
           type="text"
           className="sg-tag__input"
           value={textoDigitado}
+          id={idCampo}
           onChange={(e) => {
-            setTextoDigitado(e.target.value);
+            atualizarTexto(e.target.value);
             setMostrarSugestoes(true);
             setMostrarSolicitacao(false);
             setErroSolicitacao("");
@@ -101,6 +110,8 @@ export default function CampoCausas({
           onKeyDown={aoPressionarTecla}
           placeholder={valor.length === 0 ? "Busque e selecione uma causa" : ""}
           aria-label="Causas"
+          aria-invalid={erro ? true : undefined}
+          aria-describedby={erro ? mensagemErroId : undefined}
           aria-autocomplete="list"
           aria-expanded={mostrarSugestoes && sugestoesFiltradas.length > 0}
         />
@@ -116,15 +127,15 @@ export default function CampoCausas({
         </div>
       )}
 
-      {termo && !causaExistente && permitirCriacaoDireta && (
-        <div className="mt-2">
-          <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => adicionarCausa(textoDigitado)}>
-            Adicionar causa ao catálogo
-          </button>
+      {termo && !causaExistente && sugestoesFiltradas.length === 0 && linkCatalogo && (
+        <div className="sg-helper mt-2" role="status">
+          “{textoDigitado.trim()}” não está no catálogo. Causas novas são cadastradas em{" "}
+          <a href="/causas" target="_blank" rel="noopener noreferrer">Gestão de causas</a>
+          {" "}(abre em nova aba); depois volte e selecione-a aqui.
         </div>
       )}
 
-      {termo && !causaExistente && !permitirCriacaoDireta && aoSolicitarCausa && (
+      {termo && !causaExistente && !linkCatalogo && aoSolicitarCausa && (
         <div className="mt-2">
           <button
             type="button"
@@ -163,6 +174,8 @@ export default function CampoCausas({
           </button>
         </div>
       )}
+
+      {erro && <div id={mensagemErroId} className="sg-erro-campo mt-2">{erro}</div>}
     </div>
   );
 }

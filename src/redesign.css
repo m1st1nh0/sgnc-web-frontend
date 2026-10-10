@@ -1252,6 +1252,33 @@ textarea:focus-visible {
   font-size: 1.1rem;
 }
 
+.sg-onboarding-checklist--recolhido {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+}
+
+.sg-onboarding-checklist__resumo {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sg-onboarding-checklist__resumo .sg-onboarding__progresso {
+  flex: 1;
+  max-width: 220px;
+  margin: 0;
+}
+
+.sg-onboarding-checklist__acoes {
+  display: flex;
+  gap: 8px;
+}
+
 .sg-onboarding-checklist__rodape {
   display: flex;
   justify-content: space-between;
@@ -1304,6 +1331,16 @@ textarea:focus-visible {
   .sg-onboarding-checklist__rodape {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .sg-onboarding-checklist--recolhido,
+  .sg-onboarding-checklist__resumo {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sg-onboarding-checklist__resumo .sg-onboarding__progresso {
+    max-width: none;
   }
 
   .sg-dica-contextual {

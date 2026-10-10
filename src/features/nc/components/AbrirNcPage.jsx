@@ -20,6 +20,14 @@ import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { ehQualidade } from "../../../lib/auth/papeis.js";
+import { focarPrimeiroErro, resumoErros } from "../client/errosFormulario.js";
+
+const IDS_CAMPOS = {
+  colaborador: "busca-colaborador",
+  criticidade: "criticidade-nc",
+  descricao: "descricao-nc",
+  causas: "campo-causas",
+};
 
 const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
 const FORMATOS_EVIDENCIA =
@@ -61,6 +69,7 @@ export default function AbrirNcPage() {
   const [criticidade, setCriticidade] = useState("Baixa");
   const [descricao, setDescricao] = useState("");
   const [causas, setCausas] = useState([]);
+  const [causaPendente, setCausaPendente] = useState("");
   const [usuarios, setUsuarios] = useState([]);
   const [causasConhecidas, setCausasConhecidas] = useState([]);
   const [carregandoDados, setCarregandoDados] = useState(true);
@@ -100,7 +109,24 @@ export default function AbrirNcPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    // Causas cadastradas em Gestão de causas (outra aba) aparecem ao voltar para o formulário.
+    function atualizarCatalogo() {
+      listarCausasConhecidas().then(setCausasConhecidas).catch(() => {});
+    }
+    window.addEventListener("focus", atualizarCatalogo);
+    return () => window.removeEventListener("focus", atualizarCatalogo);
+  }, []);
+
   const colaboradorSelecionado = usuarios.find((u) => u.id === colaboradorId);
+  const usuarioQualidade = ehQualidade(usuario?.papel);
+
+  function mostrarErrosCampo(erros, mensagemTopo) {
+    setErrosCampo(erros);
+    setErro(mensagemTopo || resumoErros(erros));
+    focarPrimeiroErro(erros, IDS_CAMPOS);
+  }
+
   async function solicitarNovaCausa(dados) {
     await solicitarCausa(dados);
     setAvisoCausa("Solicitação enviada. A causa ficará disponível após aprovação da Qualidade.");
@@ -150,8 +176,11 @@ export default function AbrirNcPage() {
     if (!descricao.trim()) {
       novosErros.descricao = "Descreva o que aconteceu.";
     }
+    if (causaPendente) {
+      novosErros.causas = `“${causaPendente}” não foi adicionada. Selecione uma causa da lista ou apague o texto digitado.`;
+    }
     if (Object.keys(novosErros).length > 0) {
-      setErrosCampo(novosErros);
+      mostrarErrosCampo(novosErros);
       return;
     }
 
@@ -181,9 +210,16 @@ export default function AbrirNcPage() {
       }
       router.push(`/nc/${nc.id}`);
     } catch (e) {
-      setErro(
-        e instanceof ErroApi ? e.message : "Não foi possível salvar a Não Conformidade. Seus dados continuam no formulário; tente novamente."
-      );
+      if (e instanceof ErroApi && e.campo && IDS_CAMPOS[e.campo]) {
+        mostrarErrosCampo({ [e.campo]: e.message }, `A NC não foi aberta. ${resumoErros({ [e.campo]: e.message })}`);
+      } else {
+        setErro(
+          e instanceof ErroApi
+            ? `A NC não foi aberta. ${e.message} Seus dados continuam no formulário.`
+            : "Não foi possível salvar a Não Conformidade. Seus dados continuam no formulário; tente novamente."
+        );
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } finally {
       setEnviando(false);
       setEtapaEnvio("");
@@ -235,8 +271,10 @@ export default function AbrirNcPage() {
                     Colaborador analisado <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Control
+                    id={IDS_CAMPOS.colaborador}
                     type="search"
                     className="sg-input"
+                    aria-invalid={errosCampo.colaborador ? true : undefined}
                     value={buscaColaborador}
                     onChange={(e) => setBuscaColaborador(e.target.value)}
                     placeholder="Digite o nome ou setor para localizar"
@@ -281,6 +319,8 @@ export default function AbrirNcPage() {
 
                 <CampoSelecao
                   rotulo="Criticidade"
+                  id={IDS_CAMPOS.criticidade}
+                  erro={errosCampo.criticidade}
                   value={criticidade}
                   onChange={(e) => setCriticidade(e.target.value)}
                 >
@@ -304,26 +344,41 @@ export default function AbrirNcPage() {
 
                 <CampoTextoArea
                   rotulo="Descrição"
+                  id={IDS_CAMPOS.descricao}
                   obrigatorio
                   rows={4}
                   value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
+                  onChange={(e) => {
+                    setDescricao(e.target.value);
+                    if (errosCampo.descricao) setErrosCampo((atual) => ({ ...atual, descricao: "" }));
+                  }}
                   erro={errosCampo.descricao}
                   placeholder="Ex.: Durante o chamado 123, o cadastro foi concluído sem o documento obrigatório, gerando retrabalho..."
                 />
                 <div className="texto-xs texto-suave text-end mb-3">{descricao.trim().length} caracteres</div>
 
                 <Form.Group className="mb-4">
-                  <Form.Label className="sg-label">Causas</Form.Label>
+                  <Form.Label className="sg-label" htmlFor={IDS_CAMPOS.causas}>Causas</Form.Label>
                   <CampoCausas
+                    idCampo={IDS_CAMPOS.causas}
                     valor={causas}
-                    aoMudar={setCausas}
+                    aoMudar={(novas) => {
+                      setCausas(novas);
+                      if (errosCampo.causas) setErrosCampo((atual) => ({ ...atual, causas: "" }));
+                    }}
+                    aoMudarPendente={(texto) => {
+                      setCausaPendente(texto);
+                      if (!texto && errosCampo.causas) setErrosCampo((atual) => ({ ...atual, causas: "" }));
+                    }}
+                    erro={errosCampo.causas}
                     sugestoes={causasConhecidas}
-                    aoSolicitarCausa={solicitarNovaCausa}
-                    permitirCriacaoDireta={ehQualidade(usuario?.papel)}
+                    aoSolicitarCausa={usuarioQualidade ? undefined : solicitarNovaCausa}
+                    linkCatalogo={usuarioQualidade}
                   />
                   <Form.Text className="sg-helper">
-                    Selecione uma causa aprovada ou solicite a inclusão de uma nova.
+                    {usuarioQualidade
+                      ? "Selecione causas do catálogo. Causas novas são cadastradas em Gestão de causas."
+                      : "Selecione uma causa do catálogo ou solicite a inclusão de uma nova."}
                   </Form.Text>
                 </Form.Group>
               </div>

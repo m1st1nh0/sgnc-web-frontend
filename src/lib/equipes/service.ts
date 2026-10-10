@@ -17,7 +17,7 @@ const ERROS: Record<string, [string, number]> = {
   sem_permissao: ["Somente a Qualidade e o Administrador podem alterar equipes.", 403],
   usuario_nao_encontrado: ["Pessoa não encontrada.", 404],
   papel_fora_das_equipes: ["Perfis de Qualidade e Administrador não fazem parte das equipes. Use a gestão de usuários.", 422],
-  papel_invalido: ["Na montagem de equipes o perfil só pode ser Supervisor ou Funcionário.", 422],
+  papel_invalido: ["Na montagem de equipes o perfil só pode ser Supervisor ou Colaborador.", 422],
   lideranca_obrigatoria: ["Selecione a liderança desta pessoa.", 422],
   lideranca_invalida: ["Selecione uma liderança ativa (supervisor, Qualidade ou administrador).", 422],
   ciclo: ["Essa alteração criaria um ciclo na hierarquia. Selecione uma liderança acima desta pessoa.", 422],

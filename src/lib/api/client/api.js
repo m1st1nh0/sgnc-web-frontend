@@ -11,9 +11,10 @@ function encerrarSessaoLocal() {
  * Erro customizado para respostas dos Route Handlers da aplicação.
  */
 export class ErroApi extends Error {
-  constructor(mensagem, status) {
+  constructor(mensagem, status, campo = null) {
     super(mensagem);
     this.status = status;
+    this.campo = campo;
   }
 }
 
@@ -22,10 +23,12 @@ async function exigirRespostaOk(resposta) {
 
   let mensagem = `Erro ${resposta.status}`;
   let requestId = null;
+  let campo = null;
   try {
     const dadosErro = await resposta.json();
     mensagem = dadosErro.detail || mensagem;
     requestId = dadosErro.request_id || null;
+    campo = dadosErro.campo || null;
   } catch {
     // resposta sem corpo JSON; mantém a mensagem genérica
   }
@@ -38,7 +41,7 @@ async function exigirRespostaOk(resposta) {
     mensagem = `${mensagem} Referência de suporte: ${requestId}.`;
   }
 
-  throw new ErroApi(mensagem, resposta.status);
+  throw new ErroApi(mensagem, resposta.status, campo);
 }
 
 /**

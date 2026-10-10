@@ -9,7 +9,14 @@ import Col from "react-bootstrap/Col";
 import Alert from "react-bootstrap/Alert";
 
 import CampoCausas from "./CampoCausas.jsx";
-import { buscarNc, editarNc, listarCausasConhecidas, solicitarCausa } from "../client/ncService.js";
+import { focarPrimeiroErro, resumoErros } from "../client/errosFormulario.js";
+
+const IDS_CAMPOS = {
+  colaborador: "colaborador-nc",
+  descricao: "descricao-nc",
+  causas: "campo-causas",
+};
+import { buscarNc, editarNc, listarCausasConhecidas } from "../client/ncService.js";
 import { listarUsuarios } from "../../users/client/usuarioService.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { ErroApi } from "../../../lib/api/client/api.js";
@@ -42,8 +49,8 @@ export default function EditarNcPage() {
 
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
-  const [avisoCausa, setAvisoCausa] = useState("");
   const [errosCampo, setErrosCampo] = useState({});
+  const [causaPendente, setCausaPendente] = useState("");
 
   useEffect(() => {
     async function carregar() {
@@ -81,10 +88,21 @@ export default function EditarNcPage() {
     carregar();
   }, [id, usuario]);
 
+  useEffect(() => {
+    // Causas cadastradas em Gestão de causas (outra aba) aparecem ao voltar para o formulário.
+    function atualizarCatalogo() {
+      listarCausasConhecidas().then(setCausasConhecidas).catch(() => {});
+    }
+    window.addEventListener("focus", atualizarCatalogo);
+    return () => window.removeEventListener("focus", atualizarCatalogo);
+  }, []);
+
   const colaboradorSelecionado = usuarios.find((u) => u.id === colaboradorId);
-  async function solicitarNovaCausa(dados) {
-    await solicitarCausa(dados);
-    setAvisoCausa("Solicitação enviada. A causa ficará disponível após aprovação da Qualidade.");
+
+  function mostrarErrosCampo(erros, mensagemTopo) {
+    setErrosCampo(erros);
+    setErro(mensagemTopo || resumoErros(erros));
+    focarPrimeiroErro(erros, IDS_CAMPOS);
   }
 
   async function aoEnviar(evento) {
@@ -99,9 +117,12 @@ export default function EditarNcPage() {
     if (!descricao.trim()) {
       novosErros.descricao = "Preencha a descrição.";
     }
+    if (causaPendente) {
+      novosErros.causas = `“${causaPendente}” não foi adicionada. Selecione uma causa da lista ou apague o texto digitado.`;
+    }
 
     if (Object.keys(novosErros).length > 0) {
-      setErrosCampo(novosErros);
+      mostrarErrosCampo(novosErros);
       return;
     }
 
@@ -116,7 +137,12 @@ export default function EditarNcPage() {
       });
       router.push(`/nc/${id}`);
     } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Não foi possível salvar as alterações.");
+      if (e instanceof ErroApi && e.campo && IDS_CAMPOS[e.campo]) {
+        mostrarErrosCampo({ [e.campo]: e.message }, `As alterações não foram salvas. ${resumoErros({ [e.campo]: e.message })}`);
+      } else {
+        setErro(e instanceof ErroApi ? e.message : "Não foi possível salvar as alterações.");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } finally {
       setEnviando(false);
     }
@@ -138,7 +164,6 @@ export default function EditarNcPage() {
         )}
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
-        {avisoCausa && <Alert variant="success" role="status">{avisoCausa}</Alert>}
 
         {carregandoDados ? (
           <EstadoCarregamento mensagem="Carregando não conformidade..." />
@@ -162,6 +187,7 @@ export default function EditarNcPage() {
                   <Col md={8}>
                     <CampoSelecao
                       rotulo="Colaborador analisado"
+                      id={IDS_CAMPOS.colaborador}
                       obrigatorio
                       value={colaboradorId}
                       onChange={(e) => setColaboradorId(e.target.value)}
@@ -211,6 +237,7 @@ export default function EditarNcPage() {
 
                 <CampoTextoArea
                   rotulo="Descrição"
+                  id={IDS_CAMPOS.descricao}
                   obrigatorio
                   rows={4}
                   value={descricao}
@@ -220,16 +247,18 @@ export default function EditarNcPage() {
                 />
 
                 <Form.Group className="mb-4">
-                  <Form.Label className="sg-label">Causas</Form.Label>
+                  <Form.Label className="sg-label" htmlFor={IDS_CAMPOS.causas}>Causas</Form.Label>
                   <CampoCausas
+                    idCampo={IDS_CAMPOS.causas}
                     valor={causas}
                     aoMudar={setCausas}
+                    aoMudarPendente={setCausaPendente}
+                    erro={errosCampo.causas}
                     sugestoes={causasConhecidas}
-                    aoSolicitarCausa={solicitarNovaCausa}
-                    permitirCriacaoDireta={ehQualidade(usuario?.papel)}
+                    linkCatalogo
                   />
                   <Form.Text className="sg-helper">
-                    Selecione uma causa aprovada ou solicite a inclusão de uma nova.
+                    Selecione causas do catálogo. Causas novas são cadastradas em Gestão de causas.
                   </Form.Text>
                 </Form.Group>
               </div>

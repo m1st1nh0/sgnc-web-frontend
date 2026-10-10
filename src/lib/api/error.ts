@@ -4,6 +4,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status = 400,
+    /** Campo do formulário ao qual o erro se refere, para a interface apontá-lo. */
+    public readonly campo?: string,
   ) {
     super(message);
   }
@@ -19,7 +21,10 @@ export function apiErrorResponse(error: unknown) {
         { status: error.status },
       );
     }
-    return Response.json({ detail: error.message }, { status: error.status });
+    return Response.json(
+      error.campo ? { detail: error.message, campo: error.campo } : { detail: error.message },
+      { status: error.status },
+    );
   }
 
   const requestId = randomUUID();

@@ -248,3 +248,18 @@ export function checklistDoPapel(papel, usuarioId) {
     })
   );
 }
+
+/**
+ * O primeiro acesso é o dia em que a pessoa começou o onboarding. Sem nenhum
+ * registro ainda, também é primeiro acesso. A partir do dia seguinte o bloco
+ * aparece recolhido, a menos que a própria pessoa o expanda.
+ */
+export function ehPrimeiroAcesso(progresso, agora = new Date()) {
+  const datas = [
+    progresso?.iniciado_em,
+    ...(progresso?.etapas_concluidas || []).map((etapa) => etapa.concluida_em),
+  ].filter(Boolean).map((valor) => new Date(valor)).filter((data) => !Number.isNaN(data.getTime()));
+  if (datas.length === 0) return true;
+  const inicio = new Date(Math.min(...datas.map((data) => data.getTime())));
+  return inicio.toDateString() === agora.toDateString();
+}

@@ -17,7 +17,7 @@ import { ehQualidade } from "../../../lib/auth/papeis.js";
 import Botao from "../../../components/ui/Botao.jsx";
 import GestaoEquipes from "./GestaoEquipes.jsx";
 
-const ROTULOS_PAPEL = { supervisor: "Liderança", funcionario: "Funcionário" };
+const ROTULOS_PAPEL = { supervisor: "Liderança", funcionario: "Colaborador" };
 
 export default function EquipePage() {
   const { usuario } = useAuth();

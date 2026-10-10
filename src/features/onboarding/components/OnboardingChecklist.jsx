@@ -1,11 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { useOnboarding } from "./OnboardingContext.jsx";
-import { checklistDoPapel } from "../onboardingConteudo.js";
+import { checklistDoPapel, ehPrimeiroAcesso } from "../onboardingConteudo.js";
 import Botao from "../../../components/ui/Botao.jsx";
+
+const CHAVE_PREFERENCIA = "sgnc-onboarding-checklist";
+
+function lerPreferencia(usuarioId) {
+  try {
+    const valor = window.localStorage.getItem(`${CHAVE_PREFERENCIA}-${usuarioId}`);
+    return valor === "aberto" || valor === "recolhido" ? valor : null;
+  } catch {
+    return null;
+  }
+}
+
+function gravarPreferencia(usuarioId, valor) {
+  try {
+    window.localStorage.setItem(`${CHAVE_PREFERENCIA}-${usuarioId}`, valor);
+  } catch {
+    // Sem armazenamento local: a escolha vale só até recarregar a página.
+  }
+}
 
 export default function OnboardingChecklist() {
   const { usuario } = useAuth();
@@ -17,6 +37,19 @@ export default function OnboardingChecklist() {
     abrirRevisao,
     concluirEtapa,
   } = useOnboarding();
+  const [preferencia, setPreferencia] = useState(null);
+
+  useEffect(() => {
+    if (!usuario?.id) return;
+    // Preferência lida após a montagem para não divergir da renderização do servidor.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPreferencia(lerPreferencia(usuario.id));
+  }, [usuario?.id]);
+
+  function alternar(valor) {
+    setPreferencia(valor);
+    if (usuario?.id) gravarPreferencia(usuario.id, valor);
+  }
 
   if (
     carregando ||
@@ -32,6 +65,41 @@ export default function OnboardingChecklist() {
     etapaConcluida(item.chave)
   ).length;
   const percentual = Math.round((concluidos / itens.length) * 100);
+  const expandido = preferencia ? preferencia === "aberto" : ehPrimeiroAcesso(progresso);
+
+  if (!expandido) {
+    return (
+      <section
+        className="sg-onboarding-checklist sg-onboarding-checklist--recolhido mb-4"
+        aria-label="Seus primeiros passos"
+      >
+        <div className="sg-onboarding-checklist__resumo">
+          <strong>Seus primeiros passos</strong>
+          <span className="texto-sm texto-suave">
+            {concluidos} de {itens.length} tarefas concluídas
+          </span>
+          <div
+            className="sg-onboarding__progresso"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={percentual}
+            aria-label={"Progresso dos primeiros passos: " + percentual + "%"}
+          >
+            <span style={{ width: percentual + "%" }} />
+          </div>
+        </div>
+        <div className="sg-onboarding-checklist__acoes">
+          <Botao variante="subtle" tamanho="sm" onClick={() => alternar("aberto")} aria-expanded="false">
+            Continuar
+          </Botao>
+          <Botao variante="subtle" tamanho="sm" onClick={dispensar}>
+            Ocultar
+          </Botao>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -102,9 +170,14 @@ export default function OnboardingChecklist() {
       </div>
 
       <div className="sg-onboarding-checklist__rodape">
-        <Botao variante="subtle" tamanho="sm" onClick={abrirRevisao}>
-          Rever apresentação
-        </Botao>
+        <div className="d-flex gap-2 flex-wrap">
+          <Botao variante="subtle" tamanho="sm" onClick={abrirRevisao}>
+            Rever apresentação
+          </Botao>
+          <Botao variante="subtle" tamanho="sm" onClick={() => alternar("recolhido")} aria-expanded="true">
+            Recolher
+          </Botao>
+        </div>
         <Botao variante="subtle" tamanho="sm" onClick={dispensar}>
           Ocultar primeiros passos
         </Botao>

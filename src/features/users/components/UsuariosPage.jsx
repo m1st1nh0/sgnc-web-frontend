@@ -38,7 +38,7 @@ const COR_PAPEL = {
 };
 
 const PAPEIS_OPCOES = [
-  { value: "funcionario", label: "Funcionário" },
+  { value: "funcionario", label: "Colaborador" },
   { value: "supervisor", label: "Supervisor" },
   { value: "qualidade", label: "Qualidade" },
   { value: "adm", label: "Administrador do sistema (inclui Qualidade)" },
