@@ -50,7 +50,6 @@ async function pdfWriter(title: string, subtitle: string) {
 }
 
 export async function gerarPdfNc(id: number) {
-  await requireUser();
   const nc = await buscarNc(id) as Row;
   const writer = await pdfWriter("Relatorio de Nao Conformidade", `NC #${id}`);
   writer.heading("Resumo"); writer.line("Status", canonical(nc.status)); writer.line("Criticidade", nc.criticidade); writer.line("Data", brDate(nc.data)); writer.line("Chamado", nc.chamado); writer.line("Colaborador", nc.colaborador); writer.line("Setor", nc.setor);

@@ -76,7 +76,7 @@ async function carregarPlano(ncId: number) {
 /** Carrega a NC já filtrada pelo escopo de leitura do usuário, o plano e a relação hierárquica. */
 async function contexto(ncId: number) {
   const user = await requireUser();
-  const nc = (await buscarNc(ncId)) as Record<string, unknown>;
+  const nc = (await buscarNc(ncId, user)) as Record<string, unknown>;
   const [plano, lideraColaborador] = await Promise.all([carregarPlano(ncId), lidera(user, nc.colaborador_id)]);
   return { user, nc, plano, lideraColaborador };
 }

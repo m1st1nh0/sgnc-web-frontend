@@ -9,12 +9,15 @@ import { NOME_PAPEL } from "../src/lib/auth/papeis.js";
 
 const service = readFileSync("src/lib/nc/service.ts", "utf8");
 const campoCausas = readFileSync("src/features/nc/components/CampoCausas.jsx", "utf8");
+const causasCatalogo = readFileSync("src/lib/nc/causasCatalogo.ts", "utf8");
 const causeIdsBody = service.slice(service.indexOf("async function causeIds"), service.indexOf("async function collaborator"));
 
 test("abertura e edição de NC nunca criam causa no catálogo", () => {
   expect(causeIdsBody).not.toContain(".insert(");
   expect(service).not.toContain("allowCreate");
-  expect(causeIdsBody).toContain('422, "causas"');
+  expect(causeIdsBody).toContain("resolverCausasDoCatalogo(");
+  expect(causasCatalogo).not.toContain(".insert(");
+  expect(causasCatalogo).toContain('422, "causas"');
   expect(campoCausas).not.toMatch(/permitirCriacaoDireta|Adicionar causa ao catálogo/);
   expect(campoCausas).toContain('href="/causas"');
 });

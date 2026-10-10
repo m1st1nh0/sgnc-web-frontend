@@ -127,14 +127,17 @@ export default function DetalhesNcPage({ retorno = "/" }) {
       setErro("");
       const ncCarregada = await buscarNc(id);
       setNc(ncCarregada);
-      await concluirEtapa("checklist_visualizar_nc", "checklist", {
-        nc_id: id,
-      });
-      if (usuario?.papel === "supervisor") {
-        await concluirEtapa("checklist_acompanhar_nc", "checklist", {
+      // Onboarding é auxiliar: registra em segundo plano, sem segurar o detalhe.
+      void (async () => {
+        await concluirEtapa("checklist_visualizar_nc", "checklist", {
           nc_id: id,
         });
-      }
+        if (usuario?.papel === "supervisor") {
+          await concluirEtapa("checklist_acompanhar_nc", "checklist", {
+            nc_id: id,
+          });
+        }
+      })();
     } catch (e) {
       setErro(
         e instanceof ErroApi ? e.message : "Não foi possível carregar a NC."
@@ -170,10 +173,9 @@ export default function DetalhesNcPage({ retorno = "/" }) {
   }
 
   useEffect(() => {
-    (async () => {
-      await carregarNc();
-      await carregarEvidencias();
-    })();
+    // NC e evidências em paralelo: a listagem de evidências faz a própria checagem de acesso.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void Promise.all([carregarNc(), carregarEvidencias()]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
