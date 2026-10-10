@@ -34,6 +34,15 @@ Decisões do responsável (09/10/2026), valem como regra:
 - Medida disciplinar tem etapas (sugerida → aprovada/reprovada → aplicada) e só pode ser decidida ou aplicada por alguém da Qualidade que não seja o colaborador da NC.
 - Na interface, o papel "Funcionário" se chama **"Colaborador"**. O valor interno `funcionario` no banco e na API não muda.
 
+Decisões de conformidade com o processo (10/10/2026, ver [`docs/revisao-tecnica-2026-10.md`](docs/revisao-tecnica-2026-10.md)):
+- Criticidade unificada em Leve/Crítica; NC crítica continua exigindo plano de ação e verificação de eficácia.
+- Medida disciplinar pela regra do documento, contando em 12 meses: 3 NCs da mesma causa geram medida e zeram o contador (histórico mantido); 3 medidas levam a suspensão; 3 suspensões levam o caso a RH e Diretoria.
+- NC ganha tipo (cobrança/orientativa) e natureza da causa (individual/sistêmica); só cobrança com causa individual conta para a medida. Status novos: Reaberta e Escalada.
+- Supervisor e colaborador continuam abrindo NC; a Qualidade avalia se procede.
+- NC leve encerra no aceite do feedback.
+- NC não é excluída: é cancelada com motivo e histórico.
+- Prazos das etapas (contenção, análise, feedback, plano, verificação de 30 dias) aparecem na tela e nos indicadores; perto de vencer ou vencidos, o sino avisa a Qualidade responsável, e ação de plano vencida avisa os gestores da área. Só o aceite muda o status sozinho.
+
 Todas as decisões do plano estão respondidas. Decisão nova que surgir deve ser perguntada ao responsável, não assumida.
 
 ## Convenções

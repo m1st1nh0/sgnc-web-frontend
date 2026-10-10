@@ -39,9 +39,3 @@ export async function requireRole(roles: PapelUsuario[]) {
   if (!roles.includes(user.papel)) redirect("/");
   return user;
 }
-
-export async function requirePermission(permission: (user: UsuarioAutenticado) => boolean) {
-  const user = await requireUser();
-  if (!permission(user)) redirect("/");
-  return user;
-}

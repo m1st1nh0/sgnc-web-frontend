@@ -43,7 +43,7 @@ const config = readFileSync("src/lib/api/client/config.js", "utf8");
 const service = readFileSync("src/features/reports/client/relatoriosService.js", "utf8");
 const pagina = readFileSync("src/features/reports/components/RelatoriosPage.jsx", "utf8");
 const app = readFileSync("src/app/(app)/relatorios/page.tsx", "utf8");
-const nav = readFileSync("src/components/navigation/BarraNavegacao.jsx", "utf8");
+const nav = readFileSync("src/components/navigation/AppNavigation.jsx", "utf8");
 const reportPage = readFileSync("src/features/reports/components/RelatoriosPage.jsx", "utf8");
 const barChart = readFileSync("src/components/graficos/GraficoBarrasHorizontais.jsx", "utf8");
 
@@ -72,7 +72,7 @@ assert.match(barChart, /corChave/);
 
 assert.match(app, /RelatoriosPage/);
 assert.match(app, /requireRole\(\["adm", "qualidade", "supervisor"\]\)/);
-assert.match(nav, /href="\/relatorios"/);
+assert.match(nav, /href: "\/relatorios"/);
 assert.match(nav, /const ehGestao/);
 
 console.log("PR07 REPORT UI TESTS PASSED");

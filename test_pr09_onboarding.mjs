@@ -67,7 +67,7 @@ const home = readFileSync("src/features/nc/components/HomePage.jsx", "utf8");
 const abertura = readFileSync("src/features/nc/components/AbrirNcPage.jsx", "utf8");
 const detalhes = readFileSync("src/features/nc/components/DetalhesNcPage.jsx", "utf8");
 const dossie = readFileSync("src/features/users/components/EstatisticasUsuarioPage.jsx", "utf8");
-const navbar = readFileSync("src/components/navigation/BarraNavegacao.jsx", "utf8");
+const navbar = readFileSync("src/components/navigation/AppNavigation.jsx", "utf8");
 const estilos = readFileSync("src/redesign.css", "utf8");
 
 assert.match(app, /<OnboardingProvider>/);
@@ -79,7 +79,7 @@ assert.match(modal, /aria-valuenow/);
 assert.match(checklist, /Seus primeiros passos/);
 assert.match(checklist, /Ocultar primeiros passos/);
 assert.match(dica, /concluirEtapa\(chave, "contextual"/);
-assert.match(navbar, />\s*Guia\s*</);
+assert.match(navbar, /<span>Guia<\/span>/);
 assert.match(home, /<OnboardingChecklist \/>/);
 assert.match(abertura, /dica_abertura_colaborador/);
 assert.match(abertura, /dica_abertura_evidencias/);
