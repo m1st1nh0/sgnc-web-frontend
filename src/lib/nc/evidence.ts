@@ -22,7 +22,6 @@ function validateFile(file: File) {
 }
 
 export async function listarEvidencias(ncId: number) {
-  await requireUser();
   await buscarNc(ncId);
   const admin = createAdminClient();
   const { data, error } = await admin.from("evidencias").select("*").eq("nc_id", ncId).order("criado_em");
@@ -35,7 +34,7 @@ export async function listarEvidencias(ncId: number) {
 
 export async function anexarEvidencia(ncId: number, formData: FormData) {
   const user = await requireUser();
-  const nc = await buscarNc(ncId) as Record<string, unknown>;
+  const nc = await buscarNc(ncId, user) as Record<string, unknown>;
   if (nc.status !== "aberta") throw new ApiError("Só é possível anexar evidências enquanto a NC está em 'aberta'.");
   if (!podeAnexarEvidencia(nc, user)) {
     throw new ApiError("Somente a Qualidade, quem registrou a NC ou o colaborador analisado podem anexar evidências.", 403);
@@ -63,7 +62,7 @@ export async function anexarEvidencia(ncId: number, formData: FormData) {
 
 export async function excluirEvidencia(ncId: number, evidenceId: number) {
   const user = await requireUser();
-  const nc = await buscarNc(ncId) as Record<string, unknown>;
+  const nc = await buscarNc(ncId, user) as Record<string, unknown>;
   if (!podeExcluirEvidencia(nc, user)) {
     throw new ApiError("Somente a Qualidade ou quem registrou a NC, enquanto ela está em 'aberta', podem remover evidências.", 403);
   }

@@ -78,7 +78,7 @@ Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 
 ### Fase 0: linha de base (pontos 1 e 4)
 
 - [x] 0.1 Confirmar na Vercel (Settings → Functions → Function Region) a região atual. **Resultado (09/10):** as funções rodam em `iad1` (Washington, EUA), confirmado no deployment `dpl_4hoNLSSMSXQo867JzFjeonjzbzDv`; o banco está em `sa-east-1` (São Paulo).
-- [ ] 0.2 **Bloqueado em 09/10:** o ambiente de desenvolvimento do Claude não alcança `*.vercel.app` (política de rede) e o plano Hobby guarda só 1 h de logs. Script de medição pronto; rodar quando o domínio for liberado. Medir tempo de resposta (10 chamadas, p50 e p95) de `GET /api/nc`, `GET /api/nc/[id]`, `GET /api/nc/[id]/evidencias` e `POST /api/nc` no Preview, com sessão de Qualidade. Registrar na seção "Medições".
+- [ ] 0.2 **Bloqueado em 09/10 e de novo em 10/10:** o ambiente de desenvolvimento do Claude não alcança `*.vercel.app` (política de rede; o proxy recusa o CONNECT) e o plano Hobby guarda só 1 h de logs. Script de medição pronto em `scripts/medir-rotas.mjs` (só GET, aquecimento fora da amostra, mostra a região pelo `x-vercel-id`); rodar quando o domínio for liberado ou localmente por quem tem acesso. Medir tempo de resposta (10 chamadas, p50 e p95) de `GET /api/nc`, `GET /api/nc/[id]`, `GET /api/nc/[id]/evidencias` e `POST /api/nc` no Preview, com sessão de Qualidade. Registrar na seção "Medições".
 - [x] 0.3 (por análise de código, sem criar NCs na base de produção) Reproduzir o erro do ponto 4 no Preview: abrir NC como Qualidade com (a) causa digitada sem Enter, (b) causa arquivada, (c) causa inexistente, (d) sem colaborador, (e) sem descrição. Registrar o que cada caso mostra hoje.
 
   Comportamento antes da Fase 1: (a) causa digitada sem Enter era descartada sem aviso e a NC era aberta sem ela; (b) causa arquivada e (c) causa inexistente para não-Qualidade: 422 com mensagem só no topo; (c) para Qualidade a causa era criada no catálogo; (d) e (e) validadas só no navegador, com erro no campo mas sem foco nem resumo; falha do servidor: mensagem genérica no topo.
@@ -118,11 +118,12 @@ Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 
 
 ### Fase 2: desempenho (ponto 1)
 
-- [ ] 2.1 Criar `vercel.json` com `"regions": ["gru1"]` (mesma região do Supabase). Validar no Preview que as funções rodam em `gru1`.
-- [ ] 2.2 `src/lib/auth/session.ts`: envolver `getUser` com `cache()` do React para não repetir sessão + leitura de usuário quando a mesma requisição chama `requireUser` mais de uma vez (ex.: `criarNc` → `buscarNc`; `obterTimeline` → `buscarNc`).
-- [ ] 2.3 `src/lib/nc/service.ts`, `causeIds`: buscar todas as causas numa consulta (`.in("descricao_normalizada", lista)`) em vez de uma por vez.
-- [ ] 2.4 `HomePage.jsx` e `DetalhesNcPage.jsx`: não esperar `concluirEtapa` (disparar sem `await`, como já faz a abertura). No detalhe, carregar NC e evidências em paralelo.
-- [ ] 2.5 Repetir as medições da Fase 0 e registrar o ganho. Meta: p50 de `GET /api/nc/[id]` abaixo de 400 ms no Preview.
+- [x] 2.1 Criar `vercel.json` com `"regions": ["gru1"]` (mesma região do Supabase). Validar no Preview que as funções rodam em `gru1` (pendente de conferência no deployment do Preview: cabeçalho `x-vercel-id` ou Settings → Functions).
+- [x] 2.2 `src/lib/auth/session.ts`: envolver `getUser` com `cache()` do React para não repetir sessão + leitura de usuário quando a mesma requisição chama `requireUser` mais de uma vez (ex.: `criarNc` → `buscarNc`; `obterTimeline` → `buscarNc`).
+  **Divergência (10/10):** testado num build local, o `cache()` do React só memoriza durante a renderização (layout + página); em Route Handlers ele chama a função toda vez. Por isso, além do `cache()`, `buscarNc(id, usuario?)` recebe o usuário já carregado: abertura, edição, avaliação, feedback, aceite, evidências (listar, anexar, excluir), plano de ação e PDF da NC deixam de repetir sessão + leitura do usuário.
+- [x] 2.3 `src/lib/nc/service.ts`, `causeIds`: buscar todas as causas numa consulta (`.in("descricao_normalizada", lista)`) em vez de uma por vez. A conferência com o catálogo ficou em `src/lib/nc/causasCatalogo.ts` (função pura, com teste); a lista do filtro vai entre aspas e com escape, para causas com vírgula, parênteses ou aspas.
+- [x] 2.4 `HomePage.jsx` e `DetalhesNcPage.jsx`: não esperar `concluirEtapa` (disparar sem `await`, como já faz a abertura). No detalhe, carregar NC e evidências em paralelo.
+- [ ] 2.5 Repetir as medições da Fase 0 e registrar o ganho. Meta: p50 de `GET /api/nc/[id]` abaixo de 400 ms no Preview. **Pendente:** depende do acesso a `*.vercel.app` (ver 0.2). Para medir o "antes", rode o script contra a produção atual (`iad1`) e o "depois" contra o Preview deste PR (`gru1`), com a mesma NC (`MEDIR_NC_ID`).
 - [ ] 2.6 Fora deste ciclo, registrado como próximo passo: paginação de `listarNcs` (já citado em `backlog-melhorias-operacionais.md`).
 
 ### Fase 3: acompanhamento da NC (ponto 3)

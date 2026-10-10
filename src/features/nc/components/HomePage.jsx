@@ -83,16 +83,20 @@ export default function HomePage() {
           ? resultadoEquipe.value.map((item) => item.id)
           : []
       );
-      await concluirEtapa("checklist_conhecer_painel", "checklist", {
-        pagina: "home",
-      });
-      if (usuario?.papel === "supervisor") {
-        await concluirEtapa("checklist_equipe", "checklist", {
-          quantidade: resultadoEquipe.status === "fulfilled"
-            ? resultadoEquipe.value.length
-            : 0,
+      // Onboarding é auxiliar: registra em segundo plano, sem segurar o painel.
+      const quantidadeEquipe = resultadoEquipe.status === "fulfilled"
+        ? resultadoEquipe.value.length
+        : 0;
+      void (async () => {
+        await concluirEtapa("checklist_conhecer_painel", "checklist", {
+          pagina: "home",
         });
-      }
+        if (usuario?.papel === "supervisor") {
+          await concluirEtapa("checklist_equipe", "checklist", {
+            quantidade: quantidadeEquipe,
+          });
+        }
+      })();
     } catch (e) {
       setErro(
         e instanceof ErroApi

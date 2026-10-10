@@ -9,6 +9,8 @@ import { ApiError } from "@/lib/api/error";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { ehQualidade } from "@/lib/auth/papeis";
+import type { UsuarioAutenticado } from "@/lib/auth/types";
+import { listaFiltroIn, chaveCatalogoCausa, resolverCausasDoCatalogo } from "@/lib/nc/causasCatalogo";
 
 const TEXTO_ACEITE = "li e concordo com a não conformidade e com o feedback aplicado";
 
@@ -87,22 +89,12 @@ async function causeIds(
   options: { allowInactive?: boolean } = {},
 ) {
   // Causas só entram pelo catálogo (/causas): abertura e edição de NC nunca criam causa.
-  const admin = createAdminClient() as any;
-  const ids: number[] = [];
-  for (const descricao of causas) {
-    const normalized = descricao.trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
-    const { data: existing, error: lookupError } = await admin.from("causas")
-      .select("id, ativo").eq("descricao_normalizada", normalized).maybeSingle();
-    if (lookupError) throw new ApiError("Não foi possível validar o catálogo de causas.", 500);
-    if (!existing) {
-      throw new ApiError(`A causa “${descricao}” não está no catálogo. Selecione uma causa da lista ou cadastre-a em Gestão de causas.`, 422, "causas");
-    }
-    if (!existing.ativo && !options.allowInactive) {
-      throw new ApiError(`A causa “${descricao}” está arquivada. Solicite sua reativação à Qualidade.`, 422, "causas");
-    }
-    ids.push(existing.id);
-  }
-  return ids;
+  if (!causas.length) return [] as number[];
+  const normalizadas = [...new Set(causas.map(chaveCatalogoCausa))];
+  const { data, error } = await (createAdminClient() as any).from("causas")
+    .select("id, ativo, descricao_normalizada").filter("descricao_normalizada", "in", listaFiltroIn(normalizadas));
+  if (error) throw new ApiError("Não foi possível validar o catálogo de causas.", 500);
+  return resolverCausasDoCatalogo(causas, data ?? [], options);
 }
 
 async function collaborator(id: string | null) {
@@ -202,8 +194,9 @@ export async function listarMinhasNcs() {
   return rows.map((nc) => filterSensitive(nc, user, equipe));
 }
 
-export async function buscarNc(id: number) {
-  const user = await requireUser();
+/** `usuario` evita repetir sessão + leitura do usuário quando quem chama já o carregou. */
+export async function buscarNc(id: number, usuario?: UsuarioAutenticado) {
+  const user = usuario ?? await requireUser();
   const admin = createAdminClient();
   let query = admin.from("nao_conformidades").select("*").eq("id", id);
   const teamIds = await equipeDoUsuario(user);
@@ -431,7 +424,7 @@ export async function criarNc(input: NcInput) {
   if (error) throw new ApiError("Não foi possível abrir a não conformidade.", 500);
   const result = normalizeRpc(rpcData);
   if (!result.ok) transitionError(result);
-  return buscarNc(Number(result.nc_id));
+  return buscarNc(Number(result.nc_id), user);
 }
 
 export async function editarNc(id: number, input: NcInput) {
@@ -453,7 +446,7 @@ export async function editarNc(id: number, input: NcInput) {
   if (error) throw new ApiError("Não foi possível editar a NC.", 500);
   const result = normalizeRpc(rpcData);
   if (!result.ok) transitionError(result);
-  return buscarNc(id);
+  return buscarNc(id, user);
 }
 
 export async function excluirNc(id: number) {
@@ -489,10 +482,10 @@ export async function avaliarNc(id: number, input: { decisao?: unknown; motivo_i
     const motivo = String(input.motivo_invalidacao ?? "").trim();
     if (!motivo) throw new ApiError("Informe o motivo da invalidação.");
     await rpcTransition("invalidar_nc_v3", { p_nc_id: id, p_responsavel_id: user.id, p_motivo: motivo });
-    return buscarNc(id);
+    return buscarNc(id, user);
   }
   const result = await rpcTransition("validar_nc_com_workflow_v3", { p_nc_id: id, p_responsavel_id: user.id });
-  const response = await buscarNc(id);
+  const response = await buscarNc(id, user);
   const ocorrencias = Array.isArray(result.ocorrencias)
     ? result.ocorrencias.map((item) => {
         const occurrence = item as Record<string, unknown>;
@@ -595,7 +588,7 @@ export async function aplicarFeedback(id: number, input: { feedback?: unknown })
   const feedback = String(input.feedback ?? "").trim();
   if (!feedback) throw new ApiError("Informe o feedback.");
   await rpcTransition("aplicar_feedback_nc_v3", { p_nc_id: id, p_responsavel_id: user.id, p_feedback: feedback });
-  return buscarNc(id);
+  return buscarNc(id, user);
 }
 
 export async function aceitarNc(id: number, input: { texto_aceite?: unknown }) {
@@ -604,10 +597,10 @@ export async function aceitarNc(id: number, input: { texto_aceite?: unknown }) {
   if (texto.trim().toLowerCase().replace(/\s+/g, " ") !== TEXTO_ACEITE) {
     throw new ApiError(`Para confirmar, digite exatamente: "${TEXTO_ACEITE}"`);
   }
-  const current = await buscarNc(id) as Record<string, unknown>;
+  const current = await buscarNc(id, user) as Record<string, unknown>;
   if (current.colaborador_id !== user.id) {
     throw new ApiError("Somente o colaborador analisado pode registrar o aceite.", 403);
   }
   await rpcTransition("aceitar_nc_v3", { p_nc_id: id, p_colaborador_id: user.id, p_texto_aceite: texto });
-  return buscarNc(id);
+  return buscarNc(id, user);
 }
