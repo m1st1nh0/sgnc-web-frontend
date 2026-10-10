@@ -11,6 +11,8 @@ import PainelAvaliar from "./PainelAvaliar.jsx";
 import PainelFeedback from "./PainelFeedback.jsx";
 import PainelAceite from "./PainelAceite.jsx";
 import PainelPlanoAcao from "./PainelPlanoAcao.jsx";
+import EtapasNc from "./EtapasNc.jsx";
+import HistoricoNc from "./HistoricoNc.jsx";
 import {
   buscarNc,
   listarEvidencias,
@@ -89,14 +91,28 @@ export default function DetalhesNcPage({ retorno = "/" }) {
   const [evidenciaVisualizada, setEvidenciaVisualizada] = useState(null);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const [avisoUploadInicial, setAvisoUploadInicial] = useState("");
+  const [confirmacaoAbertura, setConfirmacaoAbertura] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     const chave = `sgnc-nc-${id}-upload-warning`;
-    const aviso = sessionStorage.getItem(chave);
-    if (aviso) {
-      sessionStorage.removeItem(chave);
-      const timer = window.setTimeout(() => setAvisoUploadInicial(aviso), 0);
+    let aviso = null;
+    let registrada = false;
+    try {
+      aviso = sessionStorage.getItem(chave);
+      if (aviso) sessionStorage.removeItem(chave);
+      // Confirmação única logo após abrir a NC (gravada pela tela de abertura).
+      const chaveRegistrada = `sgnc-nc-${id}-registrada`;
+      registrada = sessionStorage.getItem(chaveRegistrada) === "1";
+      if (registrada) sessionStorage.removeItem(chaveRegistrada);
+    } catch {
+      // Armazenamento indisponível: segue sem os avisos de abertura.
+    }
+    if (aviso || registrada) {
+      const timer = window.setTimeout(() => {
+        if (aviso) setAvisoUploadInicial(aviso);
+        if (registrada) setConfirmacaoAbertura(true);
+      }, 0);
       return () => window.clearTimeout(timer);
     }
   }, [id]);
@@ -286,17 +302,6 @@ export default function DetalhesNcPage({ retorno = "/" }) {
   const podeExcluirNc = nc && ehQualidadeSemConflito && !nc.critica;
   const aguardandoFeedback =
     nc && ["aguardando_feedback", "aguardando_analise"].includes(nc.status);
-  const proximaAcao = nc ? {
-    aberta: ["Qualidade", "Avaliar a ocorrência e definir se ela segue para análise."],
-    aguardando_feedback: ["Qualidade", "Registrar o feedback e o combinado com o colaborador."],
-    aguardando_analise: ["Qualidade", "Registrar o feedback e o combinado com o colaborador."],
-    aguardando_aceite: [nc.colaborador || "Colaborador analisado", "Ler o feedback e registrar o aceite formal."],
-    em_plano_acao: ["Qualidade e liderança", "Executar e acompanhar o plano de ação; a Qualidade verifica a eficácia para concluir."],
-    validada: ["Qualidade", "A análise foi validada; acompanhe o próximo encaminhamento."],
-    concluida: ["Concluída", "Não há ação pendente nesta não conformidade."],
-    invalidada: ["Encerrada", nc.motivo_invalidacao || "A ocorrência foi invalidada."],
-  }[nc.status] : null;
-
   return (
     <div>
       <Container className="sg-container" style={{ maxWidth: "900px" }}>
@@ -361,12 +366,15 @@ export default function DetalhesNcPage({ retorno = "/" }) {
 
         {nc && (
           <div className="d-flex flex-column gap-3">
-            {proximaAcao && (
-              <section className="sg-alerta sg-alerta--info mb-0" aria-label="Próxima ação">
-                <strong>Próxima ação: {proximaAcao[0]}</strong>
-                <div>{proximaAcao[1]}</div>
-              </section>
+            {confirmacaoAbertura && (
+              <div className="sg-alerta sg-alerta--sucesso mb-0" role="status">
+                <div>
+                  <strong>NC #{id} registrada.</strong> Próximo passo: a Qualidade avalia.
+                  Você acompanha por aqui ou em <Link href="/minhas-ncs">Minhas NCs</Link>.
+                </div>
+              </div>
             )}
+            <EtapasNc nc={nc} visualizadorId={usuario?.id} />
             <div className="sg-card">
               <div className="sg-card-body p-4">
                 <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
@@ -635,6 +643,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                 </div>
               </div>
             )}
+            <HistoricoNc ncId={id} versao={`${nc.status}-${nc.critica}-${nc.atualizado_em ?? ""}`} />
           </div>
         )}
       </Container>

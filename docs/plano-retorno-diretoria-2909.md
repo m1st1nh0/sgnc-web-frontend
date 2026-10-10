@@ -128,12 +128,14 @@ Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 
 
 ### Fase 3: acompanhamento da NC (ponto 3)
 
-- [ ] 3.1 `obterTimeline` (`service.ts`): incluir o nome do autor de cada evento (join em `usuarios`), respeitando a regra atual de ocultar `observacao` para acesso restrito.
-- [ ] 3.2 Novo componente `src/features/nc/components/EtapasNc.jsx`: trilha Aberta → Avaliação → Feedback → Aceite → Concluída (com "Plano de ação" quando `critica`), etapa atual destacada, responsável da etapa e, em "Aceite", o prazo e o desvio para "Não respondida" após a Fase 4. Usado no topo do detalhe, substituindo o bloco "Próxima ação".
-- [ ] 3.3 Seção "Histórico" no detalhe consumindo `/api/nc/[id]/timeline`: data/hora, autor, de → para, observação.
-- [ ] 3.4 Após abrir a NC, o detalhe mostra uma confirmação única: "NC #X registrada. Próximo passo: a Qualidade avalia. Você acompanha por aqui ou em Minhas NCs."
-- [ ] 3.5 `MinhasNcsPage.jsx` e tabela do painel: coluna "Aguardando" com o responsável da etapa (Qualidade, nome do colaborador, liderança).
-- [ ] 3.6 Teste unit para o mapeamento status → etapa/responsável (extrair para `statusNc.js`).
+- [x] 3.1 `obterTimeline` (`service.ts`): incluir o nome do autor de cada evento (join em `usuarios`), respeitando a regra atual de ocultar `observacao` para acesso restrito.
+- [x] 3.2 Novo componente `src/features/nc/components/EtapasNc.jsx`: trilha Aberta → Avaliação → Feedback → Aceite → Concluída (com "Plano de ação" quando `critica`), etapa atual destacada, responsável da etapa e, em "Aceite", o prazo e o desvio para "Não respondida" após a Fase 4. Usado no topo do detalhe, substituindo o bloco "Próxima ação".
+- [x] 3.3 Seção "Histórico" no detalhe consumindo `/api/nc/[id]/timeline`: data/hora, autor, de → para, observação.
+- [x] 3.4 Após abrir a NC, o detalhe mostra uma confirmação única: "NC #X registrada. Próximo passo: a Qualidade avalia. Você acompanha por aqui ou em Minhas NCs."
+- [x] 3.5 `MinhasNcsPage.jsx` e tabela do painel: coluna "Aguardando" com o responsável da etapa (Qualidade, nome do colaborador, liderança).
+- [x] 3.6 Teste unit para o mapeamento status → etapa/responsável (extrair para `statusNc.js`).
+
+  **Resultado (10/10):** implementada. Divergências e detalhes: com acesso restrito (quem só registrou a NC e não é Qualidade nem liderança do colaborador), o histórico mostra "Você" para os próprios eventos e o papel do autor ("Qualidade", "Liderança", "Colaborador") no lugar do nome de terceiros, além de ocultar a observação, como já era feito. Eventos sem autor aparecem como "Sistema". A trilha mostra "Plano de ação" quando a NC é crítica, e a NC invalidada encerra a trilha em "Invalidada". O prazo do aceite e o desvio para "Não respondida" entram na Fase 4. Em "Aguardando", quem deve agir vê "Você".
 
 ### Fase 4: feedback estruturado e aceite com prazo (ponto 9) (D3–D6, D8, D9, D11 decididos)
 
