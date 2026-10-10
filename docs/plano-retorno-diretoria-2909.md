@@ -186,11 +186,13 @@ Conferência do contrato D19 no código em 10/10:
 - **Concorrência:** a duplicidade (mesma NC, causa e ocorrência) é checada antes do `insert`, sem índice único; duas requisições simultâneas podem gravar duas medidas.
 
 Itens:
-- [ ] 4B.1 Migração: `status` passa a aceitar `sugerida`, `aprovada`, `reprovada`, `aplicada`, `cancelada`; colunas `decidida_por`, `decidida_em`, `motivo_decisao`, `aplicada_em`; `CHECK (decidida_por IS DISTINCT FROM colaborador_id AND aplicada_por IS DISTINCT FROM colaborador_id)`; índice único em `(nc_id, causa_id, ocorrencia_gatilho)`.
-- [ ] 4B.2 Na validação (`validar_nc_com_ocorrencias_v2` / sucessora), quando a ocorrência atingir o gatilho da medida sugerida, criar a medida com `status = 'sugerida'` na mesma transação.
-- [ ] 4B.3 RPCs `decidir_medida_v1(p_medida_id, p_usuario_id, p_decisao, p_motivo)` (aprovar/reprovar; motivo obrigatório ao reprovar) e `aplicar_medida_v1(p_medida_id, p_usuario_id, p_data, p_observacao)`; ambas exigem Qualidade que não seja o colaborador e travam a linha (`FOR UPDATE`).
-- [ ] 4B.4 Tela: lista de medidas pendentes para a Qualidade (sugeridas e aprovadas a aplicar), com aprovar/reprovar/aplicar; esconder as ações quando a pessoa é o próprio colaborador.
-- [ ] 4B.5 Testes: unit de permissão (Qualidade acusada não decide nem aplica); no banco do Preview, sugerida → aprovada → aplicada e sugerida → reprovada.
+- [x] 4B.1 Migração: `status` passa a aceitar `sugerida`, `aprovada`, `reprovada`, `aplicada`, `cancelada`; colunas `decidida_por`, `decidida_em`, `motivo_decisao`, `aplicada_em`; `CHECK (decidida_por IS DISTINCT FROM colaborador_id AND aplicada_por IS DISTINCT FROM colaborador_id)`; índice único em `(nc_id, causa_id, ocorrencia_gatilho)`.
+- [x] 4B.2 Na validação (`validar_nc_com_ocorrencias_v2` / sucessora), quando a ocorrência atingir o gatilho da medida sugerida, criar a medida com `status = 'sugerida'` na mesma transação.
+- [x] 4B.3 RPCs `decidir_medida_v1(p_medida_id, p_usuario_id, p_decisao, p_motivo)` (aprovar/reprovar; motivo obrigatório ao reprovar) e `aplicar_medida_v1(p_medida_id, p_usuario_id, p_data, p_observacao)`; ambas exigem Qualidade que não seja o colaborador e travam a linha (`FOR UPDATE`).
+- [x] 4B.4 Tela: lista de medidas pendentes para a Qualidade (sugeridas e aprovadas a aplicar), com aprovar/reprovar/aplicar; esconder as ações quando a pessoa é o próprio colaborador.
+- [x] 4B.5 Testes: unit de permissão (Qualidade acusada não decide nem aplica); no banco do Preview, sugerida → aprovada → aplicada e sugerida → reprovada.
+
+**Status (10/10):** implementada. Migração `20261010130000_medida_disciplinar_etapas.sql` aplicada no Supabase com autorização do responsável. Decisão de 10/10: ao aprovar, a Qualidade pode trocar o tipo sugerido, com justificativa obrigatória (`tipo_sugerido` guarda a sugestão original; CHECK no banco). Fluxos exercitados no Supabase em transação desfeita: 4ª ocorrência sugere advertência; troca sem justificativa recusada; aprovação trocando para suspensão; aplicação exige dias; Qualidade acusada barrada (RPC e CHECK); reprovação exige motivo. Divergência: o índice único contra duplicidade (`uq_medida_por_nc_causa_ocorrencia`) já existia em produção; a validação usa `ON CONFLICT` nele. O registro manual direto como "aplicada" (botão "Registrar medida" nas estatísticas) foi removido porque pulava as etapas.
 
 ### Fase 5: notificações dentro do aplicativo (D7, D9, D10, D12, D13, D16–D22 decididos)
 

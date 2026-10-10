@@ -1,8 +1,8 @@
-import { readJson } from "@/lib/api/request";
 import { apiErrorResponse } from "@/lib/api/error";
-import { registrarMedidaDisciplinar } from "@/lib/nc/service";
+import { listarMedidas } from "@/lib/nc/medidas";
 
-export async function POST(request: Request) {
-  try { return Response.json(await registrarMedidaDisciplinar(await readJson(request)), { status: 201 }); }
+/** Medidas para a Qualidade: `?situacao=historico` para as já decididas; padrão, as pendentes. */
+export async function GET(request: Request) {
+  try { return Response.json(await listarMedidas(new URL(request.url).searchParams.get("situacao"))); }
   catch (error) { return apiErrorResponse(error); }
 }
