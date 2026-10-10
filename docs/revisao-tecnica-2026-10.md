@@ -111,7 +111,7 @@ C7 é o único que recomendo mudar sem esperar: trocar exclusão por cancelament
 
 ## 6. Enxugar: o que descartar
 
-Removível sem efeito em produção (nenhum import encontrado):
+Removível sem efeito em produção (nenhum import encontrado). **Feito em 10/10 neste PR:** os quatro arquivos, os três helpers e o rewrite `/api/legacy`; os quatro testes agora verificam `AppNavigation.jsx`, e `test_pr11` entrou no `npm test`. Continuam pendentes `enviar_nc_legada_v3`, os status legados, as políticas RLS legadas e a reorganização de docs e testes.
 
 | Item | Linhas |
 |---|---|
@@ -171,4 +171,4 @@ Ordem pensada para a entrega e a migração. Cada linha vira um PR (convenção 
 | D19 (C5) | Quem registra | **Supervisor e colaborador continuam abrindo NC diretamente**; a Qualidade avalia se procede (valida) ou não (invalida). |
 | D20 (C6) | Encerramento da NC leve | **No aceite do feedback** pelo colaborador (mantém D5/D11). |
 | D21 (C7) | Exclusão de NC | **Trocar por cancelamento com motivo**, registrado no histórico. Nada é apagado. |
-| — | Prazos das demais etapas (item 7) | Aguardando o responsável, depois da explicação das opções. |
+| D22 | Prazos das demais etapas | **Mostrar e avisar (opção B).** Prazos de contenção (crítica, 24h), análise (2 d.u.; crítica no mesmo dia), feedback (leve 5 d.u.; crítica 1 d.u.), plano de ação e verificação (30 dias) aparecem no detalhe e no painel e entram nos indicadores "Feedback no prazo" e "Planos de ação no prazo". Perto de vencer ou vencido, o sino avisa a Qualidade responsável; ação de plano vencida avisa também os gestores da área. Só o prazo do aceite muda o status sozinho ("Não respondida"). |

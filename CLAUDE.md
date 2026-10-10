@@ -38,6 +38,7 @@ Decisões de conformidade com o processo (10/10/2026, ver [`docs/revisao-tecnica
 - Supervisor e colaborador continuam abrindo NC; a Qualidade avalia se procede.
 - NC leve encerra no aceite do feedback.
 - NC não é excluída: é cancelada com motivo e histórico.
+- Prazos das etapas (contenção, análise, feedback, plano, verificação de 30 dias) aparecem na tela e nos indicadores; perto de vencer ou vencidos, o sino avisa a Qualidade responsável, e ação de plano vencida avisa os gestores da área. Só o aceite muda o status sozinho.
 
 Todas as decisões do plano estão respondidas. Decisão nova que surgir deve ser perguntada ao responsável, não assumida.
 

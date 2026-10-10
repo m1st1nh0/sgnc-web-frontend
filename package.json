@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test:regression": "node test_pr05.mjs && node test_pr06.mjs && node test_pr07.mjs && node test_pr08.mjs && node test_pr09_onboarding.mjs && node test_ux_operacao_indicadores.mjs && node test_pr10_hierarchy.mjs",
+    "test:regression": "node test_pr05.mjs && node test_pr06.mjs && node test_pr07.mjs && node test_pr08.mjs && node test_pr09_onboarding.mjs && node test_ux_operacao_indicadores.mjs && node test_pr10_hierarchy.mjs && node test_pr11_cause_governance.mjs",
     "test:unit": "playwright test --project=unit",
     "test:api": "playwright test --project=http",
     "test:e2e": "playwright test --project=desktop --project=mobile",

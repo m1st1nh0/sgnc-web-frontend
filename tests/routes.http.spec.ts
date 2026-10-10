@@ -8,7 +8,6 @@ for(const path of ['/api/nc','/api/nc/minhas','/api/nc/causas/solicitacoes','/ap
 });
 for(const path of ['/api/nc','/api/nc/causas/solicitacoes','/api/nc/causas/solicitacoes/decidir']) test(`mutation without session denied: ${path}`,async({request})=>expect((await request.post(path,{data:{}})).status()).toBe(401));
 test('invalid JSON returns 422',async({request})=>expect((await request.post('/api/nc',{data:'{',headers:{'content-type':'application/json'}})).status()).toBe(422));
-test('legacy API uses same secured handler',async({request})=>expect((await request.get('/api/legacy/nc')).status()).toBe(401));
 test('unknown API and page are 404',async({request})=>{
  expect((await request.get('/api/not-a-route')).status()).toBe(404);expect((await request.get('/not-a-route')).status()).toBe(404);
 });
