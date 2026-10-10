@@ -39,6 +39,7 @@ const ABAS_FILTRO = [
   { chave: "todas", rotulo: "Todas", status: null },
   { chave: "aberta", rotulo: "Abertas", status: "aberta" },
   { chave: "em_andamento", rotulo: "Em andamento", status: STATUS_EM_ANDAMENTO },
+  { chave: "nao_respondida", rotulo: "Não respondidas", status: "nao_respondida" },
   { chave: "concluida", rotulo: "Concluídas", status: "concluida" },
   { chave: "invalidada", rotulo: "Invalidadas", status: "invalidada" },
 ];
@@ -202,7 +203,7 @@ export default function HomePage() {
             acoes={<Link href="/abrir-nc" className="sg-btn sg-btn--sucesso">+ Abrir NC</Link>}
           />
           {carregando ? <EstadoCarregamento mensagem="Carregando não conformidades..." /> : <>
-            <section className="sg-dashboard__metrics" aria-label="Indicadores e filtros da fila">
+            <section className="sg-dashboard__metrics" aria-label="Indicadores e filtros da fila" style={{ "--metricas": visao.cards.length }}>
               {visao.cards.map((card, index) => (
                 <button key={card.rotulo} type="button" className="sg-metrica-interativa"
                   onClick={() => filtrarPeloCard(card.rotulo)} aria-pressed={filtroCardAtivo === card.rotulo}

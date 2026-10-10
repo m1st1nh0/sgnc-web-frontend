@@ -455,6 +455,12 @@ textarea:focus-visible {
   --status-borda: var(--status-aceite-borda);
 }
 
+.sg-status--nao-respondida {
+  --status-cor: var(--cor-desvio);
+  --status-fundo: var(--erro-fundo);
+  --status-borda: var(--erro-borda);
+}
+
 .sg-status--em-plano-acao {
   --status-cor: var(--status-invalidada-forte);
   --status-fundo: var(--status-invalidada-fundo);
@@ -616,6 +622,7 @@ textarea:focus-visible {
 .sg-nc-card--desconhecida { --status-linha: var(--grafico-cinza); }
 .sg-nc-card--aguardando-feedback { --status-linha: var(--status-feedback-forte); }
 .sg-nc-card--aguardando-aceite { --status-linha: var(--status-aceite-forte); }
+.sg-nc-card--nao-respondida { --status-linha: var(--cor-desvio); }
 .sg-nc-card--concluida { --status-linha: var(--status-concluida-forte); }
 
 .sg-nc-card:hover {
@@ -2567,3 +2574,16 @@ textarea:focus-visible {
 .sg-historico__autor { font-weight: 600; color: var(--texto-primario); }
 .sg-historico__transicao { font-size: var(--texto-sm); font-weight: 600; }
 .sg-historico__observacao { margin-top: 2px; font-size: var(--texto-sm); color: var(--texto-secundario); white-space: pre-line; }
+.sg-etapas__item--atrasada::before { background: var(--cor-controle); }
+.sg-etapas__item--atrasada { color: var(--erro); font-weight: 700; }
+.sg-etapas__item--atrasada .sg-etapas__marcador { border-color: var(--erro); background: var(--erro); color: #fff; box-shadow: 0 0 0 4px var(--erro-fundo); }
+.sg-etapas__prazo { font-size: var(--texto-xs); font-weight: 500; color: var(--texto-secundario); }
+.sg-etapas__item--atrasada .sg-etapas__prazo { color: var(--erro); }
+.sg-etapas__resumo--atrasada { border-color: var(--erro-borda); background: var(--erro-fundo); color: var(--erro); }
+
+/* ═══ Feedback estruturado (Fase 4) ═══ */
+.sg-texto-livre { white-space: pre-line; }
+.sg-reincidencia { padding: var(--espaco-3, 12px) var(--espaco-4, 16px); border: 1px solid var(--borda); border-radius: var(--raio-md); background: var(--fundo-pagina); font-size: var(--texto-sm); }
+.sg-reincidencia__titulo { margin: 0 0 6px; font-size: var(--texto-sm); font-weight: 700; color: var(--cor-norma); }
+.sg-reincidencia__ocorrencias { margin: 0 0 8px; padding-left: 18px; }
+.sg-reincidencia__lista { display: flex; flex-direction: column; gap: 8px; margin: 0; padding-left: 18px; }

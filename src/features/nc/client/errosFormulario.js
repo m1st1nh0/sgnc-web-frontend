@@ -9,21 +9,29 @@ export const ROTULOS_CAMPO = {
   causas: "Causas",
 };
 
-const ORDEM_CAMPOS = Object.keys(ROTULOS_CAMPO);
+/** Campos do feedback estruturado (Fase 4), na ordem do formulário. */
+export const ROTULOS_CAMPO_FEEDBACK = {
+  causa_raiz: "Causa raiz",
+  acao_combinada: "Ação combinada",
+  responsavel_acao: "Responsável pela ação",
+  prazo_acao: "Prazo da ação",
+  combinado: "Combinado",
+};
 
-export function camposComErro(erros) {
-  return ORDEM_CAMPOS.filter((campo) => erros?.[campo]);
+/** `rotulos` define os campos e a ordem do formulário (padrão: abertura e edição de NC). */
+export function camposComErro(erros, rotulos = ROTULOS_CAMPO) {
+  return Object.keys(rotulos).filter((campo) => erros?.[campo]);
 }
 
-export function resumoErros(erros) {
-  const campos = camposComErro(erros);
+export function resumoErros(erros, rotulos = ROTULOS_CAMPO) {
+  const campos = camposComErro(erros, rotulos);
   if (campos.length === 0) return "";
-  return `Revise ${campos.length > 1 ? "os campos" : "o campo"}: ${campos.map((campo) => ROTULOS_CAMPO[campo]).join(", ")}.`;
+  return `Revise ${campos.length > 1 ? "os campos" : "o campo"}: ${campos.map((campo) => rotulos[campo]).join(", ")}.`;
 }
 
 /** `ids` mapeia o nome do campo para o id do elemento focável na tela. */
-export function focarPrimeiroErro(erros, ids) {
-  const primeiro = camposComErro(erros).find((campo) => ids[campo]);
+export function focarPrimeiroErro(erros, ids, rotulos = ROTULOS_CAMPO) {
+  const primeiro = camposComErro(erros, rotulos).find((campo) => ids[campo]);
   if (!primeiro || typeof window === "undefined") return;
   window.requestAnimationFrame(() => {
     const elemento = document.getElementById(ids[primeiro]);

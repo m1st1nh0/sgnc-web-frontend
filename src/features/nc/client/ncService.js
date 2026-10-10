@@ -35,11 +35,16 @@ export function avaliarNc(id, decisao, motivoInvalidacao) {
   });
 }
 
-export function aplicarFeedback(id, feedback) {
+/** Feedback estruturado: causa_raiz, acao_combinada, responsavel_acao_id, prazo_acao, combinado. */
+export function aplicarFeedback(id, dados) {
   return chamarApi(`/nc/${id}/feedback`, {
     method: "POST",
-    body: { feedback },
+    body: dados,
   });
+}
+
+export function obterReincidencia(id) {
+  return chamarApi(`/nc/${id}/reincidencia`);
 }
 
 export function aceitarNc(id, textoAceite) {
@@ -89,9 +94,11 @@ export function listarEvidencias(ncId) {
   return chamarApi(`/nc/${ncId}/evidencias`);
 }
 
-export function anexarEvidencia(ncId, arquivo) {
+/** Sem `feedbackId`, é evidência da abertura; com ele, anexo do feedback recém-registrado. */
+export function anexarEvidencia(ncId, arquivo, feedbackId = null) {
   const formData = new FormData();
   formData.append("arquivo", arquivo);
+  if (feedbackId) formData.append("feedback_id", String(feedbackId));
   return chamarApi(`/nc/${ncId}/evidencias`, {
     method: "POST",
     body: formData,

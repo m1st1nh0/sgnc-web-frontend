@@ -25,8 +25,8 @@ type NcRow = {
   enviado_em: string | null;
 };
 
-const ACTIVE = ["aberta", "aguardando_feedback", "aguardando_aceite", "em_plano_acao", "validada", "aguardando_analise"];
-const COUNTABLE = ["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "em_plano_acao", "concluida"];
+const ACTIVE = ["aberta", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "validada", "aguardando_analise"];
+const COUNTABLE = ["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "concluida"];
 const STATUS_ALIASES: Record<string, string[]> = {
   aguardando_feedback: ["aguardando_feedback", "aguardando_analise", "validada"],
 };
@@ -34,6 +34,7 @@ const FILTER_STATUS_ALIASES: Record<string, string[]> = {
   aberta: ["aberta"],
   aguardando_feedback: ["aguardando_feedback", "aguardando_analise", "validada"],
   aguardando_aceite: ["aguardando_aceite"],
+  nao_respondida: ["nao_respondida"],
   em_plano_acao: ["em_plano_acao"],
   concluida: ["concluida"],
   invalidada: ["invalidada"],
@@ -201,7 +202,7 @@ export async function listarNcsDoIndicador(params: URLSearchParams) {
     rows = rows.filter((row) => {
       const since = row.status === "aberta"
         ? row.criado_em
-        : row.status === "aguardando_aceite"
+        : row.status === "aguardando_aceite" || row.status === "nao_respondida"
           ? row.feedback_aplicado_em || row.validado_em || row.criado_em
           : row.status === "em_plano_acao"
             ? row.aceito_em || row.validado_em || row.criado_em

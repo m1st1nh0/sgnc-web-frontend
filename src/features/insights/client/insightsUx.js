@@ -92,6 +92,10 @@ export function prepararBacklogStatus(kpis = {}) {
       status: "Aguardando aceite",
       quantidade: kpis.aguardando_aceite_atual ?? 0,
     },
+    {
+      status: "Não respondidas",
+      quantidade: kpis.nao_respondidas_atual ?? 0,
+    },
   ];
 }
 

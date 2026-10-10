@@ -33,6 +33,7 @@ export const STATUS_PERMITEM_MARCAR_CRITICA = [
   "aguardando_analise",
   "validada",
   "aguardando_aceite",
+  "nao_respondida",
   "concluida",
 ] as const;
 

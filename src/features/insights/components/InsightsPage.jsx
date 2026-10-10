@@ -233,6 +233,7 @@ export default function InsightsPage() {
     const backlog = Number(kpis.backlog_ativo_atual || 0);
     const feedback = Number(kpis.aguardando_feedback_atual || 0);
     const aceite = Number(kpis.aguardando_aceite_atual || 0);
+    const naoRespondidas = Number(kpis.nao_respondidas_atual || 0);
 
     itens.push({
       id: "backlog",
@@ -240,7 +241,7 @@ export default function InsightsPage() {
       texto:
         backlog === 0
           ? "Não há NC ativa no escopo neste momento."
-          : `${feedback} aguardam feedback e ${aceite} aguardam aceite.`,
+          : `${feedback} aguardam feedback, ${aceite} aguardam aceite e ${naoRespondidas} não foram respondidas no prazo.`,
       filtro: { tipo: "backlog" },
     });
 
@@ -451,7 +452,7 @@ export default function InsightsPage() {
               </div>
 
               <div className="row g-3 mb-3">
-                <div className="col-sm-6 col-xl-3">
+                <div className="col-sm-6 col-xl">
                   {cardInterativo("Backlog ativo", { tipo: "backlog" }, {
                     rotulo: "Backlog ativo",
                     valor: kpis.backlog_ativo_atual ?? 0,
@@ -459,7 +460,7 @@ export default function InsightsPage() {
                     cor: "azul",
                   })}
                 </div>
-                <div className="col-sm-6 col-xl-3">
+                <div className="col-sm-6 col-xl">
                   {cardInterativo("NCs aguardando avaliação", { tipo: "backlog", status: "aberta" }, {
                     rotulo: "Aguardando avaliação",
                     valor: kpis.abertas_atuais ?? 0,
@@ -467,7 +468,7 @@ export default function InsightsPage() {
                     cor: "amarela",
                   })}
                 </div>
-                <div className="col-sm-6 col-xl-3">
+                <div className="col-sm-6 col-xl">
                   {cardInterativo("NCs aguardando feedback", { tipo: "backlog", status: "aguardando_feedback" }, {
                     rotulo: "Aguardando feedback",
                     valor: kpis.aguardando_feedback_atual ?? 0,
@@ -475,12 +476,20 @@ export default function InsightsPage() {
                     cor: "laranja",
                   })}
                 </div>
-                <div className="col-sm-6 col-xl-3">
+                <div className="col-sm-6 col-xl">
                   {cardInterativo("NCs aguardando aceite", { tipo: "backlog", status: "aguardando_aceite" }, {
                     rotulo: "Aguardando aceite",
                     valor: kpis.aguardando_aceite_atual ?? 0,
                     descricao: "Feedback aplicado, confirmação pendente",
                     cor: "verde",
+                  })}
+                </div>
+                <div className="col-sm-6 col-xl">
+                  {cardInterativo("NCs não respondidas", { tipo: "backlog", status: "nao_respondida" }, {
+                    rotulo: "Não respondidas",
+                    valor: kpis.nao_respondidas_atual ?? 0,
+                    descricao: "Prazo de aceite vencido sem resposta",
+                    cor: "vermelha",
                   })}
                 </div>
               </div>
@@ -508,6 +517,7 @@ export default function InsightsPage() {
                           "Aguardando avaliação": "aberta",
                           "Aguardando feedback": "aguardando_feedback",
                           "Aguardando aceite": "aguardando_aceite",
+                          "Não respondidas": "nao_respondida",
                         }[row?.status];
                         if (status) abrirDetalhe(`NCs: ${row.status}`, { tipo: "backlog", status });
                       }}
@@ -546,7 +556,7 @@ export default function InsightsPage() {
                 </p>
               </div>
               <div className="row g-3 mb-3">
-                <div className="col-sm-6 col-xl-3">
+                <div className="col-sm-6 col-xl">
                   {cardInterativo("NCs registradas no período", { tipo: "period" }, {
                     rotulo: "NCs registradas",
                     valor: kpis.total_ncs ?? 0,
@@ -554,7 +564,7 @@ export default function InsightsPage() {
                     cor: "azul",
                   })}
                 </div>
-                <div className="col-sm-6 col-xl-3">
+                <div className="col-sm-6 col-xl">
                   {cardInterativo("NCs concluídas no período", { tipo: "concluded" }, {
                     rotulo: "Concluídas no período",
                     valor: kpis.concluidas_no_periodo ?? 0,
@@ -562,7 +572,7 @@ export default function InsightsPage() {
                     cor: "verde",
                   })}
                 </div>
-                <div className="col-sm-6 col-xl-3">
+                <div className="col-sm-6 col-xl">
                   {cardInterativo("NCs invalidadas no período", { tipo: "invalidated" }, {
                     rotulo: "Invalidadas no período",
                     valor: kpis.invalidadas_no_periodo ?? 0,
@@ -570,12 +580,22 @@ export default function InsightsPage() {
                     cor: "vermelha",
                   })}
                 </div>
-                <div className="col-sm-6 col-xl-3">
+                <div className="col-sm-6 col-xl">
                   <CardMetrica
                     rotulo="Taxa de invalidação"
                     valor={taxaPercentual(kpis.taxa_invalidacao)}
                     descricao="Invalidadas entre NCs do período"
                     cor="cinza"
+                  />
+                </div>
+                <div className="col-sm-6 col-xl">
+                  <CardMetrica
+                    rotulo="Aceite no prazo"
+                    valor={taxaPercentual(kpis.taxa_aceite_no_prazo)}
+                    descricao={kpis.aceites_no_periodo
+                      ? `${kpis.aceites_no_prazo} de ${kpis.aceites_no_periodo} aceites do período`
+                      : "Sem aceites no período"}
+                    cor="verde"
                   />
                 </div>
               </div>
@@ -797,6 +817,11 @@ export default function InsightsPage() {
                           chave: "total",
                           cor: CORES_GRAFICO.ciano,
                           nome: "NCs no período",
+                        },
+                        {
+                          chave: "nao_respondidas",
+                          cor: CORES_GRAFICO.vermelho,
+                          nome: "Não respondidas agora",
                         },
                       ]}
                       onCategoryClick={(row) => abrirDimensao("setor", row)}

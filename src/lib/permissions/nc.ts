@@ -33,6 +33,7 @@ export function filterSensitive(
       validado_em: null,
       feedback_aplicado_em: null,
       aceito_em: null,
+      aceito_fora_prazo: null,
       critica_motivo: null,
       critica_marcada_por: null,
     };
@@ -46,6 +47,21 @@ type NcEvidencia = { status?: unknown; aberto_por?: unknown; colaborador_id?: un
 export function podeAnexarEvidencia(nc: NcEvidencia, user: UsuarioAutenticado) {
   if (nc.status !== "aberta") return false;
   return ehQualidade(user.papel) || nc.aberto_por === user.id || nc.colaborador_id === user.id;
+}
+
+/**
+ * Anexo do feedback (opcional, D3): só quem registrou aquele feedback, só para feedback da
+ * mesma NC e enquanto a NC aguarda o aceite (logo após o registro).
+ */
+export function podeAnexarAoFeedback(
+  nc: NcEvidencia & { id?: unknown },
+  feedback: { nc_id?: unknown; registrado_por?: unknown } | null,
+  user: UsuarioAutenticado,
+) {
+  if (!feedback || feedback.nc_id !== nc.id) return false;
+  if (nc.status !== "aguardando_aceite") return false;
+  if (nc.colaborador_id === user.id) return false;
+  return ehQualidade(user.papel) && feedback.registrado_por === user.id;
 }
 
 /**
