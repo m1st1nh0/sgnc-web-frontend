@@ -37,10 +37,11 @@
 .sg-dashboard__table { display: none; }
 .sg-dashboard__table table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: .72rem; }
 .sg-dashboard__col-id { width: 7%; }
-.sg-dashboard__col-person { width: 22%; }
-.sg-dashboard__col-date { width: 13%; }
-.sg-dashboard__col-priority { width: 11%; }
-.sg-dashboard__col-status { width: 18%; }
+.sg-dashboard__col-person { width: 19%; }
+.sg-dashboard__col-date { width: 11%; }
+.sg-dashboard__col-priority { width: 10%; }
+.sg-dashboard__col-status { width: 16%; }
+.sg-dashboard__col-waiting { width: 14%; }
 .sg-dashboard__table th, .sg-dashboard__table td { padding: 12px 10px; vertical-align: middle; overflow-wrap: anywhere; }
 .sg-dashboard__table thead th { padding-block: 10px; color: var(--texto-secundario); font-size: .59rem; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; }
 .sg-dashboard__table tbody tr:not(.sg-dashboard__group) { background: white; border-bottom: 1px solid #edf0ee; }

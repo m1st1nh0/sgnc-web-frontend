@@ -3,7 +3,7 @@ import BadgePrioridade from "./BadgePrioridade.jsx";
 import { formatarData } from "../../lib/utils/formato.js";
 import { infoDoStatus } from "../../features/nc/client/statusNc.js";
 
-export default function NcCard({ nc, aoClicar, abertoPorNome }) {
+export default function NcCard({ nc, aoClicar, abertoPorNome, aguardando }) {
   const { etapa } = infoDoStatus(nc.status);
 
   return (
@@ -31,6 +31,7 @@ export default function NcCard({ nc, aoClicar, abertoPorNome }) {
             {abertoPorNome && <span>Aberto por: {abertoPorNome}</span>}
             {nc.setor && <span>{nc.setor}</span>}
             {nc.chamado && <span>Chamado: {nc.chamado}</span>}
+            {aguardando && <span>Aguardando: {aguardando}</span>}
           </div>
         </div>
       </div>

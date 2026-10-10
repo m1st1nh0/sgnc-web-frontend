@@ -10,6 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { ehQualidade } from "@/lib/auth/papeis";
 import type { UsuarioAutenticado } from "@/lib/auth/types";
+import { eventosDaTimeline, type AutorTimeline } from "@/lib/nc/timeline";
 import { listaFiltroIn, chaveCatalogoCausa, resolverCausasDoCatalogo } from "@/lib/nc/causasCatalogo";
 
 const TEXTO_ACEITE = "li e concordo com a não conformidade e com o feedback aplicado";
@@ -507,19 +508,26 @@ function suggestedMeasure(occurrence: number) {
 }
 
 export async function obterTimeline(id: number) {
-  const nc = (await buscarNc(id)) as Record<string, unknown>;
-  const { data, error } = await createAdminClient()
+  const user = await requireUser();
+  const nc = (await buscarNc(id, user)) as Record<string, unknown>;
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("historico_nc")
     .select("id, usuario_id, status_anterior, status_novo, observacao, criado_em")
     .eq("nc_id", id)
     .order("criado_em");
   if (error) throw new ApiError("Não foi possível carregar o histórico da NC.", 500);
+  const ids = [...new Set((data ?? []).map((evento) => evento.usuario_id).filter((valor): valor is string => !!valor))];
+  const { data: pessoas, error: pessoasError } = ids.length
+    ? await admin.from("usuarios").select("id, nome, papel").in("id", ids)
+    : { data: [], error: null };
+  if (pessoasError) throw new ApiError("Não foi possível identificar os autores do histórico.", 500);
+  const autores = new Map<string, AutorTimeline>(
+    ((pessoas ?? []) as AutorTimeline[]).map((pessoa) => [pessoa.id, pessoa]),
+  );
   // buscarNc já calcula o acesso considerando a hierarquia real do supervisor.
-  const isRestrictedAuthor = nc.acesso_completo !== true;
-  const events = isRestrictedAuthor
-    ? (data ?? []).map((event) => ({ ...event, observacao: null }))
-    : (data ?? []);
-  return { nc_id: id, status_atual: nc.status, duracoes: nc.duracoes, eventos: events };
+  const eventos = eventosDaTimeline(data ?? [], autores, user.id, nc.acesso_completo === true);
+  return { nc_id: id, status_atual: nc.status, duracoes: nc.duracoes, eventos };
 }
 
 type DisciplinaryMeasureInput = {

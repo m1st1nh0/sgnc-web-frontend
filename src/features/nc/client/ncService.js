@@ -12,6 +12,10 @@ export function buscarNc(id) {
   return chamarApi(`/nc/${id}`);
 }
 
+export function obterTimeline(id) {
+  return chamarApi(`/nc/${id}/timeline`);
+}
+
 export function abrirNc(dados) {
   return chamarApi("/nc", { method: "POST", body: dados });
 }

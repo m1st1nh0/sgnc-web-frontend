@@ -208,6 +208,11 @@ export default function AbrirNcPage() {
           );
         }
       }
+      try {
+        sessionStorage.setItem(`sgnc-nc-${nc.id}-registrada`, "1");
+      } catch {
+        // Sem armazenamento, o detalhe abre sem a confirmação única.
+      }
       router.push(`/nc/${nc.id}`);
     } catch (e) {
       if (e instanceof ErroApi && e.campo && IDS_CAMPOS[e.campo]) {

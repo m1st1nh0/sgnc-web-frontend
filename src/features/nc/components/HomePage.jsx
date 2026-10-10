@@ -22,6 +22,7 @@ import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import CardMetrica from "../../../components/ui/CardMetrica.jsx";
 import NcCard from "../../../components/ui/NcCard.jsx";
+import { acaoPendente } from "../client/statusNc.js";
 import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
 import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
 import { formatarData } from "../../../lib/utils/formato.js";
@@ -236,16 +237,17 @@ export default function HomePage() {
                 <div className="sg-dashboard__table">
                   <table>
                     <caption className="visually-hidden">{visao.tituloLista}. Abra uma NC pelo seu número ou pelo nome da pessoa.</caption>
-                    <colgroup><col className="sg-dashboard__col-id" /><col className="sg-dashboard__col-person" /><col /><col /><col className="sg-dashboard__col-date" /><col className="sg-dashboard__col-priority" /><col className="sg-dashboard__col-status" /></colgroup>
-                    <thead><tr>{["NC", "Pessoa", "Setor", "Aberto por", "Data", "Prioridade", "Status"].map((label) => <th scope="col" key={label}>{label}</th>)}</tr></thead>
+                    <colgroup><col className="sg-dashboard__col-id" /><col className="sg-dashboard__col-person" /><col /><col /><col className="sg-dashboard__col-date" /><col className="sg-dashboard__col-priority" /><col className="sg-dashboard__col-status" /><col className="sg-dashboard__col-waiting" /></colgroup>
+                    <thead><tr>{["NC", "Pessoa", "Setor", "Aberto por", "Data", "Prioridade", "Status", "Aguardando"].map((label) => <th scope="col" key={label}>{label}</th>)}</tr></thead>
                     {grupos.map((grupo) => <tbody key={grupo.titulo}>
-                      <tr className="sg-dashboard__group"><th colSpan={7} scope="rowgroup">{grupo.titulo} · {grupo.registros.length}</th></tr>
+                      <tr className="sg-dashboard__group"><th colSpan={8} scope="rowgroup">{grupo.titulo} · {grupo.registros.length}</th></tr>
                       {grupo.registros.map((nc) => <tr key={nc.id}>
                         <td><Link href={`/nc/${nc.id}`} aria-label={`Abrir NC ${nc.id}`}>#{nc.id}</Link></td>
                         <td><Link href={`/nc/${nc.id}`}>{nc.colaborador || "Colaborador não informado"}</Link>{nc.chamado && <small>Chamado {nc.chamado}</small>}</td>
                         <td>{nc.setor || "—"}</td><td>{obterNomeAbertoPor(nc) || "—"}</td>
                         <td><time dateTime={nc.data || undefined}>{formatarData(nc.data)}</time></td>
                         <td><BadgePrioridade criticidade={nc.criticidade} /></td><td><BadgeStatus status={nc.status} /></td>
+                        <td>{acaoPendente(nc, usuario?.id)?.responsavel ?? "—"}</td>
                       </tr>)}
                     </tbody>)}
                   </table>
@@ -253,7 +255,7 @@ export default function HomePage() {
                 <div className="sg-dashboard__cards">
                   {grupos.map((grupo) => <section key={grupo.titulo} aria-label={grupo.titulo}>
                     <h3 className="sg-home-fila__grupo-titulo">{grupo.titulo} <span>{grupo.registros.length}</span></h3>
-                    <div className="d-flex flex-column gap-2">{grupo.registros.map((nc) => <NcCard key={nc.id} nc={nc} abertoPorNome={obterNomeAbertoPor(nc)} aoClicar={() => router.push(`/nc/${nc.id}`)} />)}</div>
+                    <div className="d-flex flex-column gap-2">{grupo.registros.map((nc) => <NcCard key={nc.id} nc={nc} abertoPorNome={obterNomeAbertoPor(nc)} aguardando={acaoPendente(nc, usuario?.id)?.responsavel} aoClicar={() => router.push(`/nc/${nc.id}`)} />)}</div>
                   </section>)}
                 </div>
               </>}

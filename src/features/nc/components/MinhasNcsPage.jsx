@@ -10,6 +10,7 @@ import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
+import { acaoPendente } from "../client/statusNc.js";
 import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
 import { listarMinhasNcs } from "../client/ncService.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
@@ -119,6 +120,7 @@ export default function MinhasNcsPage() {
                     </div>
                     <div className="texto-secundario">{nc.descricao || "Sem descrição"}</div>
                     <div className="texto-xs texto-suave mt-1">{nc.colaborador || usuario?.nome} · {formatarData(nc)}{nc.chamado ? ` · Chamado ${nc.chamado}` : ""}</div>
+                    {acaoPendente(nc, usuario?.id) && <div className="texto-xs mt-1"><strong>Aguardando:</strong> {acaoPendente(nc, usuario?.id).responsavel}</div>}
                   </div>
                   <span className="sg-voltar" aria-hidden="true">Ver detalhes →</span>
                 </div>

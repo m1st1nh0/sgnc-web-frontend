@@ -2534,3 +2534,36 @@ textarea:focus-visible {
 .sg-governanca__cause-actions { width: 100%; padding-left: 32px; }
 .sg-governanca__cause-edit { flex-wrap: wrap; }
 .sg-governanca__cause-edit .form-control { flex: 1 1 100%; }
+
+/* ═══ Andamento da NC (etapas) e histórico ═══ */
+.sg-etapas { display: flex; gap: 0; margin: 0 0 var(--espaco-3, 12px); padding: 0; list-style: none; }
+.sg-etapas__item { position: relative; display: flex; flex: 1 1 0; flex-direction: column; align-items: center; gap: 6px; min-width: 0; text-align: center; font-size: var(--texto-sm); color: var(--texto-suave); }
+.sg-etapas__item::before { content: ""; position: absolute; top: 14px; left: -50%; width: 100%; height: 2px; background: var(--borda); z-index: 0; }
+.sg-etapas__item:first-child::before { display: none; }
+.sg-etapas__item--feita::before, .sg-etapas__item--atual::before, .sg-etapas__item--encerrada::before { background: var(--cor-controle); }
+.sg-etapas__marcador { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 2px solid var(--borda-forte); border-radius: 50%; background: var(--fundo-card); font-size: var(--texto-xs); font-weight: 700; }
+.sg-etapas__item--feita .sg-etapas__marcador { border-color: var(--cor-controle); background: var(--cor-controle); color: #fff; }
+.sg-etapas__item--atual { color: var(--texto-primario); font-weight: 700; }
+.sg-etapas__item--atual .sg-etapas__marcador { border-color: var(--cor-norma); background: var(--cor-norma); color: #fff; box-shadow: 0 0 0 4px var(--info-fundo); }
+.sg-etapas__item--encerrada { color: var(--erro); font-weight: 700; }
+.sg-etapas__item--encerrada .sg-etapas__marcador { border-color: var(--erro); background: var(--erro); color: #fff; }
+.sg-etapas__item--feita { color: var(--texto-secundario); }
+.sg-etapas__texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.sg-etapas__responsavel { font-size: var(--texto-xs); font-weight: 500; color: var(--cor-norma); }
+.sg-etapas__resumo { display: flex; flex-direction: column; gap: 2px; padding: var(--espaco-3, 12px) var(--espaco-4, 16px); border: 1px solid var(--info-borda); border-radius: var(--raio-md); background: var(--info-fundo); color: var(--cor-norma); font-size: var(--texto-sm); }
+
+@media (max-width: 575.98px) {
+  .sg-etapas { flex-direction: column; gap: 10px; }
+  .sg-etapas__item { flex-direction: row; text-align: left; }
+  .sg-etapas__item::before { top: -10px; left: 13px; width: 2px; height: 10px; }
+  .sg-etapas__texto { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+}
+
+.sg-historico { margin: 0; padding: 0; list-style: none; border-left: 2px solid var(--borda); }
+.sg-historico__item { position: relative; padding: 0 0 var(--espaco-4, 16px) var(--espaco-4, 16px); }
+.sg-historico__item::before { content: ""; position: absolute; top: 6px; left: -6px; width: 10px; height: 10px; border-radius: 50%; background: var(--cor-controle); }
+.sg-historico__item:last-child { padding-bottom: 0; }
+.sg-historico__cabecalho { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--texto-xs); color: var(--texto-secundario); }
+.sg-historico__autor { font-weight: 600; color: var(--texto-primario); }
+.sg-historico__transicao { font-size: var(--texto-sm); font-weight: 600; }
+.sg-historico__observacao { margin-top: 2px; font-size: var(--texto-sm); color: var(--texto-secundario); white-space: pre-line; }
