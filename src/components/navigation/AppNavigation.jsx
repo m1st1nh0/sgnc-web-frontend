@@ -65,6 +65,7 @@ export default function AppNavigation({ children, compactaInicial = false }) {
     { label: "Relatórios", href: "/relatorios", icon: "report", show: ehGestao, active: pathname === "/relatorios" },
     { label: "Meu dossiê", href: `/usuarios/${usuario?.id}/dossie`, icon: "folder", show: !!usuario, active: pathname === `/usuarios/${usuario?.id}/dossie` },
     { label: "Causas", href: "/causas", icon: "cause", show: ehQualidade(usuario?.papel), active: pathname === "/causas" },
+    { label: "Medidas disciplinares", href: "/medidas", icon: "report", show: ehQualidade(usuario?.papel), active: pathname === "/medidas" },
     { label: "Usuários", href: "/usuarios", icon: "user", show: ehAdminSistema(usuario?.papel), active: pathname === "/usuarios" },
   ].filter((link) => link.show);
 

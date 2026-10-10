@@ -111,8 +111,20 @@ export function excluirEvidencia(ncId, evidenciaId) {
   });
 }
 
-export function registrarMedidaDisciplinar(dados) {
-  return chamarApi("/nc/medidas-disciplinares", {
+/** `situacao`: "pendentes" (sugeridas e aprovadas a aplicar) ou "historico". */
+export function listarMedidas(situacao = "pendentes") {
+  return chamarApi(`/nc/medidas-disciplinares?situacao=${encodeURIComponent(situacao)}`);
+}
+
+export function decidirMedida(medidaId, decisao, motivo) {
+  return chamarApi(`/nc/medidas-disciplinares/${medidaId}/decidir`, {
+    method: "POST",
+    body: { decisao, motivo },
+  });
+}
+
+export function aplicarMedida(medidaId, dados) {
+  return chamarApi(`/nc/medidas-disciplinares/${medidaId}/aplicar`, {
     method: "POST",
     body: dados,
   });

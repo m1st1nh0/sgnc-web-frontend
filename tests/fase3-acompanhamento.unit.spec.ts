@@ -72,7 +72,7 @@ test("3.1: com acesso restrito, nomes de terceiros viram o papel e a observaçã
 
 test("3.1: obterTimeline usa o acesso calculado por buscarNc e o mesmo usuário da requisição", () => {
   const service = read("src/lib/nc/service.ts");
-  const corpo = service.slice(service.indexOf("export async function obterTimeline"), service.indexOf("type DisciplinaryMeasureInput"));
+  const corpo = service.slice(service.indexOf("export async function obterTimeline"), service.indexOf("export async function aplicarFeedback"));
   expect(corpo).toContain("buscarNc(id, user)");
   expect(corpo).toContain('eventosDaTimeline(data ?? [], autores, user.id, nc.acesso_completo === true)');
 });

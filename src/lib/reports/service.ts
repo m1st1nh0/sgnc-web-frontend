@@ -101,7 +101,7 @@ export async function gerarPdfDossie(userId: string) {
   const {data:ncs}=await historyQuery.order("data",{ascending:false}).limit(12);
   const feedbacks=await ultimosFeedbacks((ncs??[]).map((nc)=>nc.id));
   writer.heading("Historico recente"); for(const nc of ncs??[]){const feedback=feedbacks.get(nc.id);const aceite=situacaoDoAceite(nc);writer.line(`NC #${nc.id}`, `${brDate(nc.data||nc.criado_em)} | ${canonical(nc.status)} | ${nc.criticidade||"-"}${aceite!=="sem_feedback"?` | ${ROTULO_ACEITE[aceite]}`:""}`);if(feedback&&!feedback.legado){writer.line("Causa raiz",feedback.causa_raiz);writer.line("Acao combinada",`${feedback.acao_combinada} (responsavel: ${feedback.responsavel_acao_nome??"-"}; prazo: ${brDate(feedback.prazo_acao)})`);}}
-  writer.heading("Medidas disciplinares"); const measures=(stats.causas??[]).flatMap((cause:Row)=>cause.medidas??[]); if(!measures.length)writer.line("Registro","Nenhuma medida disciplinar registrada");for(const measure of measures)writer.line(measure.tipo,`ocorrencia ${measure.ocorrencia_gatilho}; ${brDate(measure.data_aplicacao)}`);
+  writer.heading("Medidas disciplinares"); const measures=(stats.causas??[]).flatMap((cause:Row)=>cause.medidas??[]); if(!measures.length)writer.line("Registro","Nenhuma medida disciplinar registrada");for(const measure of measures)writer.line(measure.tipo,`${measure.status}; ocorrencia ${measure.ocorrencia_gatilho}; ${measure.data_aplicacao?brDate(measure.data_aplicacao):"sem aplicacao"}`);
   return {bytes:await writer.doc.save(),filename:`sgnc-dossie-${userId}.pdf`};
 }
 

@@ -559,67 +559,6 @@ export async function obterTimeline(id: number) {
   return { nc_id: id, status_atual: nc.status, duracoes: nc.duracoes, eventos };
 }
 
-type DisciplinaryMeasureInput = {
-  causa_id?: unknown;
-  nc_id?: unknown;
-  ocorrencia_gatilho?: unknown;
-  tipo?: unknown;
-  dias_suspensao?: unknown;
-  observacao?: unknown;
-};
-
-export async function registrarMedidaDisciplinar(input: DisciplinaryMeasureInput) {
-  const user = await requireAdmin();
-  const ncId = Number(input.nc_id);
-  const causeId = Number(input.causa_id);
-  const occurrence = Number(input.ocorrencia_gatilho);
-  const type = String(input.tipo ?? "");
-  const allowed = ["advertencia", "suspensao", "avaliar_justa_causa"];
-  if (!Number.isInteger(ncId) || !Number.isInteger(causeId) || !Number.isInteger(occurrence)) {
-    throw new ApiError("NC, causa e ocorrência devem ser informadas.");
-  }
-  if (!allowed.includes(type)) throw new ApiError("Tipo de medida disciplinar inválido.");
-  if (occurrence < 4) throw new ApiError("Não é possível registrar medida disciplinar antes da quarta ocorrência.");
-  const suspensionDays = input.dias_suspensao == null ? null : Number(input.dias_suspensao);
-  if (type === "suspensao" && (!Number.isInteger(suspensionDays) || suspensionDays! < 1 || suspensionDays! > 30)) {
-    throw new ApiError("A suspensão deve possuir entre 1 e 30 dias.");
-  }
-  if (type !== "suspensao" && suspensionDays !== null) {
-    throw new ApiError("A quantidade de dias só deve ser informada para medidas do tipo suspensão.");
-  }
-  const admin = createAdminClient();
-  const { data: nc, error: ncError } = await admin
-    .from("nao_conformidades").select("id, colaborador_id").eq("id", ncId).maybeSingle();
-  if (ncError || !nc) throw new ApiError("Não conformidade não encontrada.", 404);
-  if (!nc.colaborador_id) throw new ApiError("A não conformidade não possui um colaborador associado.");
-  if (!podeAtuarComoQualidade(nc, user)) throw new ApiError(MENSAGEM_CONFLITO, 403);
-  const { data: relation, error: relationError } = await admin
-    .from("nc_causas").select("causa_id, ocorrencia_numero")
-    .eq("nc_id", ncId).eq("causa_id", causeId).maybeSingle();
-  if (relationError || !relation) throw new ApiError("A causa informada não pertence à não conformidade.");
-  if (relation.ocorrencia_numero != null && Number(relation.ocorrencia_numero) !== occurrence) {
-    throw new ApiError("A ocorrência informada não corresponde à ocorrência registrada para esta causa.");
-  }
-  const { data: existing, error: existingError } = await admin
-    .from("medidas_disciplinares").select("id").eq("nc_id", ncId)
-    .eq("causa_id", causeId).eq("ocorrencia_gatilho", occurrence).maybeSingle();
-  if (existingError) throw new ApiError("Não foi possível verificar a medida disciplinar.", 500);
-  if (existing) throw new ApiError("Já existe uma medida registrada para esta NC, causa e ocorrência.", 409);
-  const { data, error } = await admin.from("medidas_disciplinares").insert({
-    colaborador_id: nc.colaborador_id,
-    causa_id: causeId,
-    nc_id: ncId,
-    ocorrencia_gatilho: occurrence,
-    tipo: type,
-    status: "aplicada",
-    dias_suspensao: suspensionDays,
-    aplicada_por: user.id,
-    observacao: input.observacao ? String(input.observacao).trim() || null : null,
-  }).select("*").single();
-  if (error || !data) throw new ApiError("Não foi possível registrar a medida disciplinar.", 500);
-  return data;
-}
-
 /**
  * Feedback estruturado (D3): causa raiz, ação combinada, responsável, prazo da ação e combinado.
  * Abre o prazo de aceite de 18 horas de expediente (D5, D22). Devolve `feedback_id` para os anexos.

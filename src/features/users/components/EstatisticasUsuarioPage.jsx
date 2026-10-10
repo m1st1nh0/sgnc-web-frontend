@@ -10,7 +10,6 @@ import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
 import { buscarEstatisticasUsuario } from "../client/usuarioService.js";
-import { registrarMedidaDisciplinar } from "../../nc/client/ncService.js";
 import { baixarPdfDossie } from "../../reports/client/relatoriosService.js";
 import { salvarArquivoLocal } from "../../../lib/utils/arquivoLocal.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
@@ -21,7 +20,7 @@ import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
-import ModalRegistrarMedida from "../../nc/components/ModalRegistrarMedida.jsx";
+import { situacaoDaMedida } from "../../nc/client/medidas.js";
 import { ehQualidade } from "../../../lib/auth/papeis.js";
 
 const ROTULOS_MEDIDA = {
@@ -129,32 +128,9 @@ export default function EstatisticasUsuarioPage() {
   const ehPropriaEstatistica = usuario?.id === usuarioId;
   const ehAdm = ehQualidade(usuario?.papel);
 
-  const [causaEmRegistro, setCausaEmRegistro] = useState(null);
-  const [vezAberturaModal, setVezAberturaModal] = useState(0);
-  const [registrandoMedida, setRegistrandoMedida] = useState(false);
-  const [erroMedida, setErroMedida] = useState("");
-
-  async function registrarMedida(dados) {
-    setRegistrandoMedida(true);
-    setErroMedida("");
-    try {
-      await registrarMedidaDisciplinar(dados);
-      setCausaEmRegistro(null);
-      await carregarEstatisticas();
-    } catch (e) {
-      setErroMedida(
-        e instanceof ErroApi
-          ? e.message
-          : "Não foi possível registrar a medida disciplinar."
-      );
-    } finally {
-      setRegistrandoMedida(false);
-    }
-  }
-
   const causas = estatisticas?.causas || [];
   const totalMedidas = causas.reduce(
-    (total, causa) => total + (causa.medidas?.length || 0),
+    (total, causa) => total + (causa.medidas || []).filter((medida) => medida.status === "aplicada").length,
     0
   );
   const causasReincidentes = causas.filter(
@@ -249,7 +225,7 @@ export default function EstatisticasUsuarioPage() {
               </div>
               <div className="col-md-4">
                 <CardMetrica
-                  rotulo={ehAdm ? "Medidas registradas" : "Causa mais frequente"}
+                  rotulo={ehAdm ? "Medidas aplicadas" : "Causa mais frequente"}
                   valor={ehAdm ? totalMedidas : principalCausa?.ocorrencias_12m ?? 0}
                   descricao={
                     ehAdm
@@ -313,24 +289,18 @@ export default function EstatisticasUsuarioPage() {
                         >
                           {formatarMedida(causa.medida_sugerida)}
                         </span>
-                        {ehAdm &&
-                          (medidaDaUltimaOcorrencia(causa) ? (
-                            <span className="sg-badge sg-badge--verde">
-                              Medida registrada
-                            </span>
-                          ) : (
-                            <Botao
-                              variante="secundario"
-                              tamanho="sm"
-                              onClick={() => {
-                                setErroMedida("");
-                                setVezAberturaModal((v) => v + 1);
-                                setCausaEmRegistro(causa);
-                              }}
-                            >
-                              Registrar medida
-                            </Botao>
-                          ))}
+                        {ehAdm && medidaDaUltimaOcorrencia(causa) && (
+                          <span className={`sg-badge ${situacaoDaMedida(medidaDaUltimaOcorrencia(causa).status).classe}`}>
+                            {situacaoDaMedida(medidaDaUltimaOcorrencia(causa).status).rotulo}
+                          </span>
+                        )}
+                        {/* D19: quem é o colaborador não decide a própria medida, nem vê o atalho. */}
+                        {ehAdm && !ehPropriaEstatistica &&
+                          ["sugerida", "aprovada"].includes(medidaDaUltimaOcorrencia(causa)?.status) && (
+                            <Link href="/medidas" className="sg-btn sg-btn--secundario sg-btn--sm">
+                              {medidaDaUltimaOcorrencia(causa).status === "sugerida" ? "Aprovar ou reprovar" : "Registrar aplicação"}
+                            </Link>
+                          )}
                       </div>
                     )}
 
@@ -364,13 +334,8 @@ export default function EstatisticasUsuarioPage() {
                                   </td>
                                   <td>{formatarData(medida.data_aplicacao)}</td>
                                   <td>
-                                    <span
-                                      className={`sg-badge ${medida.status === "aplicada"
-                                        ? "sg-badge--verde"
-                                        : "sg-badge--cinza"
-                                        }`}
-                                    >
-                                      {medida.status}
+                                    <span className={`sg-badge ${situacaoDaMedida(medida.status).classe}`}>
+                                      {situacaoDaMedida(medida.status).rotulo}
                                     </span>
                                   </td>
                                   <td>{medida.observacao || "-"}</td>
@@ -382,7 +347,7 @@ export default function EstatisticasUsuarioPage() {
                       </div>
                     ) : (
                       <p className="texto-secundario texto-sm mb-0">
-                        Nenhuma medida disciplinar foi registrada manualmente para esta causa.
+                        Nenhuma medida disciplinar para esta causa.
                       </p>
                     )}
                   </div>
@@ -392,16 +357,6 @@ export default function EstatisticasUsuarioPage() {
           </div>
         )}
       </Container>
-
-      <ModalRegistrarMedida
-        key={`${causaEmRegistro?.causa_id || "fechado"}-${vezAberturaModal}`}
-        visivel={!!causaEmRegistro}
-        causa={causaEmRegistro}
-        erro={erroMedida}
-        aoFechar={() => setCausaEmRegistro(null)}
-        aoRegistrar={registrarMedida}
-        carregando={registrandoMedida}
-      />
     </div>
   );
 }
