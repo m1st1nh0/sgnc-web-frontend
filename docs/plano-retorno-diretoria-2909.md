@@ -49,19 +49,30 @@ Respondidas pelo responsável em 09/10/2026:
 | D7 | Avisos sobre mudança de etapa. | **Avaliar notificações dentro do aplicativo** (ver seção "Avaliação: notificações no aplicativo" e Fase 5). |
 | D8 | Dias úteis consideram feriados? | **Não. Só segunda a sexta**, que é o expediente. |
 | D9 | O que acontece quando o aceite vence? | **O sistema sinaliza, notifica e a NC passa para o status "Não respondida".** A notificação vai para o colaborador analisado e o supervisor dele. |
-| D13 | Quem abriu a NC recebe notificações? | **Não.** Quem abriu acompanha pela tela de detalhe e por "Minhas NCs". |
+| D13 | Quem abriu a NC recebe notificações? | **Revisada em 10/10:** quem abriu recebe **só a decisão** (NC aprovada ou reprovada). Na abertura recebe apenas a confirmação na tela (item 3.4), não uma notificação. Nada além disso por ter aberto. |
 | D11 | Depois de "Não respondida", o colaborador ainda pode registrar o aceite? | **Sim.** A NC fica registrada como "Não respondida" no histórico; o aceite tardio exige a frase, conclui a NC (ou leva ao plano de ação se crítica) e fica marcado **"aceito fora do prazo"** no histórico, no PDF e em Insights. |
 | D12 | A Qualidade é avisada quando uma NC fica "Não respondida"? | **Não.** A Qualidade acompanha pelo card "Não respondidas" no painel. |
-| D10 | Quem da Qualidade recebe aviso de NC nova? | **Todos os usuários com papel Qualidade ou Adm, exceto quem for o colaborador analisado.** |
+| D10 | Quem da Qualidade recebe aviso de NC nova? | **Todos os usuários com papel Qualidade ou Adm, exceto quem abriu e quem for o colaborador analisado.** Só a Qualidade é avisada da abertura. |
 | D14 | NC "Não respondida" conta como ocorrência para reincidência? | **Sim**, porque a NC foi validada. |
 | D15 | Nomenclatura do perfil "Funcionário". | **Passa a se chamar "Colaborador"** em toda a interface (rótulos, telas, onboarding, mensagens). O valor interno `funcionario` no banco não muda. |
+
+Modelo de notificações, respondido em 10/10/2026:
+
+| ID | Pergunta | Decisão |
+|---|---|---|
+| D16 | Quando a NC é contra alguém da Qualidade, essa pessoa é avisada na abertura? | **Não.** É avisada na validação, como colaborador e supervisor. |
+| D17 | "Equipe dele" é o líder direto ou toda a cadeia? | **Só o líder direto.** Em **NC crítica**, toda a cadeia de liderança acima do colaborador. |
+| D18 | Horário dos lembretes e níveis de urgência. | **Segunda a sexta, das 9h às 19h.** Níveis: normal → atenção → urgente → crítica (ver Fase 5). |
+| D19 | Quem aprova, reprova e aplica medida disciplinar? | **Alguém da Qualidade que não seja o colaborador da NC.** |
+| D20 | O líder recebe atualizações do plano de ação? | **Sim.** |
+| D21 | Entram no modelo: responsável pela ação, solicitação de causa, etapas da medida e aviso de plano criado? | **Sim, todos.** |
 
 Todas as decisões necessárias estão respondidas.
 
 
 ## Fases
 
-Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 1 → 2 → 3 → 4 → 5 → 6. As fases 1 e 2 são independentes e podem andar em paralelo. A Fase 5 (notificações) depende da 4, porque os eventos de feedback e prazo nascem lá.
+Cada fase vira um PR próprio, validado no Preview antes do merge. Ordem: 0 → 1 → 2 → 3 → 4 → 4B → 5 → 6. As fases 1 e 2 são independentes e podem andar em paralelo. A Fase 5 (notificações) depende da 4, porque os eventos de feedback e prazo nascem lá.
 
 ### Fase 0: linha de base (pontos 1 e 4)
 
@@ -156,22 +167,84 @@ Regras decididas: todos os campos do feedback são obrigatórios, exceto o anexo
 - [ ] 4.16 Unit: validação dos campos obrigatórios; `somar_dias_uteis` (sexta 15h + 2 = terça 15h; sábado + 2 = terça; quarta + 2 = sexta); permissão do anexo do feedback.
 - [ ] 4.17 Exercitar no banco do Preview: feedback completo → aceite no prazo; feedback → prazo vencido → job marca "Não respondida" → aceite fora do prazo (D11); NC crítica → aceite → plano de ação; tentativa com campo vazio é recusada. Remover dados temporários.
 
-### Fase 5: notificações dentro do aplicativo (D7, D9, D10, D12, D13 decididos)
+### Fase 4B: medida disciplinar em etapas (D19, D21)
 
-Ver avaliação abaixo. Entrega mínima:
-- [ ] 5.1 Tabela `public.notificacoes`: `id`, `usuario_id`, `tipo`, `nc_id`, `titulo`, `mensagem`, `criada_em`, `lida_em`. Índice em `(usuario_id, lida_em, criada_em desc)`. RLS ligada sem concessão direta; leitura só pela API.
-- [ ] 5.2 Função `public.notificar(p_usuarios uuid[], p_tipo, p_nc_id, p_titulo, p_mensagem)`, chamada **dentro** das RPCs de transição para que a notificação nasça na mesma transação do evento:
-  - Regra geral (D13): **quem abriu a NC nunca é destinatário** por ter aberto. Só recebe se também tiver outro papel no evento (ex.: é o responsável pela ação).
-  - NC aberta → Qualidade (D10), exceto o colaborador analisado.
-  - Feedback registrado → colaborador analisado ("Você tem até … para registrar o aceite"); responsável pela ação ("Você é responsável por … até …").
-  - Aceite registrado → quem registrou o feedback.
-  - NC não respondida → ver 5.3.
-  - NC crítica marcada / plano de ação concluído → envolvidos do plano.
-- [ ] 5.3 NC não respondida (D9): `marcar_nao_respondidas_v1()` (Fase 4) chama `notificar` para o colaborador analisado ("O prazo para o aceite da NC #X venceu. Você ainda pode registrar o aceite, que ficará marcado como fora do prazo.") e para o supervisor direto dele (`usuarios.supervisor_id`), na mesma transação da mudança de status. Sem supervisor cadastrado, só o colaborador. A Qualidade não é notificada (D12).
-- [ ] 5.4 API: `GET /api/notificacoes` (últimas 30, não lidas primeiro, contador), `POST /api/notificacoes/[id]/lida`, `POST /api/notificacoes/lidas` (marcar todas).
-- [ ] 5.5 Interface: sino no `AppNavigation.jsx` com contador; painel com a lista, cada item leva à NC e marca como lida. Atualização ao carregar a página, ao voltar o foco para a aba e a cada 60 s com a aba visível.
-- [ ] 5.6 Testes: unit da API (só lê as próprias notificações); no banco do Preview, conferir que cada transição gera as notificações certas e nenhuma para o colaborador analisado quando ele é da Qualidade.
-- [ ] 5.7 Fora deste ciclo: e-mail e notificação push do navegador.
+Hoje a medida só é **sugerida** na tela de estatísticas (a partir da 4ª ocorrência) e a Qualidade a registra direto como `aplicada`. Não existe aprovar/reprovar. A tabela `medidas_disciplinares` está vazia (0 linhas em 10/10), então a mudança não tem dado a migrar.
+
+Conferência do contrato D19 no código em 10/10:
+- **API: de acordo.** `registrarMedidaDisciplinar` exige Qualidade (`requireAdmin`) e `podeAtuarComoQualidade` (bloqueia quem é o colaborador da NC).
+- **Banco: de acordo, mas só na camada da aplicação.** `authenticated` tem apenas `SELECT`; escrita só pelo servidor. Não há restrição no banco que impeça `aplicada_por = colaborador_id`.
+- **Tela: divergente.** O botão "Registrar medida" aparece para a Qualidade inclusive nas próprias estatísticas (`EstatisticasUsuarioPage.jsx`); o servidor recusa com 403, mas o botão não deveria aparecer.
+- **Concorrência:** a duplicidade (mesma NC, causa e ocorrência) é checada antes do `insert`, sem índice único; duas requisições simultâneas podem gravar duas medidas.
+
+Itens:
+- [ ] 4B.1 Migração: `status` passa a aceitar `sugerida`, `aprovada`, `reprovada`, `aplicada`, `cancelada`; colunas `decidida_por`, `decidida_em`, `motivo_decisao`, `aplicada_em`; `CHECK (decidida_por IS DISTINCT FROM colaborador_id AND aplicada_por IS DISTINCT FROM colaborador_id)`; índice único em `(nc_id, causa_id, ocorrencia_gatilho)`.
+- [ ] 4B.2 Na validação (`validar_nc_com_ocorrencias_v2` / sucessora), quando a ocorrência atingir o gatilho da medida sugerida, criar a medida com `status = 'sugerida'` na mesma transação.
+- [ ] 4B.3 RPCs `decidir_medida_v1(p_medida_id, p_usuario_id, p_decisao, p_motivo)` (aprovar/reprovar; motivo obrigatório ao reprovar) e `aplicar_medida_v1(p_medida_id, p_usuario_id, p_data, p_observacao)`; ambas exigem Qualidade que não seja o colaborador e travam a linha (`FOR UPDATE`).
+- [ ] 4B.4 Tela: lista de medidas pendentes para a Qualidade (sugeridas e aprovadas a aplicar), com aprovar/reprovar/aplicar; esconder as ações quando a pessoa é o próprio colaborador.
+- [ ] 4B.5 Testes: unit de permissão (Qualidade acusada não decide nem aplica); no banco do Preview, sugerida → aprovada → aplicada e sugerida → reprovada.
+
+### Fase 5: notificações dentro do aplicativo (D7, D9, D10, D12, D13, D16–D21 decididos)
+
+**Regras gerais (valem para todos os eventos)**
+
+| # | Regra |
+|---|---|
+| R1 | Quem executou a ação nunca é notificado dela. |
+| R2 | O colaborador da NC (acusado) nunca recebe a versão "Qualidade" de um evento da própria NC; recebe só a versão pessoal ou nada. |
+| R3 | Uma notificação por pessoa por evento. Se a pessoa acumula papéis, recebe a mais relevante: acusado > responsável pela ação > líder > quem abriu > Qualidade. |
+| R4 | Notificação de pendência é resolvida automaticamente quando a pendência acaba (ex.: aceite registrado resolve os avisos de aceite pendente). |
+| R5 | Só notifica quem pode abrir a NC, e o texto não expõe o que a pessoa não pode ver (quem abriu sem ser Qualidade não vê o feedback). |
+| R6 | "Qualidade" = papéis Qualidade e Adm. |
+| R7 | "Líder" = supervisor direto do colaborador (`usuarios.supervisor_id`). Em NC crítica, toda a cadeia acima (D17). |
+
+**Matriz evento × destinatário**
+
+| Evento | Qualidade | Acusado | Líder | Outros |
+|---|---|---|---|---|
+| NC aberta | ✅ exceto quem abriu e o acusado | — (D16) | — | quem abriu: só confirmação na tela |
+| NC validada | ✅ exceto quem validou | ✅ "NC validada contra você" | ✅ "NC validada contra {nome}, da sua equipe" | quem abriu: "sua NC foi aprovada" |
+| NC invalidada | — | — | — | quem abriu: "sua NC foi reprovada", com o motivo |
+| Feedback aplicado | ✅ exceto quem aplicou | ✅ ação: "precisa do seu aceite até {prazo}" | ✅ "{nome} precisa dar o aceite até {prazo}" | responsável pela ação: "você é responsável por {ação} até {data}" |
+| Lembretes de aceite | — | ✅ (escalonados) | ✅ (níveis urgente e crítica) | — |
+| NC não respondida (D9) | — (D12) | ✅ crítica | ✅ crítica | — |
+| Aceite registrado | ✅ | — (é quem agiu) | resolve a pendência (R4) | — |
+| Prazo da ação combinada (1 dia útil antes) | — | — | — | responsável pela ação |
+| NC crítica marcada / plano criado | — (quem marcou é da Qualidade, R1) | ✅ | ✅ cadeia toda | — |
+| Atualização no plano de ação | ✅ exceto o autor | — | ✅ cadeia toda, exceto o autor (D20) | — |
+| Plano de ação concluído | ✅ exceto quem concluiu | ✅ | ✅ cadeia toda | — |
+| Medida sugerida (validação atinge o gatilho) | ✅ | — | — | — |
+| Medida aprovada / reprovada | ✅ exceto quem decidiu | — | — | — |
+| Medida aplicada | ✅ exceto quem aplicou | ✅ "você recebeu uma medida disciplinar" | ✅ "{nome} recebeu uma medida" | — |
+| Solicitação de causa nova | ✅ | — | — | — |
+| Solicitação de causa decidida | — | — | — | solicitante: aprovada ou rejeitada, com o motivo |
+
+O acusado não recebe "medida sugerida" nem "medida aprovada/reprovada" (R2): recebe só quando a medida é aplicada.
+
+**Lembretes escalonados do aceite (D18)**
+
+Expediente: segunda a sexta, 9h às 19h. Exemplo: feedback na segunda às 14h, prazo na quarta às 14h.
+
+| Momento | Nível | Para quem |
+|---|---|---|
+| Envio do feedback | normal | acusado e líder |
+| Início do dia útil seguinte (9h) | atenção | acusado |
+| 4 h antes do prazo | urgente | acusado e líder |
+| Vencimento → "Não respondida" | crítica | acusado e líder |
+
+- Cada lembrete **atualiza a mesma notificação** (sobe o nível e volta a ficar não lida), sem empilhar avisos.
+- Lembrete que cairia fora do expediente é antecipado para o último horário de expediente anterior.
+- Feedback enviado fora do expediente: o prazo de 2 dias úteis conta a partir das 9h do próximo dia útil. **Regra proposta, a confirmar com o responsável.**
+
+**Itens**
+- [ ] 5.1 Tabela `public.notificacoes`: `id`, `usuario_id`, `evento`, `papel_destinatario` (`qualidade`, `acusado`, `lider`, `autor`, `responsavel_acao`, `solicitante`), `nivel` (`normal`, `atencao`, `urgente`, `critica`), `nc_id`, `medida_id`, `titulo`, `mensagem`, `link`, `chave_agrupamento`, `criada_em`, `atualizada_em`, `lida_em`, `resolvida_em`. Índice único em `(usuario_id, chave_agrupamento)` para os lembretes; índice em `(usuario_id, resolvida_em, lida_em, criada_em desc)`. RLS ligada sem concessão direta; leitura só pela API.
+- [ ] 5.2 Função central `public.notificar_evento(p_evento, p_nc_id, p_autor_id, p_extra jsonb)`: resolve destinatários pela matriz e aplica R1–R7 num só lugar; chamada **dentro** das RPCs de transição (mesma transação do evento). Funções auxiliares: `lideranca_de(colaborador, cadeia boolean)` e `usuarios_qualidade()`.
+- [ ] 5.3 `resolver_pendencias(p_nc_id, p_evento)`: marca `resolvida_em` nas notificações de pendência (R4).
+- [ ] 5.4 Agendamento (`pg_cron`, a cada 15 min, só no expediente): lembretes escalonados, prazo da ação combinada e `marcar_nao_respondidas_v1()` (Fase 4), todos chamando `notificar_evento`.
+- [ ] 5.5 API: `GET /api/notificacoes` (não resolvidas primeiro, últimas 30, contador de não lidas), `POST /api/notificacoes/[id]/lida`, `POST /api/notificacoes/lidas`.
+- [ ] 5.6 Interface: sino no `AppNavigation.jsx` com contador e cor pelo maior nível pendente; painel com a lista, cada item leva à NC (ou à medida/causa) e marca como lida. Atualização ao carregar a página, ao voltar o foco para a aba e a cada 60 s com a aba visível.
+- [ ] 5.7 Testes: unit da matriz (cada evento × cada papel, incluindo Qualidade acusada, supervisor que abriu NC contra a própria equipe, NC crítica com cadeia); unit dos horários de lembrete (sexta 18h, fim de semana, prazo fora do expediente); unit da API (só lê as próprias notificações); no banco do Preview, conferir as notificações geradas por cada transição.
+- [ ] 5.8 Fora deste ciclo: e-mail, push do navegador e preferências por pessoa.
 
 ### Fase 6: validação e devolutiva
 
