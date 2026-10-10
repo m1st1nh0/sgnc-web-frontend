@@ -66,6 +66,7 @@ Modelo de notificações, respondido em 10/10/2026:
 | D19 | Quem aprova, reprova e aplica medida disciplinar? | **Alguém da Qualidade que não seja o colaborador da NC.** |
 | D20 | O líder recebe atualizações do plano de ação? | **Sim.** |
 | D21 | Entram no modelo: responsável pela ação, solicitação de causa, etapas da medida e aviso de plano criado? | **Sim, todos.** |
+| D22 | Como contar o prazo de aceite? | **Só dentro do expediente** (segunda a sexta, 9h às 19h): 2 dias úteis = 20 horas de expediente. Envio fora do expediente começa a contar às 9h do próximo dia útil. |
 
 Todas as decisões necessárias estão respondidas.
 
@@ -142,8 +143,8 @@ Regras decididas: todos os campos do feedback são obrigatórios, exceto o anexo
 **Banco (migrações aditivas em `supabase/migrations/`, aplicadas primeiro no Preview)**
 - [ ] 4.1 Tabela `public.nc_feedbacks`: `id`, `nc_id`, `versao`, `causa_raiz`, `acao_combinada`, `responsavel_acao_id` (uuid → `usuarios`), `prazo_acao` (date), `combinado`, `prazo_aceite` (timestamptz), `registrado_por`, `registrado_em`. Todos `not null`, com `check` de texto não vazio. Uma linha por envio (versão 1 neste ciclo; a coluna `versao` deixa o caminho aberto para revisão futura). RLS ligada sem concessão direta a `authenticated` (padrão da revogação de 07/10).
 - [ ] 4.2 `public.evidencias`: coluna nova `feedback_id bigint null references nc_feedbacks(id)`. Evidência com `feedback_id` é anexo do feedback; sem, é evidência da abertura. Anexo é opcional.
-- [ ] 4.3 Função `public.somar_dias_uteis(p_inicio timestamptz, p_dias int)`: soma dias de segunda a sexta (fuso `America/Sao_Paulo`), mantendo a hora do envio. Sem feriados (D8). Feedback enviado no sábado ou domingo conta a partir de segunda.
-- [ ] 4.4 RPC `registrar_feedback_v4(p_nc_id, p_responsavel_id, p_causa_raiz, p_acao, p_responsavel_acao_id, p_prazo_acao, p_combinado)`: mesmas guardas de `aplicar_feedback_nc_v3` (conflito de interesse, status `aguardando_feedback`/`aguardando_analise`); valida todos os campos; `prazo_acao` não pode ser anterior a hoje; responsável da ação deve ser usuário ativo; grava `nc_feedbacks` com `prazo_aceite = somar_dias_uteis(now(), 2)`; preenche `nao_conformidades.feedback` com um resumo legível (compatibilidade com PDF/CSV/dossiê atuais); status → `aguardando_aceite`; histórico. Retorna `feedback_id` para o upload dos anexos.
+- [ ] 4.3 Função `public.somar_horas_expediente(p_inicio timestamptz, p_horas int)`: soma horas **apenas dentro do expediente** (segunda a sexta, 9h às 19h, fuso `America/Sao_Paulo`, sem feriados; D8, D18, D22). O prazo de aceite é `somar_horas_expediente(envio, 20)` (2 dias úteis × 10 h). Envio fora do expediente começa a contar às 9h do próximo dia útil.
+- [ ] 4.4 RPC `registrar_feedback_v4(p_nc_id, p_responsavel_id, p_causa_raiz, p_acao, p_responsavel_acao_id, p_prazo_acao, p_combinado)`: mesmas guardas de `aplicar_feedback_nc_v3` (conflito de interesse, status `aguardando_feedback`/`aguardando_analise`); valida todos os campos; `prazo_acao` não pode ser anterior a hoje; responsável da ação deve ser usuário ativo; grava `nc_feedbacks` com `prazo_aceite = somar_horas_expediente(now(), 20)`; preenche `nao_conformidades.feedback` com um resumo legível (compatibilidade com PDF/CSV/dossiê atuais); status → `aguardando_aceite`; histórico. Retorna `feedback_id` para o upload dos anexos.
 - [ ] 4.5 RPC `marcar_nao_respondidas_v1()`: para cada NC `aguardando_aceite` com `prazo_aceite` vencido, muda para `nao_respondida` e grava histórico ("Prazo de aceite vencido sem resposta"; autor nulo = sistema, confirmar se `historico_nc.usuario_id` aceita nulo). Idempotente e com `FOR UPDATE SKIP LOCKED`. Na Fase 5 essa mesma RPC dispara as notificações.
 - [ ] 4.5a Agendamento: instalar `pg_cron` e rodar `marcar_nao_respondidas_v1()` a cada 15 minutos (o prazo tem hora, não só dia). Alternativa sem `pg_cron`: Vercel Cron chamando rota protegida por segredo.
 - [ ] 4.5b `aceitar_nc_v4`: igual à v3 (frase digitada), mas também aceita `nao_respondida` (D11), registrando "Aceite formal do colaborador fora do prazo" no histórico e `aceito_fora_prazo = true` (coluna nova em `nao_conformidades`, padrão `false`).
@@ -164,7 +165,7 @@ Regras decididas: todos os campos do feedback são obrigatórios, exceto o anexo
 - [ ] 4.15 PDF da NC, CSV e dossiê: incluir causa raiz, ação, responsável, prazo da ação, combinado, prazo do aceite e se foi aceito no prazo.
 
 **Testes**
-- [ ] 4.16 Unit: validação dos campos obrigatórios; `somar_dias_uteis` (sexta 15h + 2 = terça 15h; sábado + 2 = terça; quarta + 2 = sexta); permissão do anexo do feedback.
+- [ ] 4.16 Unit: validação dos campos obrigatórios; `somar_horas_expediente(…, 20)` (segunda 14h → quarta 14h; sexta 15h → terça 15h; segunda 18h → quarta 18h; sexta 20h → terça 19h; sábado 10h → terça 19h; segunda 7h → terça 19h); permissão do anexo do feedback.
 - [ ] 4.17 Exercitar no banco do Preview: feedback completo → aceite no prazo; feedback → prazo vencido → job marca "Não respondida" → aceite fora do prazo (D11); NC crítica → aceite → plano de ação; tentativa com campo vazio é recusada. Remover dados temporários.
 
 ### Fase 4B: medida disciplinar em etapas (D19, D21)
@@ -184,7 +185,7 @@ Itens:
 - [ ] 4B.4 Tela: lista de medidas pendentes para a Qualidade (sugeridas e aprovadas a aplicar), com aprovar/reprovar/aplicar; esconder as ações quando a pessoa é o próprio colaborador.
 - [ ] 4B.5 Testes: unit de permissão (Qualidade acusada não decide nem aplica); no banco do Preview, sugerida → aprovada → aplicada e sugerida → reprovada.
 
-### Fase 5: notificações dentro do aplicativo (D7, D9, D10, D12, D13, D16–D21 decididos)
+### Fase 5: notificações dentro do aplicativo (D7, D9, D10, D12, D13, D16–D22 decididos)
 
 **Regras gerais (valem para todos os eventos)**
 
@@ -229,12 +230,11 @@ Expediente: segunda a sexta, 9h às 19h. Exemplo: feedback na segunda às 14h, p
 |---|---|---|
 | Envio do feedback | normal | acusado e líder |
 | Início do dia útil seguinte (9h) | atenção | acusado |
-| 4 h antes do prazo | urgente | acusado e líder |
+| 4 horas de expediente antes do prazo | urgente | acusado e líder |
 | Vencimento → "Não respondida" | crítica | acusado e líder |
 
 - Cada lembrete **atualiza a mesma notificação** (sobe o nível e volta a ficar não lida), sem empilhar avisos.
-- Lembrete que cairia fora do expediente é antecipado para o último horário de expediente anterior.
-- Feedback enviado fora do expediente: o prazo de 2 dias úteis conta a partir das 9h do próximo dia útil. **Regra proposta, a confirmar com o responsável.**
+- O prazo e os lembretes contam **apenas horas de expediente** (D22): 2 dias úteis = 20 horas de expediente. Feedback enviado fora do expediente começa a contar às 9h do próximo dia útil. Como as contas são feitas em horas de expediente, nenhum lembrete cai fora do horário.
 
 **Itens**
 - [ ] 5.1 Tabela `public.notificacoes`: `id`, `usuario_id`, `evento`, `papel_destinatario` (`qualidade`, `acusado`, `lider`, `autor`, `responsavel_acao`, `solicitante`), `nivel` (`normal`, `atencao`, `urgente`, `critica`), `nc_id`, `medida_id`, `titulo`, `mensagem`, `link`, `chave_agrupamento`, `criada_em`, `atualizada_em`, `lida_em`, `resolvida_em`. Índice único em `(usuario_id, chave_agrupamento)` para os lembretes; índice em `(usuario_id, resolvida_em, lida_em, criada_em desc)`. RLS ligada sem concessão direta; leitura só pela API.
@@ -243,7 +243,7 @@ Expediente: segunda a sexta, 9h às 19h. Exemplo: feedback na segunda às 14h, p
 - [ ] 5.4 Agendamento (`pg_cron`, a cada 15 min, só no expediente): lembretes escalonados, prazo da ação combinada e `marcar_nao_respondidas_v1()` (Fase 4), todos chamando `notificar_evento`.
 - [ ] 5.5 API: `GET /api/notificacoes` (não resolvidas primeiro, últimas 30, contador de não lidas), `POST /api/notificacoes/[id]/lida`, `POST /api/notificacoes/lidas`.
 - [ ] 5.6 Interface: sino no `AppNavigation.jsx` com contador e cor pelo maior nível pendente; painel com a lista, cada item leva à NC (ou à medida/causa) e marca como lida. Atualização ao carregar a página, ao voltar o foco para a aba e a cada 60 s com a aba visível.
-- [ ] 5.7 Testes: unit da matriz (cada evento × cada papel, incluindo Qualidade acusada, supervisor que abriu NC contra a própria equipe, NC crítica com cadeia); unit dos horários de lembrete (sexta 18h, fim de semana, prazo fora do expediente); unit da API (só lê as próprias notificações); no banco do Preview, conferir as notificações geradas por cada transição.
+- [ ] 5.7 Testes: unit da matriz (cada evento × cada papel, incluindo Qualidade acusada, supervisor que abriu NC contra a própria equipe, NC crítica com cadeia); unit dos horários de lembrete em horas de expediente (envio sexta 18h, envio no fim de semana, envio antes das 9h); unit da API (só lê as próprias notificações); no banco do Preview, conferir as notificações geradas por cada transição.
 - [ ] 5.8 Fora deste ciclo: e-mail, push do navegador e preferências por pessoa.
 
 ### Fase 6: validação e devolutiva

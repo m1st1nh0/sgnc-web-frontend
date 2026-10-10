@@ -21,7 +21,7 @@ Decisões do responsável (09/10/2026), valem como regra:
 - "Primeiros passos" recolhido por padrão depois do primeiro acesso.
 - Feedback: causa raiz, ação combinada, responsável pela ação, prazo da ação e combinado são obrigatórios; anexo de evidências é opcional.
 - Não há contestação do feedback por enquanto.
-- O colaborador tem 2 dias úteis (segunda a sexta, sem feriados) após o envio do feedback para o aceite; o aceite continua exigindo a frase digitada.
+- O colaborador tem 2 dias úteis após o envio do feedback para o aceite, contados **só dentro do expediente** (segunda a sexta, 9h–19h, sem feriados) = 20 horas de expediente; envio fora do expediente começa a contar às 9h do próximo dia útil. O aceite continua exigindo a frase digitada.
 - Vencido o prazo, a NC muda automaticamente para o status "Não respondida" (com histórico), e o colaborador analisado e o supervisor dele recebem notificação.
 - Depois de "Não respondida", o colaborador ainda pode registrar o aceite (com a frase); o aceite fica marcado como "aceito fora do prazo".
 - A Qualidade não é notificada quando uma NC fica "Não respondida".
