@@ -21,7 +21,7 @@ Decisões do responsável (09/10/2026), valem como regra:
 - "Primeiros passos" recolhido por padrão depois do primeiro acesso.
 - Feedback: causa raiz, ação combinada, responsável pela ação, prazo da ação e combinado são obrigatórios; anexo de evidências é opcional.
 - Não há contestação do feedback por enquanto.
-- O colaborador tem 2 dias úteis após o envio do feedback para o aceite, contados **só dentro do expediente** (segunda a sexta, 9h–19h, sem feriados) = 20 horas de expediente; envio fora do expediente começa a contar às 9h do próximo dia útil. O aceite continua exigindo a frase digitada.
+- O colaborador tem 2 dias úteis após o envio do feedback para o aceite, contados **só dentro do expediente** (segunda a sexta, 9h–18h, sem feriados) = 18 horas de expediente; envio fora do expediente começa a contar às 9h do próximo dia útil. O aceite continua exigindo a frase digitada.
 - Vencido o prazo, a NC muda automaticamente para o status "Não respondida" (com histórico), e o colaborador analisado e o supervisor dele recebem notificação.
 - Depois de "Não respondida", o colaborador ainda pode registrar o aceite (com a frase); o aceite fica marcado como "aceito fora do prazo".
 - A Qualidade não é notificada quando uma NC fica "Não respondida".
@@ -30,7 +30,7 @@ Decisões do responsável (09/10/2026), valem como regra:
 
 - Aviso de NC nova vai para todos com papel Qualidade ou Adm, exceto quem abriu e quem for o colaborador analisado. O acusado só é avisado na validação, mesmo sendo da Qualidade.
 - NC "Não respondida" conta como ocorrência para reincidência.
-- Notificações seguem a matriz e as regras R1–R7 da Fase 5 do plano. Líder = supervisor direto; em NC crítica, toda a cadeia. Lembretes só de segunda a sexta, 9h–19h, com níveis normal → atenção → urgente → crítica.
+- Notificações seguem a matriz e as regras R1–R7 da Fase 5 do plano. Líder = supervisor direto; em NC crítica, toda a cadeia. Lembretes só de segunda a sexta, 9h–18h, com níveis normal → atenção → urgente → crítica.
 - Medida disciplinar tem etapas (sugerida → aprovada/reprovada → aplicada) e só pode ser decidida ou aplicada por alguém da Qualidade que não seja o colaborador da NC.
 - Na interface, o papel "Funcionário" se chama **"Colaborador"**. O valor interno `funcionario` no banco e na API não muda.
 
