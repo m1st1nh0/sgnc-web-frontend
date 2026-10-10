@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Dropdown from "react-bootstrap/Dropdown";
 import Form from "react-bootstrap/Form";
 import Modal from "react-bootstrap/Modal";
 
@@ -16,6 +17,11 @@ import { alterarEquipe, listarEquipe, listarHistoricoEquipe, listarLiderancas } 
 
 const SEM_LIDERANCA = "__sem_lideranca__";
 const COR_PAPEL = { adm: "sg-badge--escuro", qualidade: "sg-badge--verde", supervisor: "sg-badge--azul", funcionario: "sg-badge--cinza" };
+
+function contarPessoas(total) {
+  if (total === 0) return "Nenhuma pessoa";
+  return total === 1 ? "1 pessoa" : `${total} pessoas`;
+}
 
 function normalizar(texto) {
   return String(texto ?? "").toLocaleLowerCase("pt-BR");
@@ -44,10 +50,19 @@ export default function GestaoEquipes() {
   const [liderancas, setLiderancas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  const [sucesso, setSucesso] = useState("");
+  // Confirmação de mudança aparece na linha da pessoa alterada, não no topo da página.
+  const [alterado, setAlterado] = useState(null);
   const [busca, setBusca] = useState("");
   const [salvando, setSalvando] = useState("");
   const [historico, setHistorico] = useState(null);
+  // Mudança aguardando confirmação: { tipo: "mover" | "papel", pessoa, destino?, papel? }.
+  const [confirmacao, setConfirmacao] = useState(null);
+
+  useEffect(() => {
+    if (!alterado) return undefined;
+    const timer = setTimeout(() => setAlterado(null), 8000);
+    return () => clearTimeout(timer);
+  }, [alterado]);
 
   async function carregar() {
     const [equipe, lideres] = await Promise.all([listarEquipe(), listarLiderancas()]);
@@ -91,20 +106,37 @@ export default function GestaoEquipes() {
     const termo = normalizar(busca.trim());
     const combina = (pessoa) => !termo || [pessoa.nome, pessoa.setor, NOME_PAPEL[pessoa.papel]].some((v) => normalizar(v).includes(termo));
     const filtrados = lista
-      .map((grupo) => ({ ...grupo, membros: grupo.membros.filter(combina), liderCombina: combina(grupo.lider) }))
+      .map((grupo) => ({ ...grupo, total: grupo.membros.length, membros: grupo.membros.filter(combina), liderCombina: combina(grupo.lider) }))
       .filter((grupo) => grupo.liderCombina || grupo.membros.length > 0);
-    return { lista: filtrados, orfaos: orfaos.filter(combina) };
+    return {
+      lista: filtrados.filter((grupo) => grupo.total > 0),
+      // Lideranças sem nenhum liderado viram uma linha compacta, sem card próprio.
+      semEquipe: filtrados.filter((grupo) => grupo.total === 0).map((grupo) => grupo.lider),
+      orfaos: orfaos.filter(combina),
+    };
   }, [liderancas, pessoas, porLider, busca]);
 
-  async function aplicar(pessoa, dados, mensagem) {
+  function destinosDe(pessoa) {
+    const bloqueados = descendentes(pessoa.id, porLider);
+    return liderancas.filter((lider) => lider.id !== pessoa.id && lider.id !== pessoa.supervisor_id && !bloqueados.has(lider.id));
+  }
+
+  async function confirmar() {
+    const { tipo, pessoa, destino, papel } = confirmacao;
+    const dados = tipo === "mover" ? { supervisor_id: destino } : { papel };
+    const mensagem = tipo === "mover"
+      ? `Movido para ${nomes.get(destino) ?? "nova liderança"}`
+      : `Agora é ${NOME_PAPEL[papel].toLocaleLowerCase("pt-BR")}`;
     setErro("");
-    setSucesso("");
+    setAlterado(null);
     setSalvando(pessoa.id);
     try {
       await alterarEquipe(pessoa.id, dados);
       await carregar();
-      setSucesso(mensagem);
+      setConfirmacao(null);
+      setAlterado({ id: pessoa.id, mensagem });
     } catch (e) {
+      setConfirmacao(null);
       setErro(e instanceof ErroApi ? e.message : "Não foi possível alterar a equipe.");
     } finally {
       setSalvando("");
@@ -122,10 +154,14 @@ export default function GestaoEquipes() {
   }
 
   function linhaPessoa(pessoa) {
-    const bloqueados = descendentes(pessoa.id, porLider);
-    const destinos = liderancas.filter((lider) => lider.id !== pessoa.id && !bloqueados.has(lider.id));
+    const destinos = destinosDe(pessoa);
     const ocupado = salvando === pessoa.id;
     const temLiderados = (porLider.get(pessoa.id) ?? []).length > 0;
+    const ehColaborador = pessoa.papel === "funcionario";
+    const novoPapel = ehColaborador ? "supervisor" : "funcionario";
+    const motivoPapel = !pessoa.supervisor_id
+      ? "Defina uma liderança antes"
+      : !ehColaborador && temLiderados ? "Transfira os liderados antes" : "";
     return (
       <li key={pessoa.id} className={`sg-equipe-membro${pessoa.ativo ? "" : " sg-equipe-membro--inativo"}`}>
         <div className="sg-equipe-membro__info">
@@ -136,43 +172,41 @@ export default function GestaoEquipes() {
           </div>
         </div>
         <div className="sg-equipe-membro__acoes">
-          <Form.Select
-            size="sm"
-            className="sg-input"
-            aria-label={`Mover ${pessoa.nome} para outra liderança`}
-            value=""
-            disabled={ocupado}
-            onChange={(e) => {
-              const destino = e.target.value;
-              if (destino) aplicar(pessoa, { supervisor_id: destino }, `${pessoa.nome} agora responde a ${nomes.get(destino) ?? "nova liderança"}.`);
-            }}
-          >
-            <option value="">Mover para…</option>
-            {destinos.filter((lider) => lider.id !== pessoa.supervisor_id).map((lider) => (
-              <option key={lider.id} value={lider.id}>{lider.nome} ({NOME_PAPEL[lider.papel]})</option>
-            ))}
-          </Form.Select>
-          {pessoa.papel === "funcionario" ? (
-            <Botao
-              variante="secundario"
-              tamanho="sm"
-              disabled={ocupado || !pessoa.supervisor_id}
-              onClick={() => aplicar(pessoa, { papel: "supervisor" }, `${pessoa.nome} agora é liderança.`)}
-            >
-              Tornar liderança
-            </Botao>
-          ) : (
-            <Botao
-              variante="secundario"
-              tamanho="sm"
-              disabled={ocupado || temLiderados || !pessoa.supervisor_id}
-              title={temLiderados ? "Transfira os liderados antes" : undefined}
-              onClick={() => aplicar(pessoa, { papel: "funcionario" }, `${pessoa.nome} agora é colaborador.`)}
-            >
-              Tornar colaborador
-            </Botao>
+          {alterado?.id === pessoa.id && (
+            <span className="sg-equipe-membro__alterado" role="status">✓ {alterado.mensagem}</span>
           )}
-          <Botao variante="subtle" tamanho="sm" onClick={() => abrirHistorico(pessoa)}>Histórico</Botao>
+          <Dropdown align="end">
+            <Dropdown.Toggle
+              size="sm"
+              variant="light"
+              className="sg-btn sg-btn--secundario sg-btn--sm"
+              disabled={ocupado}
+              aria-label={`Ações para ${pessoa.nome}`}
+            >
+              Ações
+            </Dropdown.Toggle>
+            <Dropdown.Menu className="sg-equipe-menu">
+              <Dropdown.Item
+                as="button"
+                disabled={destinos.length === 0}
+                onClick={() => setConfirmacao({ tipo: "mover", pessoa, destino: "" })}
+              >
+                Mover para outra liderança…
+                {destinos.length === 0 && <small>Nenhuma liderança disponível</small>}
+              </Dropdown.Item>
+              <Dropdown.Item
+                as="button"
+                disabled={Boolean(motivoPapel)}
+                onClick={() => setConfirmacao({ tipo: "papel", pessoa, papel: novoPapel })}
+              >
+                {ehColaborador ? "Tornar liderança" : "Tornar colaborador"}
+                {motivoPapel && <small>{motivoPapel}</small>}
+              </Dropdown.Item>
+              <Dropdown.Item as="button" onClick={() => abrirHistorico(pessoa)}>Ver histórico</Dropdown.Item>
+              <Dropdown.Divider />
+              <Dropdown.Item as={Link} href={`/equipe/${pessoa.id}`}>Abrir ficha da pessoa</Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
         </div>
       </li>
     );
@@ -183,7 +217,6 @@ export default function GestaoEquipes() {
   return (
     <div className="d-flex flex-column gap-3">
       {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
-      {sucesso && <div className="sg-alerta sg-alerta--sucesso mb-0" role="status">{sucesso}</div>}
 
       <div className="sg-card">
         <div className="sg-card-body">
@@ -192,8 +225,8 @@ export default function GestaoEquipes() {
             <Form.Control value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Digite para filtrar as equipes" />
           </Form.Group>
           <p className="texto-xs texto-suave mt-2 mb-0">
-            Toda transferência e mudança de perfil fica registrada no histórico da pessoa. Perfis de Qualidade e
-            Administrador ficam fora das equipes e são gerenciados em Usuários.
+            Toda transferência e mudança de perfil fica registrada no histórico da pessoa. Qualidade e
+            Administrador podem liderar equipes, mas não respondem a uma liderança; o perfil deles é alterado em Usuários.
           </p>
         </div>
       </div>
@@ -208,7 +241,7 @@ export default function GestaoEquipes() {
         </section>
       )}
 
-      {grupos.lista.length === 0 && grupos.orfaos.length === 0 ? (
+      {grupos.lista.length === 0 && grupos.orfaos.length === 0 && grupos.semEquipe.length === 0 ? (
         <EstadoVazio titulo="Nenhuma equipe encontrada" descricao="Ajuste a busca para ver outras equipes." />
       ) : (
         <div className="sg-equipes-grade">
@@ -224,10 +257,10 @@ export default function GestaoEquipes() {
                       {lider.supervisor_id ? ` · responde a ${nomes.get(lider.supervisor_id) ?? "—"}` : ""}
                     </div>
                   </div>
-                  <span className="sg-badge sg-badge--cinza">{(porLider.get(lider.id) ?? []).length} pessoa(s)</span>
+                  <span className="sg-badge sg-badge--cinza">{contarPessoas((porLider.get(lider.id) ?? []).length)}</span>
                 </div>
                 {membros.length === 0 ? (
-                  <p className="texto-sm texto-suave mb-0">Nenhum liderado direto.</p>
+                  <p className="texto-sm texto-suave mb-0">Nenhum liderado corresponde à busca.</p>
                 ) : (
                   <ul className="sg-equipe-membros">{membros.map(linhaPessoa)}</ul>
                 )}
@@ -236,6 +269,75 @@ export default function GestaoEquipes() {
           ))}
         </div>
       )}
+
+      {grupos.semEquipe.length > 0 && (
+        <section className="sg-card" aria-label="Lideranças sem equipe">
+          <div className="sg-card-body">
+            <h2 className="h6 mb-2">Lideranças sem equipe ({grupos.semEquipe.length})</h2>
+            <ul className="sg-equipe-sem-equipe">
+              {grupos.semEquipe.map((lider) => (
+                <li key={lider.id}>
+                  {lider.nome}{" "}
+                  <span className="texto-suave">
+                    · {NOME_PAPEL[lider.papel] ?? lider.papel}
+                    {lider.setor && lider.setor !== NOME_PAPEL[lider.papel] ? ` · ${lider.setor}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      <Modal show={!!confirmacao} onHide={() => !salvando && setConfirmacao(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="h5">
+            {confirmacao?.tipo === "mover"
+              ? `Mover ${confirmacao.pessoa.nome}?`
+              : `Tornar ${confirmacao?.pessoa.nome} ${confirmacao?.papel === "supervisor" ? "liderança" : "colaborador"}?`}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="d-flex flex-column gap-3">
+          {confirmacao?.tipo === "mover" ? (
+            <div className="sg-equipe-de-para">
+              <div>
+                <div className="texto-xs texto-suave">Liderança atual</div>
+                <strong>{nomes.get(confirmacao.pessoa.supervisor_id) ?? "Sem liderança"}</strong>
+              </div>
+              <span aria-hidden="true" className="texto-suave">→</span>
+              <Form.Group controlId="destino-equipe">
+                <Form.Label className="texto-xs texto-suave mb-1">Nova liderança</Form.Label>
+                <Form.Select
+                  className="sg-input"
+                  value={confirmacao.destino}
+                  disabled={!!salvando}
+                  onChange={(e) => setConfirmacao({ ...confirmacao, destino: e.target.value })}
+                >
+                  <option value="">Escolha…</option>
+                  {destinosDe(confirmacao.pessoa).map((lider) => (
+                    <option key={lider.id} value={lider.id}>{lider.nome} ({NOME_PAPEL[lider.papel]})</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </div>
+          ) : confirmacao && (
+            <p className="mb-0">
+              Perfil: {NOME_PAPEL[confirmacao.pessoa.papel]} → <strong>{NOME_PAPEL[confirmacao.papel]}</strong>
+            </p>
+          )}
+          <p className="texto-sm texto-suave mb-0">A mudança vale a partir de agora e fica registrada no histórico.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Botao variante="secundario" onClick={() => setConfirmacao(null)} disabled={!!salvando}>Cancelar</Botao>
+          <Botao
+            onClick={confirmar}
+            carregando={!!salvando}
+            disabled={confirmacao?.tipo === "mover" && !confirmacao.destino}
+          >
+            Confirmar mudança
+          </Botao>
+        </Modal.Footer>
+      </Modal>
 
       <Modal show={!!historico} onHide={() => setHistorico(null)} centered>
         <Modal.Header closeButton>
