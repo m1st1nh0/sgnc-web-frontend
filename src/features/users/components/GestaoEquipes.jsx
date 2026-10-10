@@ -7,6 +7,7 @@ import Form from "react-bootstrap/Form";
 import Modal from "react-bootstrap/Modal";
 
 import Botao from "../../../components/ui/Botao.jsx";
+import CardMetrica from "../../../components/ui/CardMetrica.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
@@ -16,6 +17,7 @@ import { formatarDataHora } from "../../../lib/utils/formato.js";
 import { alterarEquipe, listarEquipe, listarHistoricoEquipe, listarLiderancas } from "../client/usuarioService.js";
 
 const SEM_LIDERANCA = "__sem_lideranca__";
+const FILTROS_PAPEL = [["", "Todos"], ["supervisor", "Supervisor"], ["funcionario", "Colaborador"]];
 const COR_PAPEL = { adm: "sg-badge--escuro", qualidade: "sg-badge--verde", supervisor: "sg-badge--azul", funcionario: "sg-badge--cinza" };
 
 function contarPessoas(total) {
@@ -42,7 +44,7 @@ function descendentes(id, porLider) {
 }
 
 /**
- * Montagem das equipes (Qualidade e Administrador): visão por liderança, transferência
+ * Montagem das equipes (Qualidade e Administrador): árvore de lideranças, transferência
  * entre lideranças e alternância entre Supervisor e Colaborador, com histórico auditável.
  */
 export default function GestaoEquipes() {
@@ -53,10 +55,16 @@ export default function GestaoEquipes() {
   // Confirmação de mudança aparece na linha da pessoa alterada, não no topo da página.
   const [alterado, setAlterado] = useState(null);
   const [busca, setBusca] = useState("");
+  const [filtroPapel, setFiltroPapel] = useState("");
+  const [filtroSetor, setFiltroSetor] = useState("");
+  // Lideranças recolhidas na árvore; por padrão tudo aberto.
+  const [recolhidos, setRecolhidos] = useState(() => new Set());
   const [salvando, setSalvando] = useState("");
   const [historico, setHistorico] = useState(null);
   // Mudança aguardando confirmação: { tipo: "mover" | "papel", pessoa, destino?, papel? }.
+  // Os dados ficam guardados depois de fechar, para o modal não perder o conteúdo na animação de saída.
   const [confirmacao, setConfirmacao] = useState(null);
+  const [confirmando, setConfirmando] = useState(false);
 
   useEffect(() => {
     if (!alterado) return undefined;
@@ -98,27 +106,78 @@ export default function GestaoEquipes() {
     [liderancas, pessoas],
   );
 
-  const grupos = useMemo(() => {
+  const arvore = useMemo(() => {
     const idsLideres = new Set(liderancas.map((lider) => lider.id));
-    const lista = liderancas.map((lider) => ({ lider, membros: porLider.get(lider.id) ?? [] }));
+    const idsPessoas = new Set(pessoas.map((pessoa) => pessoa.id));
+    // Só liderança ativa tem liderados na árvore; os de liderança inativa ficam em "sem liderança ativa".
+    const filhosDe = (id) => (idsLideres.has(id) ? porLider.get(id) ?? [] : []);
     // Pessoas sem liderança ou cuja liderança está inativa: precisam de atenção.
     const orfaos = pessoas.filter((pessoa) => !pessoa.supervisor_id || !idsLideres.has(pessoa.supervisor_id));
+    // Qualidade e Administrador não respondem a ninguém: são as raízes da árvore.
+    const raizes = liderancas.filter((lider) => !idsPessoas.has(lider.id));
+
     const termo = normalizar(busca.trim());
-    const combina = (pessoa) => !termo || [pessoa.nome, pessoa.setor, NOME_PAPEL[pessoa.papel]].some((v) => normalizar(v).includes(termo));
-    const filtrados = lista
-      .map((grupo) => ({ ...grupo, total: grupo.membros.length, membros: grupo.membros.filter(combina), liderCombina: combina(grupo.lider) }))
-      .filter((grupo) => grupo.liderCombina || grupo.membros.length > 0);
-    return {
-      lista: filtrados.filter((grupo) => grupo.total > 0),
-      // Lideranças sem nenhum liderado viram uma linha compacta, sem card próprio.
-      semEquipe: filtrados.filter((grupo) => grupo.total === 0).map((grupo) => grupo.lider),
-      orfaos: orfaos.filter(combina),
+    const filtrando = Boolean(termo || filtroPapel || filtroSetor);
+    const combina = (pessoa) =>
+      (!termo || [pessoa.nome, pessoa.setor, NOME_PAPEL[pessoa.papel]].some((v) => normalizar(v).includes(termo)))
+      && (!filtroPapel || pessoa.papel === filtroPapel)
+      && (!filtroSetor || pessoa.setor === filtroSetor);
+
+    // Nó visível quando combina com os filtros ou tem algum descendente que combina.
+    const montar = (pessoa, nivel, vistos) => {
+      if (vistos.has(pessoa.id)) return null;
+      const proximos = new Set(vistos).add(pessoa.id);
+      const total = filhosDe(pessoa.id).length;
+      const filhos = filhosDe(pessoa.id).map((filho) => montar(filho, nivel + 1, proximos)).filter(Boolean);
+      if (!combina(pessoa) && filhos.length === 0) return null;
+      return { pessoa, nivel, total, filhos, lidera: idsLideres.has(pessoa.id) };
     };
-  }, [liderancas, pessoas, porLider, busca]);
+
+    const nos = raizes.map((lider) => montar(lider, 0, new Set())).filter(Boolean);
+    return {
+      filtrando,
+      raizes: nos.filter((no) => no.total > 0),
+      // Lideranças sem nenhum liderado viram uma linha compacta, sem nó próprio.
+      semEquipe: nos.filter((no) => no.total === 0).map((no) => no.pessoa),
+      orfaos: orfaos.map((pessoa) => montar(pessoa, 0, new Set())).filter(Boolean),
+      resumo: {
+        liderancas: liderancas.length,
+        colaboradores: pessoas.filter((pessoa) => pessoa.papel === "funcionario" && pessoa.ativo).length,
+        orfaos: orfaos.length,
+      },
+    };
+  }, [liderancas, pessoas, porLider, busca, filtroPapel, filtroSetor]);
+
+  const idsPessoas = useMemo(() => new Set(pessoas.map((pessoa) => pessoa.id)), [pessoas]);
+
+  const setores = useMemo(
+    () => [...new Set([...liderancas, ...pessoas].map((pessoa) => pessoa.setor).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [liderancas, pessoas],
+  );
+
+  const idsComFilhos = useMemo(
+    () => liderancas.filter((lider) => (porLider.get(lider.id) ?? []).length > 0).map((lider) => lider.id),
+    [liderancas, porLider],
+  );
+
+  function alternar(id) {
+    setRecolhidos((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
 
   function destinosDe(pessoa) {
     const bloqueados = descendentes(pessoa.id, porLider);
     return liderancas.filter((lider) => lider.id !== pessoa.id && lider.id !== pessoa.supervisor_id && !bloqueados.has(lider.id));
+  }
+
+  function abrirConfirmacao(dados) {
+    setConfirmacao(dados);
+    setConfirmando(true);
   }
 
   async function confirmar() {
@@ -133,10 +192,10 @@ export default function GestaoEquipes() {
     try {
       await alterarEquipe(pessoa.id, dados);
       await carregar();
-      setConfirmacao(null);
+      setConfirmando(false);
       setAlterado({ id: pessoa.id, mensagem });
     } catch (e) {
-      setConfirmacao(null);
+      setConfirmando(false);
       setErro(e instanceof ErroApi ? e.message : "Não foi possível alterar a equipe.");
     } finally {
       setSalvando("");
@@ -153,7 +212,7 @@ export default function GestaoEquipes() {
     }
   }
 
-  function linhaPessoa(pessoa) {
+  function acoesPessoa(pessoa) {
     const destinos = destinosDe(pessoa);
     const ocupado = salvando === pessoa.id;
     const temLiderados = (porLider.get(pessoa.id) ?? []).length > 0;
@@ -163,51 +222,83 @@ export default function GestaoEquipes() {
       ? "Defina uma liderança antes"
       : !ehColaborador && temLiderados ? "Transfira os liderados antes" : "";
     return (
-      <li key={pessoa.id} className={`sg-equipe-membro${pessoa.ativo ? "" : " sg-equipe-membro--inativo"}`}>
-        <div className="sg-equipe-membro__info">
-          <Link href={`/equipe/${pessoa.id}`} className="fw-semibold">{pessoa.nome}</Link>
-          <div className="texto-xs texto-suave">
-            <span className={`sg-badge ${COR_PAPEL[pessoa.papel] ?? "sg-badge--cinza"} me-1`}>{NOME_PAPEL[pessoa.papel] ?? pessoa.papel}</span>
-            {pessoa.setor || "Sem setor"}{pessoa.ativo ? "" : " · inativa"}
-          </div>
-        </div>
-        <div className="sg-equipe-membro__acoes">
-          {alterado?.id === pessoa.id && (
-            <span className="sg-equipe-membro__alterado" role="status">✓ {alterado.mensagem}</span>
-          )}
-          <Dropdown align="end">
-            <Dropdown.Toggle
-              size="sm"
-              variant="light"
-              className="sg-btn sg-btn--secundario sg-btn--sm"
-              disabled={ocupado}
-              aria-label={`Ações para ${pessoa.nome}`}
+      <div className="sg-equipe-membro__acoes">
+        {alterado?.id === pessoa.id && (
+          <span className="sg-equipe-membro__alterado" role="status">✓ {alterado.mensagem}</span>
+        )}
+        <Dropdown align="end">
+          <Dropdown.Toggle
+            size="sm"
+            variant="light"
+            className="sg-btn sg-btn--secundario sg-btn--sm"
+            disabled={ocupado}
+            aria-label={`Ações para ${pessoa.nome}`}
+          >
+            Ações
+          </Dropdown.Toggle>
+          <Dropdown.Menu className="sg-equipe-menu">
+            <Dropdown.Item
+              as="button"
+              disabled={destinos.length === 0}
+              onClick={() => abrirConfirmacao({ tipo: "mover", pessoa, destino: "" })}
             >
-              Ações
-            </Dropdown.Toggle>
-            <Dropdown.Menu className="sg-equipe-menu">
-              <Dropdown.Item
-                as="button"
-                disabled={destinos.length === 0}
-                onClick={() => setConfirmacao({ tipo: "mover", pessoa, destino: "" })}
-              >
-                Mover para outra liderança…
-                {destinos.length === 0 && <small>Nenhuma liderança disponível</small>}
-              </Dropdown.Item>
-              <Dropdown.Item
-                as="button"
-                disabled={Boolean(motivoPapel)}
-                onClick={() => setConfirmacao({ tipo: "papel", pessoa, papel: novoPapel })}
-              >
-                {ehColaborador ? "Tornar liderança" : "Tornar colaborador"}
-                {motivoPapel && <small>{motivoPapel}</small>}
-              </Dropdown.Item>
-              <Dropdown.Item as="button" onClick={() => abrirHistorico(pessoa)}>Ver histórico</Dropdown.Item>
-              <Dropdown.Divider />
-              <Dropdown.Item as={Link} href={`/equipe/${pessoa.id}`}>Abrir ficha da pessoa</Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown>
+              Mover para outra liderança…
+              {destinos.length === 0 && <small>Nenhuma liderança disponível</small>}
+            </Dropdown.Item>
+            <Dropdown.Item
+              as="button"
+              disabled={Boolean(motivoPapel)}
+              onClick={() => abrirConfirmacao({ tipo: "papel", pessoa, papel: novoPapel })}
+            >
+              {ehColaborador ? "Tornar liderança" : "Tornar colaborador"}
+              {motivoPapel && <small>{motivoPapel}</small>}
+            </Dropdown.Item>
+            <Dropdown.Item as="button" onClick={() => abrirHistorico(pessoa)}>Ver histórico</Dropdown.Item>
+            <Dropdown.Divider />
+            <Dropdown.Item as={Link} href={`/equipe/${pessoa.id}`}>Abrir ficha da pessoa</Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+      </div>
+    );
+  }
+
+  function renderNo(no) {
+    const { pessoa, nivel, total, filhos, lidera } = no;
+    // Qualidade e Administrador não estão na lista de pessoas: sem ações nem ficha aqui.
+    const gerenciavel = idsPessoas.has(pessoa.id);
+    // Com filtro ativo a árvore fica aberta, para os resultados não sumirem num ramo recolhido.
+    const aberto = arvore.filtrando || !recolhidos.has(pessoa.id);
+    const inativa = gerenciavel && !pessoa.ativo;
+    return (
+      <li key={pessoa.id}>
+        <div className={`sg-equipe-no${inativa ? " sg-equipe-membro--inativo" : ""}`} style={{ "--nivel": nivel }}>
+          {filhos.length > 0 ? (
+            <button
+              type="button"
+              className="sg-equipe-no__alternar"
+              aria-expanded={aberto}
+              aria-label={`${aberto ? "Recolher" : "Expandir"} equipe de ${pessoa.nome}`}
+              onClick={() => alternar(pessoa.id)}
+              disabled={arvore.filtrando}
+            >
+              {aberto ? "▾" : "▸"}
+            </button>
+          ) : (
+            <span className="sg-equipe-no__alternar" aria-hidden="true" />
+          )}
+          <div className="sg-equipe-membro__info">
+            {gerenciavel
+              ? <Link href={`/equipe/${pessoa.id}`} className="fw-semibold">{pessoa.nome}</Link>
+              : <span className="fw-semibold">{pessoa.nome}</span>}
+            <div className="texto-xs texto-suave">
+              <span className={`sg-badge ${COR_PAPEL[pessoa.papel] ?? "sg-badge--cinza"} me-1`}>{NOME_PAPEL[pessoa.papel] ?? pessoa.papel}</span>
+              {pessoa.setor || "Sem setor"}{inativa ? " · inativa" : ""}
+            </div>
+          </div>
+          {lidera && <span className="sg-equipe-no__total texto-xs texto-suave">{contarPessoas(total)}</span>}
+          {gerenciavel && acoesPessoa(pessoa)}
         </div>
+        {aberto && filhos.length > 0 && <ul className="sg-equipe-arvore">{filhos.map(renderNo)}</ul>}
       </li>
     );
   }
@@ -218,12 +309,47 @@ export default function GestaoEquipes() {
     <div className="d-flex flex-column gap-3">
       {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
 
+      <div className="sg-equipe-resumo">
+        <CardMetrica rotulo="Lideranças" valor={arvore.resumo.liderancas} cor="azul" />
+        <CardMetrica rotulo="Colaboradores" valor={arvore.resumo.colaboradores} cor="cinza" />
+        <CardMetrica
+          rotulo="Sem liderança ativa"
+          valor={arvore.resumo.orfaos}
+          cor={arvore.resumo.orfaos > 0 ? "vermelha" : "verde"}
+        />
+      </div>
+
       <div className="sg-card">
         <div className="sg-card-body">
-          <Form.Group controlId="busca-gestao-equipes">
-            <Form.Label>Buscar pessoa, liderança ou setor</Form.Label>
-            <Form.Control value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Digite para filtrar as equipes" />
-          </Form.Group>
+          <div className="sg-equipe-filtros">
+            <Form.Group controlId="busca-gestao-equipes" className="sg-equipe-filtros__busca">
+              <Form.Label>Buscar pessoa, liderança ou setor</Form.Label>
+              <Form.Control value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Digite para filtrar as equipes" />
+            </Form.Group>
+            <div>
+              <span className="form-label d-block" id="filtro-papel-equipes">Perfil</span>
+              <div className="d-flex gap-2" role="group" aria-labelledby="filtro-papel-equipes">
+                {FILTROS_PAPEL.map(([valor, rotulo]) => (
+                  <Botao
+                    key={rotulo}
+                    tamanho="sm"
+                    variante={filtroPapel === valor ? "primario" : "secundario"}
+                    aria-pressed={filtroPapel === valor}
+                    onClick={() => setFiltroPapel(valor)}
+                  >
+                    {rotulo}
+                  </Botao>
+                ))}
+              </div>
+            </div>
+            <Form.Group controlId="filtro-setor-equipes">
+              <Form.Label>Setor</Form.Label>
+              <Form.Select className="sg-input" value={filtroSetor} onChange={(e) => setFiltroSetor(e.target.value)}>
+                <option value="">Todos os setores</option>
+                {setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}
+              </Form.Select>
+            </Form.Group>
+          </div>
           <p className="texto-xs texto-suave mt-2 mb-0">
             Toda transferência e mudança de perfil fica registrada no histórico da pessoa. Qualidade e
             Administrador podem liderar equipes, mas não respondem a uma liderança; o perfil deles é alterado em Usuários.
@@ -231,51 +357,39 @@ export default function GestaoEquipes() {
         </div>
       </div>
 
-      {grupos.orfaos.length > 0 && (
+      {arvore.orfaos.length > 0 && (
         <section className="sg-card sg-equipe-grupo sg-equipe-grupo--alerta" aria-label="Pessoas sem liderança ativa">
           <div className="sg-card-body">
-            <h2 className="h6 mb-1">Sem liderança ativa ({grupos.orfaos.length})</h2>
+            <h2 className="h6 mb-1">Sem liderança ativa ({arvore.orfaos.length})</h2>
             <p className="texto-xs texto-suave">Estas pessoas não têm liderança ou respondem a alguém inativo. Mova-as para uma liderança ativa.</p>
-            <ul className="sg-equipe-membros">{grupos.orfaos.map(linhaPessoa)}</ul>
+            <ul className="sg-equipe-arvore">{arvore.orfaos.map(renderNo)}</ul>
           </div>
         </section>
       )}
 
-      {grupos.lista.length === 0 && grupos.orfaos.length === 0 && grupos.semEquipe.length === 0 ? (
-        <EstadoVazio titulo="Nenhuma equipe encontrada" descricao="Ajuste a busca para ver outras equipes." />
-      ) : (
-        <div className="sg-equipes-grade">
-          {grupos.lista.map(({ lider, membros }) => (
-            <section key={lider.id} className="sg-card sg-equipe-grupo" aria-label={`Equipe de ${lider.nome}`}>
-              <div className="sg-card-body">
-                <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
-                  <div>
-                    <h2 className="h6 mb-0">{lider.nome}</h2>
-                    <div className="texto-xs texto-suave">
-                      <span className={`sg-badge ${COR_PAPEL[lider.papel] ?? "sg-badge--cinza"} me-1`}>{NOME_PAPEL[lider.papel]}</span>
-                      {lider.setor || "Sem setor"}
-                      {lider.supervisor_id ? ` · responde a ${nomes.get(lider.supervisor_id) ?? "—"}` : ""}
-                    </div>
-                  </div>
-                  <span className="sg-badge sg-badge--cinza">{contarPessoas((porLider.get(lider.id) ?? []).length)}</span>
-                </div>
-                {membros.length === 0 ? (
-                  <p className="texto-sm texto-suave mb-0">Nenhum liderado corresponde à busca.</p>
-                ) : (
-                  <ul className="sg-equipe-membros">{membros.map(linhaPessoa)}</ul>
-                )}
+      {arvore.raizes.length === 0 && arvore.orfaos.length === 0 && arvore.semEquipe.length === 0 ? (
+        <EstadoVazio titulo="Nenhuma equipe encontrada" descricao="Ajuste a busca ou os filtros para ver outras equipes." />
+      ) : arvore.raizes.length > 0 && (
+        <section className="sg-card sg-equipe-grupo" aria-label="Estrutura das equipes">
+          <div className="sg-equipe-arvore__cabecalho">
+            <h2 className="h6 mb-0">Estrutura das equipes</h2>
+            {!arvore.filtrando && (
+              <div className="d-flex gap-1">
+                <Botao variante="subtle" tamanho="sm" onClick={() => setRecolhidos(new Set())}>Expandir tudo</Botao>
+                <Botao variante="subtle" tamanho="sm" onClick={() => setRecolhidos(new Set(idsComFilhos))}>Recolher tudo</Botao>
               </div>
-            </section>
-          ))}
-        </div>
+            )}
+          </div>
+          <ul className="sg-equipe-arvore sg-equipe-arvore--raiz">{arvore.raizes.map(renderNo)}</ul>
+        </section>
       )}
 
-      {grupos.semEquipe.length > 0 && (
+      {arvore.semEquipe.length > 0 && (
         <section className="sg-card" aria-label="Lideranças sem equipe">
           <div className="sg-card-body">
-            <h2 className="h6 mb-2">Lideranças sem equipe ({grupos.semEquipe.length})</h2>
+            <h2 className="h6 mb-2">Lideranças sem equipe ({arvore.semEquipe.length})</h2>
             <ul className="sg-equipe-sem-equipe">
-              {grupos.semEquipe.map((lider) => (
+              {arvore.semEquipe.map((lider) => (
                 <li key={lider.id}>
                   {lider.nome}{" "}
                   <span className="texto-suave">
@@ -289,7 +403,7 @@ export default function GestaoEquipes() {
         </section>
       )}
 
-      <Modal show={!!confirmacao} onHide={() => !salvando && setConfirmacao(null)} centered>
+      <Modal show={confirmando} onHide={() => !salvando && setConfirmando(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title className="h5">
             {confirmacao?.tipo === "mover"
@@ -328,7 +442,7 @@ export default function GestaoEquipes() {
           <p className="texto-sm texto-suave mb-0">A mudança vale a partir de agora e fica registrada no histórico.</p>
         </Modal.Body>
         <Modal.Footer>
-          <Botao variante="secundario" onClick={() => setConfirmacao(null)} disabled={!!salvando}>Cancelar</Botao>
+          <Botao variante="secundario" onClick={() => setConfirmando(false)} disabled={!!salvando}>Cancelar</Botao>
           <Botao
             onClick={confirmar}
             carregando={!!salvando}

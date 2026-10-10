@@ -2484,10 +2484,33 @@ textarea:focus-visible {
 }
 
 /* Gestão de equipes (Qualidade/Administrador) */
-.sg-equipes-grade {
+.sg-equipe-resumo {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+}
+
+/* Resumo compacto: só o número, sem a altura dos cards de indicador. */
+.sg-equipe-resumo .sg-metrica {
+  min-height: 0;
+}
+
+@media (max-width: 600px) {
+  /* Três números lado a lado também no celular, sem empilhar cards altos. */
+  .sg-equipe-resumo { gap: 0.5rem; }
+  .sg-equipe-resumo .sg-metrica { padding: 0.75rem; }
+  .sg-equipe-resumo .sg-metrica__rotulo { font-size: 0.625rem; }
+}
+
+.sg-equipe-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.sg-equipe-filtros__busca {
+  flex: 1 1 260px;
 }
 
 /* O menu de ações da última pessoa não pode ficar cortado pela borda do card. */
@@ -2499,23 +2522,54 @@ textarea:focus-visible {
   border-color: var(--status-invalidada-borda);
 }
 
-.sg-equipe-membros {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.sg-equipe-membro {
+.sg-equipe-arvore__cabecalho {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--borda, rgba(0, 0, 0, 0.08));
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--borda);
+}
+
+.sg-equipe-arvore {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sg-equipe-arvore--raiz > li + li {
+  border-top: 1px solid var(--borda);
+}
+
+.sg-equipe-no {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0.5rem calc(1rem + var(--nivel, 0) * 1.75rem);
+}
+
+.sg-equipe-no:hover {
+  background: var(--fundo-hover);
+}
+
+.sg-equipe-no__alternar {
+  flex: 0 0 1.5rem;
+  height: 1.5rem;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--texto-suave);
+  line-height: 1;
+}
+
+.sg-equipe-no__alternar:enabled:hover {
+  background: var(--borda);
+}
+
+.sg-equipe-no__total {
+  margin-left: auto;
 }
 
 .sg-equipe-membro--inativo {
@@ -2524,6 +2578,7 @@ textarea:focus-visible {
 
 .sg-equipe-membro__info {
   min-width: 0;
+  flex: 1 1 200px;
 }
 
 .sg-equipe-membro__acoes {
