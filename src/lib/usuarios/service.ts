@@ -6,7 +6,7 @@ import type { UsuarioAutenticado } from "@/lib/auth/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { listarPessoasAbaixo } from "@/lib/permissions/team-scope";
-import { ehAdminSistema, ehPapelSemLideranca, PAPEIS as LISTA_PAPEIS } from "@/lib/auth/papeis";
+import { ehAdminSistema, PAPEIS as LISTA_PAPEIS } from "@/lib/auth/papeis";
 
 const PAPEIS = new Set(LISTA_PAPEIS);
 
@@ -16,6 +16,7 @@ type UsuarioInput = {
   papel?: unknown;
   setor?: unknown;
   supervisor_id?: unknown;
+  diretoria?: unknown;
   senha_inicial?: unknown;
 };
 
@@ -32,17 +33,19 @@ function parseUsuario(data: UsuarioInput, creating: boolean) {
   const nome = String(data.nome ?? "").trim();
   const papel = String(data.papel ?? "");
   const setor = data.setor ? String(data.setor).trim() : null;
-  const supervisorId = data.supervisor_id ? String(data.supervisor_id) : null;
+  const diretoria = data.diretoria === true;
+  // Membros da Diretoria ficam no topo, sem liderança; todos os demais respondem a alguém.
+  const supervisorId = diretoria || !data.supervisor_id ? null : String(data.supervisor_id);
 
   if (!nome) throw new ApiError("Nome é obrigatório.");
   if (!PAPEIS.has(papel)) throw new ApiError("papel inválido.");
-  if (!ehPapelSemLideranca(papel) && !supervisorId) {
-    throw new ApiError("Informe a liderança (supervisor) para perfis Colaborador ou Supervisor.");
+
+  // Na edição, a liderança é resolvida em editarUsuario (só a gestão de equipes transfere).
+  if (!creating) {
+    return { nome, papel, setor, diretoria, supervisor_id: supervisorId };
   }
 
-  if (!creating) {
-    return { nome, papel, setor, supervisor_id: ehPapelSemLideranca(papel) ? null : supervisorId };
-  }
+  if (!diretoria && !supervisorId) throw new ApiError("Informe a liderança desta pessoa. Só membros da Diretoria ficam sem liderança.");
 
   const email = String(data.email ?? "").trim().toLowerCase();
   const senhaInicial = String(data.senha_inicial ?? "");
@@ -53,7 +56,8 @@ function parseUsuario(data: UsuarioInput, creating: boolean) {
     email,
     papel,
     setor,
-    supervisor_id: ehPapelSemLideranca(papel) ? null : supervisorId,
+    diretoria,
+    supervisor_id: supervisorId,
     senha_inicial: senhaInicial,
   };
 }
@@ -84,7 +88,7 @@ export async function listarUsuarios() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("usuarios")
-    .select("id, nome, email, papel, setor, supervisor_id, ativo, senha_provisoria")
+    .select("id, nome, email, papel, setor, supervisor_id, diretoria, ativo, senha_provisoria")
     .order("nome");
   if (error) throw new ApiError("Não foi possível carregar os usuários.", 500);
   return data ?? [];
@@ -125,6 +129,7 @@ export async function criarUsuario(input: UsuarioInput) {
       papel: dados.papel,
       setor: dados.setor,
       supervisor_id: dados.supervisor_id,
+      diretoria: dados.diretoria,
       senha_provisoria: true,
     })
     .select()
@@ -139,18 +144,28 @@ export async function criarUsuario(input: UsuarioInput) {
 export async function editarUsuario(usuarioId: string, input: UsuarioInput) {
   const requester = await requireAdmin();
   const dados = parseUsuario(input, false);
-  await validarResponsavel(dados.supervisor_id, usuarioId);
   if (requester.id === usuarioId && !ehAdminSistema(dados.papel)) {
     throw new ApiError("Você não pode remover o seu próprio perfil de administrador.");
   }
 
   const atual = await createAdminClient()
     .from("usuarios")
-    .select("papel, supervisor_id")
+    .select("papel, supervisor_id, diretoria")
     .eq("id", usuarioId)
     .maybeSingle();
   if (atual.error) throw new ApiError("Não foi possível validar o usuário.", 500);
   if (!atual.data) throw new ApiError("Usuário não encontrado.", 404);
+
+  // Transferência entre lideranças é feita só na gestão de equipes. Aqui a liderança atual
+  // é mantida; só é escolhida quando a pessoa ainda não tem uma (ex.: saiu da Diretoria).
+  if (dados.diretoria) {
+    dados.supervisor_id = null;
+  } else if (atual.data.supervisor_id) {
+    dados.supervisor_id = atual.data.supervisor_id;
+  } else if (!dados.supervisor_id) {
+    throw new ApiError("Informe a liderança desta pessoa. Só membros da Diretoria ficam sem liderança.");
+  }
+  if (dados.supervisor_id !== atual.data.supervisor_id) await validarResponsavel(dados.supervisor_id, usuarioId);
   if (atual.data.papel === "supervisor" && dados.papel !== "supervisor") {
     const subordinados = await listarPessoasAbaixo(usuarioId);
     if (subordinados.length) {

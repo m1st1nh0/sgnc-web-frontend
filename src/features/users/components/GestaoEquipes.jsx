@@ -108,13 +108,12 @@ export default function GestaoEquipes() {
 
   const arvore = useMemo(() => {
     const idsLideres = new Set(liderancas.map((lider) => lider.id));
-    const idsPessoas = new Set(pessoas.map((pessoa) => pessoa.id));
     // Só liderança ativa tem liderados na árvore; os de liderança inativa ficam em "sem liderança ativa".
     const filhosDe = (id) => (idsLideres.has(id) ? porLider.get(id) ?? [] : []);
-    // Pessoas sem liderança ou cuja liderança está inativa: precisam de atenção.
-    const orfaos = pessoas.filter((pessoa) => !pessoa.supervisor_id || !idsLideres.has(pessoa.supervisor_id));
-    // Qualidade e Administrador não respondem a ninguém: são as raízes da árvore.
-    const raizes = liderancas.filter((lider) => !idsPessoas.has(lider.id));
+    // Só a Diretoria fica sem liderança: é o topo da árvore (pode haver mais de um membro).
+    const raizes = pessoas.filter((pessoa) => pessoa.diretoria && pessoa.ativo);
+    // Os demais sem liderança, ou com liderança inativa, precisam de atenção.
+    const orfaos = pessoas.filter((pessoa) => !pessoa.diretoria && (!pessoa.supervisor_id || !idsLideres.has(pessoa.supervisor_id)));
 
     const termo = normalizar(busca.trim());
     const filtrando = Boolean(termo || filtroPapel || filtroSetor);
@@ -133,12 +132,9 @@ export default function GestaoEquipes() {
       return { pessoa, nivel, total, filhos, lidera: idsLideres.has(pessoa.id) };
     };
 
-    const nos = raizes.map((lider) => montar(lider, 0, new Set())).filter(Boolean);
     return {
       filtrando,
-      raizes: nos.filter((no) => no.total > 0),
-      // Lideranças sem nenhum liderado viram uma linha compacta, sem nó próprio.
-      semEquipe: nos.filter((no) => no.total === 0).map((no) => no.pessoa),
+      raizes: raizes.map((pessoa) => montar(pessoa, 0, new Set())).filter(Boolean),
       orfaos: orfaos.map((pessoa) => montar(pessoa, 0, new Set())).filter(Boolean),
       resumo: {
         liderancas: liderancas.length,
@@ -147,8 +143,6 @@ export default function GestaoEquipes() {
       },
     };
   }, [liderancas, pessoas, porLider, busca, filtroPapel, filtroSetor]);
-
-  const idsPessoas = useMemo(() => new Set(pessoas.map((pessoa) => pessoa.id)), [pessoas]);
 
   const setores = useMemo(
     () => [...new Set([...liderancas, ...pessoas].map((pessoa) => pessoa.setor).filter(Boolean))]
@@ -218,9 +212,13 @@ export default function GestaoEquipes() {
     const temLiderados = (porLider.get(pessoa.id) ?? []).length > 0;
     const ehColaborador = pessoa.papel === "funcionario";
     const novoPapel = ehColaborador ? "supervisor" : "funcionario";
-    const motivoPapel = !pessoa.supervisor_id
+    // Na montagem de equipes o perfil só alterna entre Supervisor e Colaborador.
+    const alternaPapel = ["supervisor", "funcionario"].includes(pessoa.papel);
+    const motivoDiretoria = pessoa.diretoria ? "A Diretoria fica no topo; altere na aba Acessos" : "";
+    const motivoPapel = motivoDiretoria || (!pessoa.supervisor_id
       ? "Defina uma liderança antes"
-      : !ehColaborador && temLiderados ? "Transfira os liderados antes" : "";
+      : !ehColaborador && temLiderados ? "Transfira os liderados antes" : "");
+    const motivoMover = motivoDiretoria || (destinos.length === 0 ? "Nenhuma liderança disponível" : "");
     return (
       <div className="sg-equipe-membro__acoes">
         {alterado?.id === pessoa.id && (
@@ -239,20 +237,22 @@ export default function GestaoEquipes() {
           <Dropdown.Menu className="sg-equipe-menu">
             <Dropdown.Item
               as="button"
-              disabled={destinos.length === 0}
+              disabled={Boolean(motivoMover)}
               onClick={() => abrirConfirmacao({ tipo: "mover", pessoa, destino: "" })}
             >
               Mover para outra liderança…
-              {destinos.length === 0 && <small>Nenhuma liderança disponível</small>}
+              {motivoMover && <small>{motivoMover}</small>}
             </Dropdown.Item>
-            <Dropdown.Item
-              as="button"
-              disabled={Boolean(motivoPapel)}
-              onClick={() => abrirConfirmacao({ tipo: "papel", pessoa, papel: novoPapel })}
-            >
-              {ehColaborador ? "Tornar liderança" : "Tornar colaborador"}
-              {motivoPapel && <small>{motivoPapel}</small>}
-            </Dropdown.Item>
+            {alternaPapel && (
+              <Dropdown.Item
+                as="button"
+                disabled={Boolean(motivoPapel)}
+                onClick={() => abrirConfirmacao({ tipo: "papel", pessoa, papel: novoPapel })}
+              >
+                {ehColaborador ? "Tornar liderança" : "Tornar colaborador"}
+                {motivoPapel && <small>{motivoPapel}</small>}
+              </Dropdown.Item>
+            )}
             <Dropdown.Item as="button" onClick={() => abrirHistorico(pessoa)}>Ver histórico</Dropdown.Item>
             <Dropdown.Divider />
             <Dropdown.Item as={Link} href={`/equipe/${pessoa.id}`}>Abrir ficha da pessoa</Dropdown.Item>
@@ -264,11 +264,9 @@ export default function GestaoEquipes() {
 
   function renderNo(no) {
     const { pessoa, nivel, total, filhos, lidera } = no;
-    // Qualidade e Administrador não estão na lista de pessoas: sem ações nem ficha aqui.
-    const gerenciavel = idsPessoas.has(pessoa.id);
     // Com filtro ativo a árvore fica aberta, para os resultados não sumirem num ramo recolhido.
     const aberto = arvore.filtrando || !recolhidos.has(pessoa.id);
-    const inativa = gerenciavel && !pessoa.ativo;
+    const inativa = !pessoa.ativo;
     return (
       <li key={pessoa.id}>
         <div className={`sg-equipe-no${inativa ? " sg-equipe-membro--inativo" : ""}`} style={{ "--nivel": nivel }}>
@@ -287,16 +285,15 @@ export default function GestaoEquipes() {
             <span className="sg-equipe-no__alternar" aria-hidden="true" />
           )}
           <div className="sg-equipe-membro__info">
-            {gerenciavel
-              ? <Link href={`/equipe/${pessoa.id}`} className="fw-semibold">{pessoa.nome}</Link>
-              : <span className="fw-semibold">{pessoa.nome}</span>}
+            <Link href={`/equipe/${pessoa.id}`} className="fw-semibold">{pessoa.nome}</Link>
             <div className="texto-xs texto-suave">
+              {pessoa.diretoria && <span className="sg-badge sg-badge--escuro me-1">Diretoria</span>}
               <span className={`sg-badge ${COR_PAPEL[pessoa.papel] ?? "sg-badge--cinza"} me-1`}>{NOME_PAPEL[pessoa.papel] ?? pessoa.papel}</span>
               {pessoa.setor || "Sem setor"}{inativa ? " · inativa" : ""}
             </div>
           </div>
           {lidera && <span className="sg-equipe-no__total texto-xs texto-suave">{contarPessoas(total)}</span>}
-          {gerenciavel && acoesPessoa(pessoa)}
+          {acoesPessoa(pessoa)}
         </div>
         {aberto && filhos.length > 0 && <ul className="sg-equipe-arvore">{filhos.map(renderNo)}</ul>}
       </li>
@@ -351,8 +348,9 @@ export default function GestaoEquipes() {
             </Form.Group>
           </div>
           <p className="texto-xs texto-suave mt-2 mb-0">
-            Toda transferência e mudança de perfil fica registrada no histórico da pessoa. Qualidade e
-            Administrador podem liderar equipes, mas não respondem a uma liderança; o perfil deles é alterado na aba Acessos.
+            Toda transferência e mudança de perfil fica registrada no histórico da pessoa. Todos respondem a uma
+            liderança, inclusive Qualidade e Administrador; só a Diretoria fica no topo. Quem é da Diretoria e os
+            perfis de acesso são definidos na aba Acessos.
           </p>
         </div>
       </div>
@@ -361,15 +359,20 @@ export default function GestaoEquipes() {
         <section className="sg-card sg-equipe-grupo sg-equipe-grupo--alerta" aria-label="Pessoas sem liderança ativa">
           <div className="sg-card-body">
             <h2 className="h6 mb-1">Sem liderança ativa ({arvore.orfaos.length})</h2>
-            <p className="texto-xs texto-suave">Estas pessoas não têm liderança ou respondem a alguém inativo. Mova-as para uma liderança ativa.</p>
+            <p className="texto-xs texto-suave">Estas pessoas não têm liderança ou respondem a alguém inativo. Só a Diretoria fica sem liderança: mova-as para uma liderança ativa.</p>
             <ul className="sg-equipe-arvore">{arvore.orfaos.map(renderNo)}</ul>
           </div>
         </section>
       )}
 
-      {arvore.raizes.length === 0 && arvore.orfaos.length === 0 && arvore.semEquipe.length === 0 ? (
+      {arvore.raizes.length === 0 && arvore.orfaos.length === 0 ? (
         <EstadoVazio titulo="Nenhuma equipe encontrada" descricao="Ajuste a busca ou os filtros para ver outras equipes." />
-      ) : arvore.raizes.length > 0 && (
+      ) : arvore.raizes.length === 0 ? (!arvore.filtrando && (
+        <EstadoVazio
+          titulo="Nenhum membro da Diretoria definido"
+          descricao="A estrutura começa pela Diretoria. Marque quem é da Diretoria na aba Acessos e depois organize as lideranças abaixo."
+        />
+      )) : (
         <section className="sg-card sg-equipe-grupo" aria-label="Estrutura das equipes">
           <div className="sg-equipe-arvore__cabecalho">
             <h2 className="h6 mb-0">Estrutura das equipes</h2>
@@ -381,25 +384,6 @@ export default function GestaoEquipes() {
             )}
           </div>
           <ul className="sg-equipe-arvore sg-equipe-arvore--raiz">{arvore.raizes.map(renderNo)}</ul>
-        </section>
-      )}
-
-      {arvore.semEquipe.length > 0 && (
-        <section className="sg-card" aria-label="Lideranças sem equipe">
-          <div className="sg-card-body">
-            <h2 className="h6 mb-2">Lideranças sem equipe ({arvore.semEquipe.length})</h2>
-            <ul className="sg-equipe-sem-equipe">
-              {arvore.semEquipe.map((lider) => (
-                <li key={lider.id}>
-                  {lider.nome}{" "}
-                  <span className="texto-suave">
-                    · {NOME_PAPEL[lider.papel] ?? lider.papel}
-                    {lider.setor && lider.setor !== NOME_PAPEL[lider.papel] ? ` · ${lider.setor}` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
         </section>
       )}
 

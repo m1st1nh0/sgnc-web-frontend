@@ -26,7 +26,7 @@ import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
 import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
-import { ehPapelSemLideranca, ehQualidade, NOME_PAPEL, podeLiderar } from "../../../lib/auth/papeis.js";
+import { ehQualidade, NOME_PAPEL, podeLiderar } from "../../../lib/auth/papeis.js";
 
 const COR_PAPEL = {
   adm: "sg-badge--escuro",
@@ -50,6 +50,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
   const [papel, setPapel] = useState(usuario?.papel ?? "funcionario");
   const [setor, setSetor] = useState(usuario?.setor ?? "");
   const [supervisorId, setSupervisorId] = useState(usuario?.supervisor_id ?? "");
+  const [diretoria, setDiretoria] = useState(usuario?.diretoria ?? false);
   const [senhaInicial, setSenhaInicial] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
@@ -61,12 +62,17 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
       u.id !== usuario?.id
   );
 
+  // Só a Diretoria fica sem liderança. Na edição, a liderança só é escolhida por quem ainda
+  // não tem uma; trocar de liderança é feito na aba Equipes, com confirmação e histórico.
+  const escolheLideranca = !diretoria && (!editando || !usuario.supervisor_id);
+  const lideranca = usuarios.find((u) => u.id === usuario?.supervisor_id);
+
   async function aoEnviar(evento) {
     evento.preventDefault();
     setErro("");
 
-    if (!ehPapelSemLideranca(papel) && !supervisorId) {
-      setErro("Selecione o supervisor.");
+    if (escolheLideranca && !supervisorId) {
+      setErro("Selecione a liderança. Só membros da Diretoria ficam sem liderança.");
       return;
     }
 
@@ -86,7 +92,8 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
           nome,
           papel,
           setor: setor || null,
-          supervisor_id: ehPapelSemLideranca(papel) ? null : supervisorId,
+          diretoria,
+          supervisor_id: escolheLideranca ? supervisorId : null,
         });
       } else {
         await cadastrarUsuario({
@@ -94,7 +101,8 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
           email,
           papel,
           setor: setor || null,
-          supervisor_id: ehPapelSemLideranca(papel) ? null : supervisorId,
+          diretoria,
+          supervisor_id: diretoria ? null : supervisorId,
           senha_inicial: senhaInicial,
         });
       }
@@ -148,9 +156,25 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
         ))}
       </CampoSelecao>
 
-      {!ehPapelSemLideranca(papel) && (
+      <Form.Check
+        type="switch"
+        id="usuario-diretoria"
+        className="mb-3"
+        label="Membro da Diretoria (fica no topo da estrutura, sem liderança)"
+        checked={diretoria}
+        onChange={(e) => setDiretoria(e.target.checked)}
+      />
+
+      {editando && !escolheLideranca && !diretoria && (
+        <p className="texto-sm mb-3">
+          <span className="texto-suave">Liderança:</span> <strong>{lideranca?.nome ?? "—"}</strong>
+          <span className="d-block texto-xs texto-suave">Para transferir esta pessoa, use a aba Equipes.</span>
+        </p>
+      )}
+
+      {escolheLideranca && (
         <CampoSelecao
-          rotulo="Supervisor"
+          rotulo="Liderança"
           obrigatorio
           value={supervisorId}
           onChange={(e) => setSupervisorId(e.target.value)}
@@ -164,7 +188,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
         </CampoSelecao>
       )}
 
-      {editando && usuario.supervisor_id !== (ehPapelSemLideranca(papel) ? null : supervisorId) && (
+      {editando && escolheLideranca && supervisorId && (
         <p className="texto-xs texto-suave" role="status">
           Ao salvar a transferência, o acesso ao histórico de NCs passa a seguir a liderança atual: a nova cadeia poderá consultar o histórico; a anterior deixa de vê-lo. A Qualidade mantém a visão organizacional.
         </p>
@@ -321,6 +345,7 @@ export default function UsuariosPage() {
                     <span className={`sg-badge ${COR_PAPEL[u.papel] ?? "sg-badge--cinza"}`}>
                       {NOME_PAPEL[u.papel] ?? u.papel}
                     </span>
+                    {u.diretoria && <span className="sg-badge sg-badge--escuro ms-1">Diretoria</span>}
                   </td>
                   <td>
                     <span

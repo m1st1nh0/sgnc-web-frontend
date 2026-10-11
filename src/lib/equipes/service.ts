@@ -16,8 +16,8 @@ async function requireGestorEquipes() {
 const ERROS: Record<string, [string, number]> = {
   sem_permissao: ["Somente a Qualidade e o Administrador podem alterar equipes.", 403],
   usuario_nao_encontrado: ["Pessoa não encontrada.", 404],
-  papel_fora_das_equipes: ["Perfis de Qualidade e Administrador não fazem parte das equipes. Use a gestão de usuários.", 422],
-  papel_invalido: ["Na montagem de equipes o perfil só pode ser Supervisor ou Colaborador.", 422],
+  diretoria_no_topo: ["Membros da Diretoria ficam no topo, sem liderança. Para mudar, desmarque a Diretoria na aba Acessos.", 422],
+  papel_invalido: ["Na montagem de equipes o perfil só alterna entre Supervisor e Colaborador.", 422],
   lideranca_obrigatoria: ["Selecione a liderança desta pessoa.", 422],
   lideranca_invalida: ["Selecione uma liderança ativa (supervisor, Qualidade ou administrador).", 422],
   ciclo: ["Essa alteração criaria um ciclo na hierarquia. Selecione uma liderança acima desta pessoa.", 422],
@@ -29,7 +29,7 @@ export async function listarLiderancas() {
   await requireGestorEquipes();
   const { data, error } = await createAdminClient()
     .from("usuarios")
-    .select("id, nome, papel, setor, supervisor_id")
+    .select("id, nome, papel, setor, supervisor_id, diretoria")
     .eq("ativo", true)
     .in("papel", ["supervisor", "qualidade", "adm"])
     .order("nome");
@@ -41,7 +41,7 @@ export async function alterarEquipe(usuarioId: string, input: { supervisor_id?: 
   const user = await requireGestorEquipes();
   const supervisorId = input.supervisor_id ? String(input.supervisor_id) : null;
   const papel = input.papel ? String(input.papel) : null;
-  const { data, error } = await (createAdminClient() as any).rpc("alterar_equipe_v1", {
+  const { data, error } = await (createAdminClient() as any).rpc("alterar_equipe_v2", {
     p_usuario_id: usuarioId,
     p_alterado_por: user.id,
     p_supervisor_id: supervisorId,

@@ -17,3 +17,13 @@ test("hierarchical team includes direct and indirect reports, excludes outsiders
     ["peer", 1],
   ]);
 });
+
+test("the chain goes through anyone with reports, including Quality and the board", () => {
+  const people = [
+    { id: "keila", supervisor_id: "ceo", papel: "qualidade" },
+    { id: "analista", supervisor_id: "keila", papel: "funcionario" },
+    { id: "socio", supervisor_id: null, papel: "supervisor" },
+  ];
+  const levels = mapearProfundidadeLiderados("ceo", people);
+  expect([...levels.entries()].sort()).toEqual([["analista", 2], ["keila", 1]]);
+});

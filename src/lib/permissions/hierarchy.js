@@ -19,7 +19,8 @@ export function mapearProfundidadeLiderados(supervisorId, pessoas) {
         if (!pessoa.id || visitados.has(pessoa.id)) continue;
         visitados.add(pessoa.id);
         niveis.set(pessoa.id, nivel);
-        if (pessoa.papel === "supervisor") proxima.push(pessoa.id);
+        // A cadeia passa por qualquer pessoa com liderados, inclusive Qualidade e adm.
+        proxima.push(pessoa.id);
       }
     }
     fronteira = proxima;
