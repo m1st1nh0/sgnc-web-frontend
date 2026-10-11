@@ -9,7 +9,7 @@
 --   R2 O colaborador da NC (acusado) nunca recebe a versão "Qualidade"; recebe a pessoal ou nada.
 --   R3 Uma notificação por pessoa por evento: acusado > responsável pela ação > líder > quem abriu > Qualidade.
 --   R4 Pendências são resolvidas quando acabam (ex.: aceite resolve os avisos de aceite pendente).
---   R5 Só notifica quem pode abrir a NC (Qualidade, acusado, liderança do acusado, quem abriu).
+--   R5 Só notifica quem pode abrir a NC (Qualidade, acusado, liderança do acusado, quem abriu, responsável pela ação).
 --   R6 "Qualidade" = papéis qualidade e adm.
 --   R7 "Líder" = supervisor direto; em NC crítica, toda a cadeia acima (D17).
 -- Lembretes do aceite (D18, D22): normal → atenção (9h do dia útil seguinte) → urgente (4 h de expediente
@@ -168,7 +168,7 @@ BEGIN
 
   ELSIF p_evento = 'nc_invalidada' THEN
     v_cand := v_cand || jsonb_build_object('u', v_nc.aberto_por, 'papel', 'autor', 'p', 4,
-      't', 'Sua NC #' || p_nc_id || ' foi reprovada', 'm', 'Motivo: ' || coalesce(v_nc.motivo_invalidacao, 'não informado') || '.');
+      't', 'Sua NC #' || p_nc_id || ' foi reprovada', 'm', 'A Qualidade reprovou a NC que você abriu.');
 
   ELSIF p_evento = 'feedback_aplicado' THEN
     SELECT v_cand || coalesce(jsonb_agg(jsonb_build_object('u', q, 'papel', 'qualidade', 'p', 5,
@@ -177,10 +177,8 @@ BEGIN
     v_cand := v_cand || jsonb_build_object('u', v_nc.colaborador_id, 'papel', 'acusado', 'p', 1, 'nivel', 'normal',
       't', 'NC #' || p_nc_id || ' precisa do seu aceite', 'm', 'Leia o feedback e registre o aceite até ' || v_prazo || '.',
       'chave', 'aceite:' || p_nc_id);
-    -- R5: o responsável pela ação só é avisado se puder abrir a NC.
-    IF v_fb.responsavel_acao_id IS NOT NULL AND (
-         v_fb.responsavel_acao_id = ANY (v_qualidade) OR v_fb.responsavel_acao_id = v_nc.aberto_por
-         OR public.nc_lidera_colaborador(v_fb.responsavel_acao_id, v_nc.colaborador_id)) THEN
+    -- R5: o responsável pela ação sempre é avisado, com link para a NC (decisão de 10/10).
+    IF v_fb.responsavel_acao_id IS NOT NULL THEN
       v_cand := v_cand || jsonb_build_object('u', v_fb.responsavel_acao_id, 'papel', 'responsavel_acao', 'p', 2,
         't', 'Você é responsável por uma ação (NC #' || p_nc_id || ')',
         'm', 'Ação: ' || left(v_fb.acao_combinada, 300) || '. Prazo: ' || pg_catalog.to_char(v_fb.prazo_acao, 'DD/MM/YYYY') || '.');
@@ -217,9 +215,7 @@ BEGIN
       INTO v_cand FROM unnest(v_qualidade) AS q;
 
   ELSIF p_evento = 'prazo_acao' THEN
-    IF v_fb.responsavel_acao_id IS NOT NULL AND (
-         v_fb.responsavel_acao_id IN (v_nc.colaborador_id, v_nc.aberto_por) OR v_fb.responsavel_acao_id = ANY (v_qualidade)
-         OR public.nc_lidera_colaborador(v_fb.responsavel_acao_id, v_nc.colaborador_id)) THEN
+    IF v_fb.responsavel_acao_id IS NOT NULL THEN
       v_cand := v_cand || jsonb_build_object('u', v_fb.responsavel_acao_id, 'papel', 'responsavel_acao', 'p', 2, 'nivel', 'atencao',
         't', 'Prazo da ação vence em ' || pg_catalog.to_char(v_fb.prazo_acao, 'DD/MM') || ' (NC #' || p_nc_id || ')',
         'm', 'Ação: ' || left(v_fb.acao_combinada, 300) || '.', 'chave', 'prazo_acao:' || v_fb.id);
