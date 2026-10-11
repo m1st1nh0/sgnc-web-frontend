@@ -381,6 +381,15 @@ export default function DetalhesNcPage({ retorno = "/" }) {
               </div>
             )}
             <EtapasNc nc={nc} visualizadorId={usuario?.id} />
+            {nc.sua_acao && (
+              <div className="sg-alerta sg-alerta--atencao mb-0" role="status">
+                <div>
+                  <strong>Você é responsável por uma ação desta NC.</strong>{" "}
+                  {nc.sua_acao.acao_combinada}
+                  {nc.sua_acao.prazo_acao && <> Prazo: {formatarData(nc.sua_acao.prazo_acao)}.</>}
+                </div>
+              </div>
+            )}
             <div className="sg-card">
               <div className="sg-card-body p-4">
                 <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">

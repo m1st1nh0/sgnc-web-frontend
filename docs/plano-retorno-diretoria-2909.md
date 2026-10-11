@@ -204,9 +204,9 @@ Itens:
 | R2 | O colaborador da NC (acusado) nunca recebe a versão "Qualidade" de um evento da própria NC; recebe só a versão pessoal ou nada. |
 | R3 | Uma notificação por pessoa por evento. Se a pessoa acumula papéis, recebe a mais relevante: acusado > responsável pela ação > líder > quem abriu > Qualidade. |
 | R4 | Notificação de pendência é resolvida automaticamente quando a pendência acaba (ex.: aceite registrado resolve os avisos de aceite pendente). |
-| R5 | Só notifica quem pode abrir a NC, e o texto não expõe o que a pessoa não pode ver (quem abriu sem ser Qualidade não vê o feedback). |
+| R5 | Só notifica quem pode abrir a NC, e o texto não expõe o que a pessoa não pode ver (quem abriu sem ser Qualidade não vê o feedback). O responsável pela ação sempre é avisado e abre a NC pelo link, com a visão resumida e só a própria ação (decisão de 10/10). |
 | R6 | "Qualidade" = papéis Qualidade e Adm. |
-| R7 | "Líder" = supervisor direto do colaborador (`usuarios.supervisor_id`). Em NC crítica, toda a cadeia acima (D17). |
+| R7 | "Líder" = liderança direta do colaborador (`usuarios.supervisor_id`), de qualquer perfil. Em NC crítica, toda a cadeia acima, até a Diretoria (D17; estrutura organizacional de 11/10). |
 
 **Matriz evento × destinatário**
 
@@ -214,7 +214,7 @@ Itens:
 |---|---|---|---|---|
 | NC aberta | ✅ exceto quem abriu e o acusado | — (D16) | — | quem abriu: só confirmação na tela |
 | NC validada | ✅ exceto quem validou | ✅ "NC validada contra você" | ✅ "NC validada contra {nome}, da sua equipe" | quem abriu: "sua NC foi aprovada" |
-| NC invalidada | — | — | — | quem abriu: "sua NC foi reprovada", com o motivo |
+| NC invalidada | — | — | — | quem abriu: "sua NC foi reprovada", sem o motivo (decisão de 10/10) |
 | Feedback aplicado | ✅ exceto quem aplicou | ✅ ação: "precisa do seu aceite até {prazo}" | ✅ "{nome} precisa dar o aceite até {prazo}" | responsável pela ação: "você é responsável por {ação} até {data}" |
 | Lembretes de aceite | — | ✅ (escalonados) | ✅ (níveis urgente e crítica) | — |
 | NC não respondida (D9) | — (D12) | ✅ crítica | ✅ crítica | — |
@@ -246,14 +246,16 @@ Expediente: segunda a sexta, 9h às 18h. Exemplo: feedback na segunda às 14h, p
 - O prazo e os lembretes contam **apenas horas de expediente** (D22): 2 dias úteis = 18 horas de expediente. Feedback enviado fora do expediente começa a contar às 9h do próximo dia útil. Como as contas são feitas em horas de expediente, nenhum lembrete cai fora do horário.
 
 **Itens**
-- [ ] 5.1 Tabela `public.notificacoes`: `id`, `usuario_id`, `evento`, `papel_destinatario` (`qualidade`, `acusado`, `lider`, `autor`, `responsavel_acao`, `solicitante`), `nivel` (`normal`, `atencao`, `urgente`, `critica`), `nc_id`, `medida_id`, `titulo`, `mensagem`, `link`, `chave_agrupamento`, `criada_em`, `atualizada_em`, `lida_em`, `resolvida_em`. Índice único em `(usuario_id, chave_agrupamento)` para os lembretes; índice em `(usuario_id, resolvida_em, lida_em, criada_em desc)`. RLS ligada sem concessão direta; leitura só pela API.
-- [ ] 5.2 Função central `public.notificar_evento(p_evento, p_nc_id, p_autor_id, p_extra jsonb)`: resolve destinatários pela matriz e aplica R1–R7 num só lugar; chamada **dentro** das RPCs de transição (mesma transação do evento). Funções auxiliares: `lideranca_de(colaborador, cadeia boolean)` e `usuarios_qualidade()`.
-- [ ] 5.3 `resolver_pendencias(p_nc_id, p_evento)`: marca `resolvida_em` nas notificações de pendência (R4).
-- [ ] 5.4 Agendamento (`pg_cron`, a cada 15 min, só no expediente): lembretes escalonados, prazo da ação combinada e `marcar_nao_respondidas_v1()` (Fase 4), todos chamando `notificar_evento`.
-- [ ] 5.5 API: `GET /api/notificacoes` (não resolvidas primeiro, últimas 30, contador de não lidas), `POST /api/notificacoes/[id]/lida`, `POST /api/notificacoes/lidas`.
-- [ ] 5.6 Interface: sino no `AppNavigation.jsx` com contador e cor pelo maior nível pendente; painel com a lista, cada item leva à NC (ou à medida/causa) e marca como lida. Atualização ao carregar a página, ao voltar o foco para a aba e a cada 60 s com a aba visível.
-- [ ] 5.7 Testes: unit da matriz (cada evento × cada papel, incluindo Qualidade acusada, supervisor que abriu NC contra a própria equipe, NC crítica com cadeia); unit dos horários de lembrete em horas de expediente (envio sexta 18h, envio no fim de semana, envio antes das 9h); unit da API (só lê as próprias notificações); no banco do Preview, conferir as notificações geradas por cada transição.
+- [x] 5.1 Tabela `public.notificacoes`: `id`, `usuario_id`, `evento`, `papel_destinatario` (`qualidade`, `acusado`, `lider`, `autor`, `responsavel_acao`, `solicitante`), `nivel` (`normal`, `atencao`, `urgente`, `critica`), `nc_id`, `medida_id`, `titulo`, `mensagem`, `link`, `chave_agrupamento`, `criada_em`, `atualizada_em`, `lida_em`, `resolvida_em`. Índice único em `(usuario_id, chave_agrupamento)` para os lembretes; índice em `(usuario_id, resolvida_em, lida_em, criada_em desc)`. RLS ligada sem concessão direta; leitura só pela API.
+- [x] 5.2 Função central `public.notificar_evento(p_evento, p_nc_id, p_autor_id, p_extra jsonb)`: resolve destinatários pela matriz e aplica R1–R7 num só lugar; chamada **dentro** das RPCs de transição (mesma transação do evento). Funções auxiliares: `lideranca_de(colaborador, cadeia boolean)` e `usuarios_qualidade()`.
+- [x] 5.3 `resolver_pendencias(p_nc_id, p_evento)`: marca `resolvida_em` nas notificações de pendência (R4).
+- [x] 5.4 Agendamento (`pg_cron`, a cada 15 min, só no expediente): lembretes escalonados, prazo da ação combinada e `marcar_nao_respondidas_v1()` (Fase 4), todos chamando `notificar_evento`.
+- [x] 5.5 API: `GET /api/notificacoes` (não resolvidas primeiro, últimas 30, contador de não lidas), `POST /api/notificacoes/[id]/lida`, `POST /api/notificacoes/lidas`.
+- [x] 5.6 Interface: sino no `AppNavigation.jsx` com contador e cor pelo maior nível pendente; painel com a lista, cada item leva à NC (ou à medida/causa) e marca como lida. Atualização ao carregar a página, ao voltar o foco para a aba e a cada 60 s com a aba visível.
+- [x] 5.7 Testes: unit da matriz (cada evento × cada papel, incluindo Qualidade acusada, supervisor que abriu NC contra a própria equipe, NC crítica com cadeia); unit dos horários de lembrete em horas de expediente (envio sexta 18h, envio no fim de semana, envio antes das 9h); unit da API (só lê as próprias notificações); no banco do Preview, conferir as notificações geradas por cada transição.
 - [ ] 5.8 Fora deste ciclo: e-mail, push do navegador e preferências por pessoa.
+
+**Status (11/10):** implementada. Migrações `20261010140000_notificacoes.sql` (aplicada em 10/10) e `20261011140000_notificacoes_cadeia_lideranca.sql` (A.9 da estrutura organizacional; aguardando autorização para aplicar). Decisões de 10/10: o aviso de NC reprovada vai para quem abriu sem o motivo; o responsável pela ação sempre é avisado, com link, e abre a NC na visão resumida com um quadro "Você é responsável por uma ação desta NC". Divergências: em vez de chamar `notificar_evento` dentro de cada RPC, triggers nas tabelas que as RPCs já gravam (`historico_nc`, `planos_acao`, `plano_acao_acompanhamentos`, `medidas_disciplinares`, `solicitacoes_causa`, marcação de crítica) disparam o evento na mesma transação; os lembretes rodam no job `sgnc-lembretes-notificacoes` (a cada 15 min, só no expediente), separado do `sgnc-marcar-nao-respondidas` da Fase 4. Conferido no Supabase em transação desfeita: abertura avisa a Qualidade e não quem abriu; reprovação sem motivo; validação resolve as pendências de avaliação; feedback avisa acusado, líder e o responsável pela ação (com link) e não quem aplicou; aceite resolve as pendências.
 
 ### Fase 6: validação e devolutiva
 

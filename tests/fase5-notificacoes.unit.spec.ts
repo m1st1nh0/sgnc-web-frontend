@@ -84,7 +84,9 @@ test("5.7 matriz: validação avisa Qualidade, acusado, líder e quem abriu; inv
   const invalidada = corpoEvento("nc_invalidada");
   expect(invalidada).toContain("'autor'");
   expect(invalidada).not.toContain("'qualidade'");
-  expect(invalidada).toContain("motivo_invalidacao");
+  // Decisão de 10/10: quem abriu recebe só o aviso de reprovação, sem o motivo.
+  expect(invalidada).not.toContain("motivo_invalidacao");
+  expect(invalidada).toContain("A Qualidade reprovou a NC que você abriu.");
 });
 
 test("5.7 matriz: R3 (uma por pessoa, a mais relevante) e prioridades", () => {
@@ -97,10 +99,15 @@ test("5.7 matriz: R3 (uma por pessoa, a mais relevante) e prioridades", () => {
 
 test("5.7 matriz: líder direto; NC crítica avisa a cadeia (R7, D17); R5 para o responsável pela ação", () => {
   expect(migracao).toContain("public.lideranca_de(v_nc.colaborador_id, v_nc.critica)");
-  const lideranca = migracao.slice(migracao.indexOf("FUNCTION public.lideranca_de"), migracao.indexOf("FUNCTION public.proximo_dia_util"));
-  expect(lideranca).toContain("WHERE p_cadeia AND");
-  expect(lideranca).toContain("u.papel = 'supervisor'::public.papel_usuario");
-  expect(corpoEvento("feedback_aplicado")).toContain("public.nc_lidera_colaborador(v_fb.responsavel_acao_id, v_nc.colaborador_id)");
+  // Fase A da estrutura (A.9): a cadeia sobe por qualquer pessoa, até a Diretoria, e o líder direto pode ser Qualidade/Adm.
+  const cadeia = read("supabase/migrations/20261011140000_notificacoes_cadeia_lideranca.sql");
+  expect(cadeia).toContain("CREATE OR REPLACE FUNCTION public.lideranca_de(p_colaborador_id uuid, p_cadeia boolean)");
+  expect(cadeia).toContain("WHERE p_cadeia AND u.supervisor_id IS NOT NULL");
+  expect(cadeia).toContain("JOIN public.usuarios AS u ON u.id = acima.id AND u.ativo");
+  expect(cadeia).not.toContain("'supervisor'::public.papel_usuario");
+  // Decisão de 10/10: o responsável pela ação sempre é avisado, com link para a NC.
+  expect(corpoEvento("feedback_aplicado")).toContain("IF v_fb.responsavel_acao_id IS NOT NULL THEN");
+  expect(corpoEvento("prazo_acao")).not.toContain("nc_lidera_colaborador");
   expect(corpoEvento("nc_critica")).not.toContain("unnest(v_qualidade)"); // quem marcou é da Qualidade (R1)
 });
 
@@ -151,4 +158,16 @@ test("5.6: contador de não lidas e cor pelo maior nível pendente; não resolvi
   expect(sino).toContain("INTERVALO_MS = 60_000");
   expect(sino).toContain('document.visibilityState === "visible"');
   expect(sino).toContain('window.addEventListener("focus"');
+});
+
+test("5 (10/10): o responsável pela ação abre a NC pelo aviso, com a visão resumida e só a própria ação", () => {
+  const servico = read("src/lib/nc/service.ts");
+  expect(servico).toContain("async function acaoSobResponsabilidade(ncId: number, usuarioId: string)");
+  expect(servico).toContain("data.responsavel_acao_id !== usuarioId");
+  // A visão continua resumida (filterSensitive) e o feedback completo só vai para quem tem acesso completo.
+  const busca = servico.slice(servico.indexOf("export async function buscarNc"), servico.indexOf("async function acaoSobResponsabilidade"));
+  expect(busca).toContain("filterSensitive(withCauses, user, new Set(teamIds))");
+  expect(busca).toContain("filtered.acesso_completo === true && data.feedback_aplicado_em");
+  expect(busca).toContain("sua_acao: suaAcao");
+  expect(read("src/features/nc/components/DetalhesNcPage.jsx")).toContain("Você é responsável por uma ação desta NC.");
 });

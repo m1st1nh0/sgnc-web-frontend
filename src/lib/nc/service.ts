@@ -209,7 +209,10 @@ export async function buscarNc(id: number, usuario?: UsuarioAutenticado) {
     const scope = buildNcReadScopeFilter(user, teamIds);
     if (scope) query = query.or(scope);
   }
-  const { data, error } = await query.maybeSingle();
+  let { data, error } = await query.maybeSingle();
+  // Responsável pela ação combinada fora do escopo: abre a NC pelo aviso, com a visão resumida e só a própria ação.
+  const acao = !error && !data && !ehQualidade(user.papel) ? await acaoSobResponsabilidade(id, user.id) : null;
+  if (acao) ({ data, error } = await admin.from("nao_conformidades").select("*").eq("id", id).maybeSingle());
   if (error || !data) throw new ApiError("NC não encontrada.", 404);
   const [withCauses] = await addCauses([data]);
   const filtered = filterSensitive(withCauses, user, new Set(teamIds));
@@ -217,7 +220,19 @@ export async function buscarNc(id: number, usuario?: UsuarioAutenticado) {
   const feedback = filtered.acesso_completo === true && data.feedback_aplicado_em
     ? await feedbackVigente(id)
     : null;
-  return { ...filtered, feedback_estruturado: feedback, duracoes: durations(filtered) };
+  const suaAcao = acao ?? (filtered.acesso_completo !== true ? await acaoSobResponsabilidade(id, user.id) : null);
+  return { ...filtered, feedback_estruturado: feedback, sua_acao: suaAcao, duracoes: durations(filtered) };
+}
+
+/** Ação combinada do feedback vigente quando `usuarioId` é o responsável por ela. */
+async function acaoSobResponsabilidade(ncId: number, usuarioId: string) {
+  const admin = createAdminClient() as any;
+  const { data, error } = await admin.from("nc_feedbacks")
+    .select("acao_combinada, prazo_acao, responsavel_acao_id, legado")
+    .eq("nc_id", ncId).order("versao", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new ApiError("Não foi possível carregar a NC.", 500);
+  if (!data || data.legado || data.responsavel_acao_id !== usuarioId) return null;
+  return { acao_combinada: data.acao_combinada as string, prazo_acao: data.prazo_acao as string | null };
 }
 
 /** Último feedback registrado da NC, com os nomes do responsável pela ação e de quem registrou. */
