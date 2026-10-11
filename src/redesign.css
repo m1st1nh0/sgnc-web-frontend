@@ -2681,6 +2681,8 @@ textarea:focus-visible {
 /* ═══ Notificações (Fase 5) ═══ */
 .sg-sino { position: relative; }
 .sg-sino__botao { position: relative; }
+/* No menu, o botão ocupa a largura toda, como "Guia" e "Sair" (sem isso, fica do tamanho do conteúdo). */
+.sg-sino--menu .sg-sino__botao { width: 100%; }
 .sg-sino--barra .sg-sino__botao { display: grid; width: 38px; height: 38px; margin-right: 10px; place-items: center; padding: 0; color: #fff; background: none; border: 0; border-radius: 50%; }
 .sg-sino--barra .sg-sino__botao svg { width: 22px; height: 22px; }
 .sg-sino__contador { display: inline-flex; min-width: 20px; height: 20px; align-items: center; justify-content: center; margin-left: auto; padding: 0 6px; border-radius: var(--raio-pill); background: var(--cor-norma); color: #fff; font-size: .7rem; font-weight: 700; line-height: 1; }
@@ -2688,11 +2690,14 @@ textarea:focus-visible {
 .sg-app-shell--compact .sg-sino--menu .sg-sino__contador { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; font-size: .6rem; }
 @media (max-width: 1023.98px) and (min-width: 600.01px) {
   .sg-app-shell:not(.sg-app-shell--overlay-open) .sg-sino--menu .sg-sino__contador { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; font-size: .6rem; }
+  /* Menu expandido por cima do conteúdo no tablet: o painel abre ao lado dele. */
+  .sg-app-shell--overlay-open .sg-sino__painel { left: 256px; }
 }
 .sg-sino__botao--atencao .sg-sino__contador { background: var(--cor-pendencia); }
 .sg-sino__botao--urgente .sg-sino__contador, .sg-sino__botao--critica .sg-sino__contador { background: var(--cor-desvio); }
-.sg-sino__botao--critica svg { color: var(--cor-desvio); }
-.sg-sino--barra .sg-sino__botao--critica svg { color: #ffb4ab; }
+/* Menu e barra têm fundo escuro: contador normal claro e ícone crítico em vermelho claro, para contrastar. */
+.sg-sino__botao--normal .sg-sino__contador { background: #e7eef5; color: #10263d; }
+.sg-sino__botao--critica svg { color: #ffb4ab; }
 .sg-sino__painel { position: fixed; z-index: 1060; left: calc(var(--sg-nav-width, 240px) + 8px); bottom: 16px; display: flex; flex-direction: column; width: min(380px, calc(100vw - 32px)); max-height: min(70vh, 560px); border: 1px solid var(--borda); border-radius: var(--raio-lg); background: var(--fundo-card); box-shadow: var(--sombra-lg); color: var(--texto-primario); }
 .sg-sino--barra .sg-sino__painel { top: 60px; right: 8px; bottom: auto; left: auto; }
 .sg-sino__cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--borda); }

@@ -171,3 +171,10 @@ test("5 (10/10): o responsável pela ação abre a NC pelo aviso, com a visão r
   expect(busca).toContain("sua_acao: suaAcao");
   expect(read("src/features/nc/components/DetalhesNcPage.jsx")).toContain("Você é responsável por uma ação desta NC.");
 });
+
+test("5.6 (11/10): o sino do menu ocupa a largura toda e contrasta com o fundo escuro", () => {
+  const css = read("src/redesign.css");
+  expect(css).toContain(".sg-sino--menu .sg-sino__botao { width: 100%; }");
+  expect(css).toContain(".sg-sino__botao--normal .sg-sino__contador { background: #e7eef5; color: #10263d; }");
+  expect(css).toContain(".sg-sino__botao--critica svg { color: #ffb4ab; }");
+});
