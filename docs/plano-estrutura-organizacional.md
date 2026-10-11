@@ -68,11 +68,12 @@ Migração `20261011120000_estrutura_diretoria.sql` (aditiva) e o app.
 - [ ] A.8 A política legada `private.e_meu_subordinado` (RLS de defesa em profundidade) ainda só considera liderados diretos. O app usa o service role, então nada muda para o usuário; revisar quando a RLS for atualizada.
 
 ### Fase B: departamentos e cargos (E5, E8, E9, E10, E12, E13)
-- [ ] B.1 Migração: tabelas `departamentos` (nome, `departamento_pai_id`, `responsavel_id`, ativo) e `cargos` (nome, `departamento_id` opcional, `lideranca` sim/não, ativo); `usuarios.departamento_id` e `usuarios.cargo_id`. Conversão dos setores atuais.
-- [ ] B.2 Aba "Estrutura" em Pessoas e equipes (Qualidade e Adm): criar, editar e desativar departamentos (com área-mãe e responsável) e cargos. Nada é apagado: desativar mantém o histórico.
-- [ ] B.3 Pessoa: escolher departamento e cargo no cadastro e na aba Equipes. A liderança sugerida é o responsável do departamento.
+- [x] B.1 Migração `20261011130000_departamentos_cargos.sql`: tabelas `departamentos` (nome, `departamento_pai_id`, `responsavel_id`, ativo) e `cargos` (nome, `departamento_id` opcional, `lideranca` sim/não, ativo); `usuarios.departamento_id` e `usuarios.cargo_id`. Conversão dos setores atuais (sem diferenciar maiúsculas e espaços); o setor passa a espelhar o nome do departamento. Testada num Postgres local.
+- [x] B.2 Aba "Estrutura" em Pessoas e equipes (Qualidade e Adm): criar, editar e desativar departamentos (com área-mãe e responsável) e cargos. Nada é apagado: desativar mantém o histórico.
+- [x] B.3 Pessoa: departamento e cargo no cadastro (aba Acessos) e em "Alterar departamento e cargo" (aba Equipes), com histórico. A liderança sugerida é o responsável do departamento. No "Editar" de Acessos, departamento e cargo ficam só para leitura, como a liderança.
+- [ ] B.3b Aplicar a migração no Supabase (com autorização do responsável) e validar no Preview.
 - [ ] B.4 Trocar o responsável de um departamento oferece mover junto os liderados dele, com confirmação e histórico.
-- [ ] B.5 Filtro por departamento na árvore e nos Insights/Relatórios no lugar do setor.
+- [ ] B.5 Filtro por departamento nos Insights/Relatórios no lugar do setor. (Na árvore da aba Equipes já está feito, incluindo as sub-áreas.)
 
 ### Fase C: cadastro da estrutura real
 - [ ] C.1 O Administrador cadastra os membros da Diretoria, os supervisores e os departamentos, e move as pessoas na aba Equipes.

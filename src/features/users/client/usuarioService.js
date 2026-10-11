@@ -51,3 +51,23 @@ export function alterarEquipe(usuarioId, dados) {
 export function listarHistoricoEquipe(usuarioId) {
   return chamarApi(`/equipe/${encodeURIComponent(usuarioId)}/historico`);
 }
+
+export function listarEstrutura() {
+  return chamarApi("/estrutura");
+}
+
+export function salvarDepartamento(id, dados) {
+  return id
+    ? chamarApi(`/estrutura/departamentos/${encodeURIComponent(id)}`, { method: "PATCH", body: dados })
+    : chamarApi("/estrutura/departamentos", { method: "POST", body: dados });
+}
+
+export function salvarCargo(id, dados) {
+  return id
+    ? chamarApi(`/estrutura/cargos/${encodeURIComponent(id)}`, { method: "PATCH", body: dados })
+    : chamarApi("/estrutura/cargos", { method: "POST", body: dados });
+}
+
+export function alterarPosicao(usuarioId, dados) {
+  return chamarApi(`/equipe/${encodeURIComponent(usuarioId)}/posicao`, { method: "PATCH", body: dados });
+}

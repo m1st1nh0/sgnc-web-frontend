@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api/error";
 import type { UsuarioAutenticado } from "@/lib/auth/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { resolverPosicao } from "@/lib/estrutura/service";
 import { listarPessoasAbaixo } from "@/lib/permissions/team-scope";
 import { ehAdminSistema, PAPEIS as LISTA_PAPEIS } from "@/lib/auth/papeis";
 
@@ -15,6 +16,8 @@ type UsuarioInput = {
   email?: unknown;
   papel?: unknown;
   setor?: unknown;
+  departamento_id?: unknown;
+  cargo_id?: unknown;
   supervisor_id?: unknown;
   diretoria?: unknown;
   senha_inicial?: unknown;
@@ -33,6 +36,8 @@ function parseUsuario(data: UsuarioInput, creating: boolean) {
   const nome = String(data.nome ?? "").trim();
   const papel = String(data.papel ?? "");
   const setor = data.setor ? String(data.setor).trim() : null;
+  const departamentoId = data.departamento_id ? String(data.departamento_id) : null;
+  const cargoId = data.cargo_id ? String(data.cargo_id) : null;
   const diretoria = data.diretoria === true;
   // Membros da Diretoria ficam no topo, sem liderança; todos os demais respondem a alguém.
   const supervisorId = diretoria || !data.supervisor_id ? null : String(data.supervisor_id);
@@ -42,7 +47,8 @@ function parseUsuario(data: UsuarioInput, creating: boolean) {
 
   // Na edição, a liderança é resolvida em editarUsuario (só a gestão de equipes transfere).
   if (!creating) {
-    return { nome, papel, setor, diretoria, supervisor_id: supervisorId };
+    // Departamento, cargo e setor de quem já existe mudam só pela aba Equipes.
+    return { nome, papel, diretoria, supervisor_id: supervisorId };
   }
 
   if (!diretoria && !supervisorId) throw new ApiError("Informe a liderança desta pessoa. Só membros da Diretoria ficam sem liderança.");
@@ -56,6 +62,8 @@ function parseUsuario(data: UsuarioInput, creating: boolean) {
     email,
     papel,
     setor,
+    departamento_id: departamentoId,
+    cargo_id: cargoId,
     diretoria,
     supervisor_id: supervisorId,
     senha_inicial: senhaInicial,
@@ -88,7 +96,7 @@ export async function listarUsuarios() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("usuarios")
-    .select("id, nome, email, papel, setor, supervisor_id, diretoria, ativo, senha_provisoria")
+    .select("id, nome, email, papel, setor, departamento_id, cargo_id, supervisor_id, diretoria, ativo, senha_provisoria")
     .order("nome");
   if (error) throw new ApiError("Não foi possível carregar os usuários.", 500);
   return data ?? [];
@@ -110,6 +118,10 @@ export async function criarUsuario(input: UsuarioInput) {
   await requireAdmin();
   const dados = parseUsuario(input, true);
   await validarResponsavel(dados.supervisor_id);
+  // Com departamento, o setor (texto) passa a ser o nome dele.
+  if (dados.departamento_id || dados.cargo_id) {
+    dados.setor = (await resolverPosicao(dados.departamento_id, dados.cargo_id)).setor ?? dados.setor;
+  }
   const admin = createAdminClient();
   const { data: auth, error: authError } = await admin.auth.admin.createUser({
     email: dados.email,
@@ -128,6 +140,8 @@ export async function criarUsuario(input: UsuarioInput) {
       email: dados.email,
       papel: dados.papel,
       setor: dados.setor,
+      departamento_id: dados.departamento_id,
+      cargo_id: dados.cargo_id,
       supervisor_id: dados.supervisor_id,
       diretoria: dados.diretoria,
       senha_provisoria: true,

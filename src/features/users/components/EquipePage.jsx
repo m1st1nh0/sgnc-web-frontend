@@ -15,6 +15,7 @@ import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
 import { ehAdminSistema, ehQualidade, NOME_PAPEL } from "../../../lib/auth/papeis.js";
 import GestaoEquipes from "./GestaoEquipes.jsx";
+import EstruturaOrganizacional from "./EstruturaOrganizacional.jsx";
 import UsuariosPage from "./UsuariosPage.jsx";
 
 const ROTULOS_PAPEL = { ...NOME_PAPEL, supervisor: "Liderança" };
@@ -27,6 +28,7 @@ export default function EquipePage({ abaInicial }) {
   const abas = [
     ["equipes", "Equipes"],
     ["lista", "Lista"],
+    ["estrutura", "Estrutura"],
     ...(ehAdminSistema(usuario?.papel) ? [["acessos", "Acessos"]] : []),
   ];
   const [abaEscolhida, setAbaEscolhida] = useState(abaInicial || "equipes");
@@ -96,7 +98,7 @@ export default function EquipePage({ abaInicial }) {
           </div>
         )}
 
-        {gestorEquipes && visao === "acessos" ? <UsuariosPage /> : gestorEquipes && visao === "equipes" ? <GestaoEquipes /> : (<>
+        {gestorEquipes && visao === "acessos" ? <UsuariosPage /> : gestorEquipes && visao === "estrutura" ? <EstruturaOrganizacional /> : gestorEquipes && visao === "equipes" ? <GestaoEquipes /> : (<>
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
         <div className="sg-card mb-3">

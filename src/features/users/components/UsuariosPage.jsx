@@ -10,6 +10,7 @@ import Button from "react-bootstrap/Button";
 
 import {
   listarUsuarios,
+  listarEstrutura,
   cadastrarUsuario,
   editarUsuario,
   desativarUsuario,
@@ -26,6 +27,7 @@ import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
 import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
+import { caminhoDepartamento } from "../../../lib/estrutura/departamentos.js";
 import { ehQualidade, NOME_PAPEL, podeLiderar } from "../../../lib/auth/papeis.js";
 
 const COR_PAPEL = {
@@ -42,13 +44,14 @@ const PAPEIS_OPCOES = [
   { value: "adm", label: "Administrador do sistema (inclui Qualidade)" },
 ];
 
-function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
+function FormularioUsuario({ usuario, usuarios, estrutura, aoSalvar, aoFechar }) {
   const editando = !!usuario;
 
   const [nome, setNome] = useState(usuario?.nome ?? "");
   const [email, setEmail] = useState(usuario?.email ?? "");
   const [papel, setPapel] = useState(usuario?.papel ?? "funcionario");
-  const [setor, setSetor] = useState(usuario?.setor ?? "");
+  const [departamentoId, setDepartamentoId] = useState(usuario?.departamento_id ?? "");
+  const [cargoId, setCargoId] = useState(usuario?.cargo_id ?? "");
   const [supervisorId, setSupervisorId] = useState(usuario?.supervisor_id ?? "");
   const [diretoria, setDiretoria] = useState(usuario?.diretoria ?? false);
   const [senhaInicial, setSenhaInicial] = useState("");
@@ -66,6 +69,18 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
   // não tem uma; trocar de liderança é feito na aba Equipes, com confirmação e histórico.
   const escolheLideranca = !diretoria && (!editando || !usuario.supervisor_id);
   const lideranca = usuarios.find((u) => u.id === usuario?.supervisor_id);
+  const departamentosAtivos = estrutura.departamentos.filter((d) => d.ativo);
+  const cargosDoDepartamento = estrutura.cargos.filter((c) => c.ativo && (!c.departamento_id || c.departamento_id === departamentoId));
+  const nomeDe = (lista, id) => lista.find((item) => item.id === id)?.nome;
+
+  // O responsável pelo departamento é a liderança sugerida para quem entra nele (E9).
+  function escolherDepartamento(id) {
+    setDepartamentoId(id);
+    const cargo = estrutura.cargos.find((c) => c.id === cargoId);
+    if (cargo?.departamento_id && cargo.departamento_id !== id) setCargoId("");
+    const responsavel = estrutura.departamentos.find((d) => d.id === id)?.responsavel_id;
+    if (responsavel && !supervisorId && supervisoresDisponiveis.some((s) => s.id === responsavel)) setSupervisorId(responsavel);
+  }
 
   async function aoEnviar(evento) {
     evento.preventDefault();
@@ -91,7 +106,6 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
         await editarUsuario(usuario.id, {
           nome,
           papel,
-          setor: setor || null,
           diretoria,
           supervisor_id: escolheLideranca ? supervisorId : null,
         });
@@ -100,7 +114,8 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
           nome,
           email,
           papel,
-          setor: setor || null,
+          departamento_id: departamentoId || null,
+          cargo_id: cargoId || null,
           diretoria,
           supervisor_id: diretoria ? null : supervisorId,
           senha_inicial: senhaInicial,
@@ -137,11 +152,27 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
         />
       )}
 
-      <CampoTexto
-        rotulo="Setor"
-        value={setor}
-        onChange={(e) => setSetor(e.target.value)}
-      />
+      {editando ? (
+        <p className="texto-sm mb-3">
+          <span className="texto-suave">Departamento:</span>{" "}
+          <strong>{usuario.departamento_id ? caminhoDepartamento(estrutura.departamentos, usuario.departamento_id) : usuario.setor || "—"}</strong>
+          {usuario.cargo_id && <> · <span className="texto-suave">Cargo:</span> <strong>{nomeDe(estrutura.cargos, usuario.cargo_id)}</strong></>}
+          <span className="d-block texto-xs texto-suave">Departamento e cargo são alterados na aba Equipes.</span>
+        </p>
+      ) : (
+        <>
+          <CampoSelecao rotulo="Departamento" value={departamentoId} onChange={(e) => escolherDepartamento(e.target.value)}>
+            <option value="">Sem departamento</option>
+            {departamentosAtivos.map((d) => (
+              <option key={d.id} value={d.id}>{caminhoDepartamento(estrutura.departamentos, d.id)}</option>
+            ))}
+          </CampoSelecao>
+          <CampoSelecao rotulo="Cargo" value={cargoId} onChange={(e) => setCargoId(e.target.value)}>
+            <option value="">Sem cargo</option>
+            {cargosDoDepartamento.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </CampoSelecao>
+        </>
+      )}
 
       <CampoSelecao
         rotulo="Papel"
@@ -228,6 +259,7 @@ export default function UsuariosPage() {
   const router = useRouter();
 
   const [usuarios, setUsuarios] = useState([]);
+  const [estrutura, setEstrutura] = useState({ departamentos: [], cargos: [] });
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [modal, setModal] = useState(null);
@@ -235,7 +267,13 @@ export default function UsuariosPage() {
   const carregar = useCallback(async () => {
     setCarregando(true);
     try {
-      setUsuarios(await listarUsuarios());
+      const [lista, dadosEstrutura] = await Promise.all([
+        listarUsuarios(),
+        // Sem a estrutura, o cadastro segue funcionando, só sem departamento e cargo.
+        listarEstrutura().catch(() => ({ departamentos: [], cargos: [] })),
+      ]);
+      setUsuarios(lista);
+      setEstrutura(dadosEstrutura);
       await concluirEtapa("checklist_usuarios", "checklist", {
         pagina: "usuarios",
       });
@@ -412,6 +450,7 @@ export default function UsuariosPage() {
             <FormularioUsuario
               usuario={modal === "novo" ? null : modal}
               usuarios={usuarios}
+              estrutura={estrutura}
               aoSalvar={aoSalvarComSucesso}
               aoFechar={() => setModal(null)}
             />
