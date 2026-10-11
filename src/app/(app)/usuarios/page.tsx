@@ -1,6 +1,8 @@
-import Page from "../../../features/users/components/UsuariosPage.jsx";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/session";
+
+// Usuários virou a aba "Acessos" de Pessoas e equipes; o endereço antigo continua valendo.
 export default async function Route() {
   await requireRole(["adm"]);
-  return <Page />;
+  redirect("/equipe?aba=acessos");
 }

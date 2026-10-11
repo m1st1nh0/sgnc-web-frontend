@@ -114,7 +114,7 @@ const CHECKLIST_ESPECIFICO = {
       chave: "checklist_usuarios",
       titulo: "Conheça a gestão de usuários",
       descricao: "Cadastre, edite e gerencie acessos.",
-      destino: "/usuarios",
+      destino: "/equipe?aba=acessos",
     },
   ],
   qualidade: [

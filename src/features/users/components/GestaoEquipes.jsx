@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Dropdown from "react-bootstrap/Dropdown";
 import Form from "react-bootstrap/Form";
 import Modal from "react-bootstrap/Modal";
 
 import Botao from "../../../components/ui/Botao.jsx";
+import CardMetrica from "../../../components/ui/CardMetrica.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
@@ -15,7 +17,13 @@ import { formatarDataHora } from "../../../lib/utils/formato.js";
 import { alterarEquipe, listarEquipe, listarHistoricoEquipe, listarLiderancas } from "../client/usuarioService.js";
 
 const SEM_LIDERANCA = "__sem_lideranca__";
+const FILTROS_PAPEL = [["", "Todos"], ["supervisor", "Supervisor"], ["funcionario", "Colaborador"]];
 const COR_PAPEL = { adm: "sg-badge--escuro", qualidade: "sg-badge--verde", supervisor: "sg-badge--azul", funcionario: "sg-badge--cinza" };
+
+function contarPessoas(total) {
+  if (total === 0) return "Nenhuma pessoa";
+  return total === 1 ? "1 pessoa" : `${total} pessoas`;
+}
 
 function normalizar(texto) {
   return String(texto ?? "").toLocaleLowerCase("pt-BR");
@@ -36,7 +44,7 @@ function descendentes(id, porLider) {
 }
 
 /**
- * Montagem das equipes (Qualidade e Administrador): visão por liderança, transferência
+ * Montagem das equipes (Qualidade e Administrador): árvore de lideranças, transferência
  * entre lideranças e alternância entre Supervisor e Colaborador, com histórico auditável.
  */
 export default function GestaoEquipes() {
@@ -44,10 +52,25 @@ export default function GestaoEquipes() {
   const [liderancas, setLiderancas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  const [sucesso, setSucesso] = useState("");
+  // Confirmação de mudança aparece na linha da pessoa alterada, não no topo da página.
+  const [alterado, setAlterado] = useState(null);
   const [busca, setBusca] = useState("");
+  const [filtroPapel, setFiltroPapel] = useState("");
+  const [filtroSetor, setFiltroSetor] = useState("");
+  // Lideranças recolhidas na árvore; por padrão tudo aberto.
+  const [recolhidos, setRecolhidos] = useState(() => new Set());
   const [salvando, setSalvando] = useState("");
   const [historico, setHistorico] = useState(null);
+  // Mudança aguardando confirmação: { tipo: "mover" | "papel", pessoa, destino?, papel? }.
+  // Os dados ficam guardados depois de fechar, para o modal não perder o conteúdo na animação de saída.
+  const [confirmacao, setConfirmacao] = useState(null);
+  const [confirmando, setConfirmando] = useState(false);
+
+  useEffect(() => {
+    if (!alterado) return undefined;
+    const timer = setTimeout(() => setAlterado(null), 8000);
+    return () => clearTimeout(timer);
+  }, [alterado]);
 
   async function carregar() {
     const [equipe, lideres] = await Promise.all([listarEquipe(), listarLiderancas()]);
@@ -83,28 +106,90 @@ export default function GestaoEquipes() {
     [liderancas, pessoas],
   );
 
-  const grupos = useMemo(() => {
+  const arvore = useMemo(() => {
     const idsLideres = new Set(liderancas.map((lider) => lider.id));
-    const lista = liderancas.map((lider) => ({ lider, membros: porLider.get(lider.id) ?? [] }));
-    // Pessoas sem liderança ou cuja liderança está inativa: precisam de atenção.
-    const orfaos = pessoas.filter((pessoa) => !pessoa.supervisor_id || !idsLideres.has(pessoa.supervisor_id));
-    const termo = normalizar(busca.trim());
-    const combina = (pessoa) => !termo || [pessoa.nome, pessoa.setor, NOME_PAPEL[pessoa.papel]].some((v) => normalizar(v).includes(termo));
-    const filtrados = lista
-      .map((grupo) => ({ ...grupo, membros: grupo.membros.filter(combina), liderCombina: combina(grupo.lider) }))
-      .filter((grupo) => grupo.liderCombina || grupo.membros.length > 0);
-    return { lista: filtrados, orfaos: orfaos.filter(combina) };
-  }, [liderancas, pessoas, porLider, busca]);
+    // Só liderança ativa tem liderados na árvore; os de liderança inativa ficam em "sem liderança ativa".
+    const filhosDe = (id) => (idsLideres.has(id) ? porLider.get(id) ?? [] : []);
+    // Só a Diretoria fica sem liderança: é o topo da árvore (pode haver mais de um membro).
+    const raizes = pessoas.filter((pessoa) => pessoa.diretoria && pessoa.ativo);
+    // Os demais sem liderança, ou com liderança inativa, precisam de atenção.
+    const orfaos = pessoas.filter((pessoa) => !pessoa.diretoria && (!pessoa.supervisor_id || !idsLideres.has(pessoa.supervisor_id)));
 
-  async function aplicar(pessoa, dados, mensagem) {
+    const termo = normalizar(busca.trim());
+    const filtrando = Boolean(termo || filtroPapel || filtroSetor);
+    const combina = (pessoa) =>
+      (!termo || [pessoa.nome, pessoa.setor, NOME_PAPEL[pessoa.papel]].some((v) => normalizar(v).includes(termo)))
+      && (!filtroPapel || pessoa.papel === filtroPapel)
+      && (!filtroSetor || pessoa.setor === filtroSetor);
+
+    // Nó visível quando combina com os filtros ou tem algum descendente que combina.
+    const montar = (pessoa, nivel, vistos) => {
+      if (vistos.has(pessoa.id)) return null;
+      const proximos = new Set(vistos).add(pessoa.id);
+      const total = filhosDe(pessoa.id).length;
+      const filhos = filhosDe(pessoa.id).map((filho) => montar(filho, nivel + 1, proximos)).filter(Boolean);
+      if (!combina(pessoa) && filhos.length === 0) return null;
+      return { pessoa, nivel, total, filhos, lidera: idsLideres.has(pessoa.id) };
+    };
+
+    return {
+      filtrando,
+      raizes: raizes.map((pessoa) => montar(pessoa, 0, new Set())).filter(Boolean),
+      orfaos: orfaos.map((pessoa) => montar(pessoa, 0, new Set())).filter(Boolean),
+      resumo: {
+        liderancas: liderancas.length,
+        colaboradores: pessoas.filter((pessoa) => pessoa.papel === "funcionario" && pessoa.ativo).length,
+        orfaos: orfaos.length,
+      },
+    };
+  }, [liderancas, pessoas, porLider, busca, filtroPapel, filtroSetor]);
+
+  const setores = useMemo(
+    () => [...new Set([...liderancas, ...pessoas].map((pessoa) => pessoa.setor).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [liderancas, pessoas],
+  );
+
+  const idsComFilhos = useMemo(
+    () => liderancas.filter((lider) => (porLider.get(lider.id) ?? []).length > 0).map((lider) => lider.id),
+    [liderancas, porLider],
+  );
+
+  function alternar(id) {
+    setRecolhidos((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
+
+  function destinosDe(pessoa) {
+    const bloqueados = descendentes(pessoa.id, porLider);
+    return liderancas.filter((lider) => lider.id !== pessoa.id && lider.id !== pessoa.supervisor_id && !bloqueados.has(lider.id));
+  }
+
+  function abrirConfirmacao(dados) {
+    setConfirmacao(dados);
+    setConfirmando(true);
+  }
+
+  async function confirmar() {
+    const { tipo, pessoa, destino, papel } = confirmacao;
+    const dados = tipo === "mover" ? { supervisor_id: destino } : { papel };
+    const mensagem = tipo === "mover"
+      ? `Movido para ${nomes.get(destino) ?? "nova liderança"}`
+      : `Agora é ${NOME_PAPEL[papel].toLocaleLowerCase("pt-BR")}`;
     setErro("");
-    setSucesso("");
+    setAlterado(null);
     setSalvando(pessoa.id);
     try {
       await alterarEquipe(pessoa.id, dados);
       await carregar();
-      setSucesso(mensagem);
+      setConfirmando(false);
+      setAlterado({ id: pessoa.id, mensagem });
     } catch (e) {
+      setConfirmando(false);
       setErro(e instanceof ErroApi ? e.message : "Não foi possível alterar a equipe.");
     } finally {
       setSalvando("");
@@ -121,59 +206,96 @@ export default function GestaoEquipes() {
     }
   }
 
-  function linhaPessoa(pessoa) {
-    const bloqueados = descendentes(pessoa.id, porLider);
-    const destinos = liderancas.filter((lider) => lider.id !== pessoa.id && !bloqueados.has(lider.id));
+  function acoesPessoa(pessoa) {
+    const destinos = destinosDe(pessoa);
     const ocupado = salvando === pessoa.id;
     const temLiderados = (porLider.get(pessoa.id) ?? []).length > 0;
+    const ehColaborador = pessoa.papel === "funcionario";
+    const novoPapel = ehColaborador ? "supervisor" : "funcionario";
+    // Na montagem de equipes o perfil só alterna entre Supervisor e Colaborador.
+    const alternaPapel = ["supervisor", "funcionario"].includes(pessoa.papel);
+    const motivoDiretoria = pessoa.diretoria ? "A Diretoria fica no topo; altere na aba Acessos" : "";
+    const motivoPapel = motivoDiretoria || (!pessoa.supervisor_id
+      ? "Defina uma liderança antes"
+      : !ehColaborador && temLiderados ? "Transfira os liderados antes" : "");
+    const motivoMover = motivoDiretoria || (destinos.length === 0 ? "Nenhuma liderança disponível" : "");
     return (
-      <li key={pessoa.id} className={`sg-equipe-membro${pessoa.ativo ? "" : " sg-equipe-membro--inativo"}`}>
-        <div className="sg-equipe-membro__info">
-          <Link href={`/equipe/${pessoa.id}`} className="fw-semibold">{pessoa.nome}</Link>
-          <div className="texto-xs texto-suave">
-            <span className={`sg-badge ${COR_PAPEL[pessoa.papel] ?? "sg-badge--cinza"} me-1`}>{NOME_PAPEL[pessoa.papel] ?? pessoa.papel}</span>
-            {pessoa.setor || "Sem setor"}{pessoa.ativo ? "" : " · inativa"}
-          </div>
-        </div>
-        <div className="sg-equipe-membro__acoes">
-          <Form.Select
+      <div className="sg-equipe-membro__acoes">
+        {alterado?.id === pessoa.id && (
+          <span className="sg-equipe-membro__alterado" role="status">✓ {alterado.mensagem}</span>
+        )}
+        <Dropdown align="end">
+          <Dropdown.Toggle
             size="sm"
-            className="sg-input"
-            aria-label={`Mover ${pessoa.nome} para outra liderança`}
-            value=""
+            variant="light"
+            className="sg-btn sg-btn--secundario sg-btn--sm"
             disabled={ocupado}
-            onChange={(e) => {
-              const destino = e.target.value;
-              if (destino) aplicar(pessoa, { supervisor_id: destino }, `${pessoa.nome} agora responde a ${nomes.get(destino) ?? "nova liderança"}.`);
-            }}
+            aria-label={`Ações para ${pessoa.nome}`}
           >
-            <option value="">Mover para…</option>
-            {destinos.filter((lider) => lider.id !== pessoa.supervisor_id).map((lider) => (
-              <option key={lider.id} value={lider.id}>{lider.nome} ({NOME_PAPEL[lider.papel]})</option>
-            ))}
-          </Form.Select>
-          {pessoa.papel === "funcionario" ? (
-            <Botao
-              variante="secundario"
-              tamanho="sm"
-              disabled={ocupado || !pessoa.supervisor_id}
-              onClick={() => aplicar(pessoa, { papel: "supervisor" }, `${pessoa.nome} agora é liderança.`)}
+            Ações
+          </Dropdown.Toggle>
+          <Dropdown.Menu className="sg-equipe-menu">
+            <Dropdown.Item
+              as="button"
+              disabled={Boolean(motivoMover)}
+              onClick={() => abrirConfirmacao({ tipo: "mover", pessoa, destino: "" })}
             >
-              Tornar liderança
-            </Botao>
+              Mover para outra liderança…
+              {motivoMover && <small>{motivoMover}</small>}
+            </Dropdown.Item>
+            {alternaPapel && (
+              <Dropdown.Item
+                as="button"
+                disabled={Boolean(motivoPapel)}
+                onClick={() => abrirConfirmacao({ tipo: "papel", pessoa, papel: novoPapel })}
+              >
+                {ehColaborador ? "Tornar liderança" : "Tornar colaborador"}
+                {motivoPapel && <small>{motivoPapel}</small>}
+              </Dropdown.Item>
+            )}
+            <Dropdown.Item as="button" onClick={() => abrirHistorico(pessoa)}>Ver histórico</Dropdown.Item>
+            <Dropdown.Divider />
+            <Dropdown.Item as={Link} href={`/equipe/${pessoa.id}`}>Abrir ficha da pessoa</Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+      </div>
+    );
+  }
+
+  function renderNo(no) {
+    const { pessoa, nivel, total, filhos, lidera } = no;
+    // Com filtro ativo a árvore fica aberta, para os resultados não sumirem num ramo recolhido.
+    const aberto = arvore.filtrando || !recolhidos.has(pessoa.id);
+    const inativa = !pessoa.ativo;
+    return (
+      <li key={pessoa.id}>
+        <div className={`sg-equipe-no${inativa ? " sg-equipe-membro--inativo" : ""}`} style={{ "--nivel": nivel }}>
+          {filhos.length > 0 ? (
+            <button
+              type="button"
+              className="sg-equipe-no__alternar"
+              aria-expanded={aberto}
+              aria-label={`${aberto ? "Recolher" : "Expandir"} equipe de ${pessoa.nome}`}
+              onClick={() => alternar(pessoa.id)}
+              disabled={arvore.filtrando}
+            >
+              {aberto ? "▾" : "▸"}
+            </button>
           ) : (
-            <Botao
-              variante="secundario"
-              tamanho="sm"
-              disabled={ocupado || temLiderados || !pessoa.supervisor_id}
-              title={temLiderados ? "Transfira os liderados antes" : undefined}
-              onClick={() => aplicar(pessoa, { papel: "funcionario" }, `${pessoa.nome} agora é colaborador.`)}
-            >
-              Tornar colaborador
-            </Botao>
+            <span className="sg-equipe-no__alternar" aria-hidden="true" />
           )}
-          <Botao variante="subtle" tamanho="sm" onClick={() => abrirHistorico(pessoa)}>Histórico</Botao>
+          <div className="sg-equipe-membro__info">
+            <Link href={`/equipe/${pessoa.id}`} className="fw-semibold">{pessoa.nome}</Link>
+            <div className="texto-xs texto-suave">
+              {pessoa.diretoria && <span className="sg-badge sg-badge--escuro me-1">Diretoria</span>}
+              <span className={`sg-badge ${COR_PAPEL[pessoa.papel] ?? "sg-badge--cinza"} me-1`}>{NOME_PAPEL[pessoa.papel] ?? pessoa.papel}</span>
+              {pessoa.setor || "Sem setor"}{inativa ? " · inativa" : ""}
+            </div>
+          </div>
+          {lidera && <span className="sg-equipe-no__total texto-xs texto-suave">{contarPessoas(total)}</span>}
+          {acoesPessoa(pessoa)}
         </div>
+        {aberto && filhos.length > 0 && <ul className="sg-equipe-arvore">{filhos.map(renderNo)}</ul>}
       </li>
     );
   }
@@ -183,59 +305,137 @@ export default function GestaoEquipes() {
   return (
     <div className="d-flex flex-column gap-3">
       {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
-      {sucesso && <div className="sg-alerta sg-alerta--sucesso mb-0" role="status">{sucesso}</div>}
+
+      <div className="sg-equipe-resumo">
+        <CardMetrica rotulo="Lideranças" valor={arvore.resumo.liderancas} cor="azul" />
+        <CardMetrica rotulo="Colaboradores" valor={arvore.resumo.colaboradores} cor="cinza" />
+        <CardMetrica
+          rotulo="Sem liderança ativa"
+          valor={arvore.resumo.orfaos}
+          cor={arvore.resumo.orfaos > 0 ? "vermelha" : "verde"}
+        />
+      </div>
 
       <div className="sg-card">
         <div className="sg-card-body">
-          <Form.Group controlId="busca-gestao-equipes">
-            <Form.Label>Buscar pessoa, liderança ou setor</Form.Label>
-            <Form.Control value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Digite para filtrar as equipes" />
-          </Form.Group>
+          <div className="sg-equipe-filtros">
+            <Form.Group controlId="busca-gestao-equipes" className="sg-equipe-filtros__busca">
+              <Form.Label>Buscar pessoa, liderança ou setor</Form.Label>
+              <Form.Control value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Digite para filtrar as equipes" />
+            </Form.Group>
+            <div>
+              <span className="form-label d-block" id="filtro-papel-equipes">Perfil</span>
+              <div className="d-flex gap-2" role="group" aria-labelledby="filtro-papel-equipes">
+                {FILTROS_PAPEL.map(([valor, rotulo]) => (
+                  <Botao
+                    key={rotulo}
+                    tamanho="sm"
+                    variante={filtroPapel === valor ? "primario" : "secundario"}
+                    aria-pressed={filtroPapel === valor}
+                    onClick={() => setFiltroPapel(valor)}
+                  >
+                    {rotulo}
+                  </Botao>
+                ))}
+              </div>
+            </div>
+            <Form.Group controlId="filtro-setor-equipes">
+              <Form.Label>Setor</Form.Label>
+              <Form.Select className="sg-input" value={filtroSetor} onChange={(e) => setFiltroSetor(e.target.value)}>
+                <option value="">Todos os setores</option>
+                {setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}
+              </Form.Select>
+            </Form.Group>
+          </div>
           <p className="texto-xs texto-suave mt-2 mb-0">
-            Toda transferência e mudança de perfil fica registrada no histórico da pessoa. Perfis de Qualidade e
-            Administrador ficam fora das equipes e são gerenciados em Usuários.
+            Toda transferência e mudança de perfil fica registrada no histórico da pessoa. Todos respondem a uma
+            liderança, inclusive Qualidade e Administrador; só a Diretoria fica no topo. Quem é da Diretoria e os
+            perfis de acesso são definidos na aba Acessos.
           </p>
         </div>
       </div>
 
-      {grupos.orfaos.length > 0 && (
+      {arvore.orfaos.length > 0 && (
         <section className="sg-card sg-equipe-grupo sg-equipe-grupo--alerta" aria-label="Pessoas sem liderança ativa">
           <div className="sg-card-body">
-            <h2 className="h6 mb-1">Sem liderança ativa ({grupos.orfaos.length})</h2>
-            <p className="texto-xs texto-suave">Estas pessoas não têm liderança ou respondem a alguém inativo. Mova-as para uma liderança ativa.</p>
-            <ul className="sg-equipe-membros">{grupos.orfaos.map(linhaPessoa)}</ul>
+            <h2 className="h6 mb-1">Sem liderança ativa ({arvore.orfaos.length})</h2>
+            <p className="texto-xs texto-suave">Estas pessoas não têm liderança ou respondem a alguém inativo. Só a Diretoria fica sem liderança: mova-as para uma liderança ativa.</p>
+            <ul className="sg-equipe-arvore">{arvore.orfaos.map(renderNo)}</ul>
           </div>
         </section>
       )}
 
-      {grupos.lista.length === 0 && grupos.orfaos.length === 0 ? (
-        <EstadoVazio titulo="Nenhuma equipe encontrada" descricao="Ajuste a busca para ver outras equipes." />
-      ) : (
-        <div className="sg-equipes-grade">
-          {grupos.lista.map(({ lider, membros }) => (
-            <section key={lider.id} className="sg-card sg-equipe-grupo" aria-label={`Equipe de ${lider.nome}`}>
-              <div className="sg-card-body">
-                <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
-                  <div>
-                    <h2 className="h6 mb-0">{lider.nome}</h2>
-                    <div className="texto-xs texto-suave">
-                      <span className={`sg-badge ${COR_PAPEL[lider.papel] ?? "sg-badge--cinza"} me-1`}>{NOME_PAPEL[lider.papel]}</span>
-                      {lider.setor || "Sem setor"}
-                      {lider.supervisor_id ? ` · responde a ${nomes.get(lider.supervisor_id) ?? "—"}` : ""}
-                    </div>
-                  </div>
-                  <span className="sg-badge sg-badge--cinza">{(porLider.get(lider.id) ?? []).length} pessoa(s)</span>
-                </div>
-                {membros.length === 0 ? (
-                  <p className="texto-sm texto-suave mb-0">Nenhum liderado direto.</p>
-                ) : (
-                  <ul className="sg-equipe-membros">{membros.map(linhaPessoa)}</ul>
-                )}
+      {arvore.raizes.length === 0 && arvore.orfaos.length === 0 ? (
+        <EstadoVazio titulo="Nenhuma equipe encontrada" descricao="Ajuste a busca ou os filtros para ver outras equipes." />
+      ) : arvore.raizes.length === 0 ? (!arvore.filtrando && (
+        <EstadoVazio
+          titulo="Nenhum membro da Diretoria definido"
+          descricao="A estrutura começa pela Diretoria. Marque quem é da Diretoria na aba Acessos e depois organize as lideranças abaixo."
+        />
+      )) : (
+        <section className="sg-card sg-equipe-grupo" aria-label="Estrutura das equipes">
+          <div className="sg-equipe-arvore__cabecalho">
+            <h2 className="h6 mb-0">Estrutura das equipes</h2>
+            {!arvore.filtrando && (
+              <div className="d-flex gap-1">
+                <Botao variante="subtle" tamanho="sm" onClick={() => setRecolhidos(new Set())}>Expandir tudo</Botao>
+                <Botao variante="subtle" tamanho="sm" onClick={() => setRecolhidos(new Set(idsComFilhos))}>Recolher tudo</Botao>
               </div>
-            </section>
-          ))}
-        </div>
+            )}
+          </div>
+          <ul className="sg-equipe-arvore sg-equipe-arvore--raiz">{arvore.raizes.map(renderNo)}</ul>
+        </section>
       )}
+
+      <Modal show={confirmando} onHide={() => !salvando && setConfirmando(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="h5">
+            {confirmacao?.tipo === "mover"
+              ? `Mover ${confirmacao.pessoa.nome}?`
+              : `Tornar ${confirmacao?.pessoa.nome} ${confirmacao?.papel === "supervisor" ? "liderança" : "colaborador"}?`}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="d-flex flex-column gap-3">
+          {confirmacao?.tipo === "mover" ? (
+            <div className="sg-equipe-de-para">
+              <div>
+                <div className="texto-xs texto-suave">Liderança atual</div>
+                <strong>{nomes.get(confirmacao.pessoa.supervisor_id) ?? "Sem liderança"}</strong>
+              </div>
+              <span aria-hidden="true" className="texto-suave">→</span>
+              <Form.Group controlId="destino-equipe">
+                <Form.Label className="texto-xs texto-suave mb-1">Nova liderança</Form.Label>
+                <Form.Select
+                  className="sg-input"
+                  value={confirmacao.destino}
+                  disabled={!!salvando}
+                  onChange={(e) => setConfirmacao({ ...confirmacao, destino: e.target.value })}
+                >
+                  <option value="">Escolha…</option>
+                  {destinosDe(confirmacao.pessoa).map((lider) => (
+                    <option key={lider.id} value={lider.id}>{lider.nome} ({NOME_PAPEL[lider.papel]})</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </div>
+          ) : confirmacao && (
+            <p className="mb-0">
+              Perfil: {NOME_PAPEL[confirmacao.pessoa.papel]} → <strong>{NOME_PAPEL[confirmacao.papel]}</strong>
+            </p>
+          )}
+          <p className="texto-sm texto-suave mb-0">A mudança vale a partir de agora e fica registrada no histórico.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Botao variante="secundario" onClick={() => setConfirmando(false)} disabled={!!salvando}>Cancelar</Botao>
+          <Botao
+            onClick={confirmar}
+            carregando={!!salvando}
+            disabled={confirmacao?.tipo === "mover" && !confirmacao.destino}
+          >
+            Confirmar mudança
+          </Botao>
+        </Modal.Footer>
+      </Modal>
 
       <Modal show={!!historico} onHide={() => setHistorico(null)} centered>
         <Modal.Header closeButton>

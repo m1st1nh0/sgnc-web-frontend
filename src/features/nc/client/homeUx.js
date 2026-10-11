@@ -100,7 +100,7 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
         { rotulo: "Analisar indicadores", descricao: "Backlog, tempos e reincidência", destino: "/insights", icone: "↗" },
         { rotulo: "Emitir relatórios", descricao: "PDF gerencial e CSV detalhado", destino: "/relatorios", icone: "⇩" },
         { rotulo: "Pessoas e NCs", descricao: "Consulte NCs e histórico individual", destino: "/equipe", icone: "◉" },
-        { rotulo: "Gerenciar usuários", descricao: "Cadastros, papéis e equipes", destino: "/usuarios", icone: "⚙" },
+        { rotulo: "Gerenciar usuários", descricao: "Cadastros, papéis e equipes", destino: "/equipe?aba=acessos", icone: "⚙" },
       ],
       tituloPrioridades: "Ações da Qualidade",
       vazioPrioridades: "Nenhuma ação administrativa pendente no momento.",

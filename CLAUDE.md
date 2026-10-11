@@ -34,6 +34,12 @@ Decisões do responsável (09/10/2026), valem como regra:
 - Medida disciplinar tem etapas (sugerida → aprovada/reprovada → aplicada) e só pode ser decidida ou aplicada por alguém da Qualidade que não seja o colaborador da NC.
 - Na interface, o papel "Funcionário" se chama **"Colaborador"**. O valor interno `funcionario` no banco e na API não muda.
 
+Estrutura organizacional (decisões de 11/10/2026, plano em [`docs/plano-estrutura-organizacional.md`](docs/plano-estrutura-organizacional.md)):
+- Todos têm liderança, inclusive Qualidade e Adm, exceto os membros da Diretoria (`usuarios.diretoria`), que ficam no topo. Pode haver mais de um membro da Diretoria.
+- Perfil é permissão; posição é a liderança. A cadeia de liderança passa por qualquer pessoa com liderados.
+- O diretor (CEO) tem perfil Supervisor no topo. NC crítica avisa toda a cadeia até a Diretoria; as demais, só o líder direto.
+- Troca de liderança só pela aba Equipes. Departamentos, cargos e lideranças são mantidos pela tela (a empresa está em expansão).
+
 Todas as decisões do plano estão respondidas. Decisão nova que surgir deve ser perguntada ao responsável, não assumida.
 
 ## Convenções
