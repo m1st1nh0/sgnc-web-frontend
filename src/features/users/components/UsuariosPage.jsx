@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Container from "react-bootstrap/Container";
 import Table from "react-bootstrap/Table";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Modal from "react-bootstrap/Modal";
@@ -21,7 +20,6 @@ import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
 import { ErroApi } from "../../../lib/api/client/api.js";
-import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
@@ -197,6 +195,9 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
   );
 }
 
+/**
+ * Aba "Acessos" de Pessoas e equipes (só Administrador): contas, perfis, senha e status.
+ */
 export default function UsuariosPage() {
   const { usuario: usuarioLogado } = useAuth();
   const { concluirEtapa } = useOnboarding();
@@ -275,112 +276,107 @@ export default function UsuariosPage() {
 
   return (
     <div>
-      <Container className="sg-container">
-        <CabecalhoPagina
-          titulo="Usuários"
-          subtitulo="Gerencie os usuários e permissões do sistema"
-          acoes={
-            <Botao variante="primario" onClick={() => setModal("novo")}>
-              + Novo usuário
-            </Botao>
-          }
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <p className="texto-sm texto-suave mb-0">Contas, perfis de acesso, senha e status de todas as pessoas.</p>
+        <Botao variante="primario" onClick={() => setModal("novo")}>
+          + Novo usuário
+        </Botao>
+      </div>
+
+      <DicaContextual chave="dica_gestao_usuarios" className="mb-3" />
+
+      {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
+
+      {carregando ? (
+        <EstadoCarregamento mensagem="Carregando usuários..." />
+      ) : usuarios.length === 0 ? (
+        <EstadoVazio
+          titulo="Nenhum usuário cadastrado"
+          descricao="Cadastre o primeiro usuário para começar."
         />
+      ) : (
+        <div className="sg-tabela-wrap">
+          <Table hover responsive className="align-middle">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Setor</th>
+                <th>Papel</th>
+                <th>Senha</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usuarios.map((u) => (
+                <tr
+                  key={u.id}
+                  className={u.ativo ? "" : "table-secondary text-muted"}
+                >
+                  <td>{u.nome}</td>
+                  <td>{u.email}</td>
+                  <td>{u.setor || "-"}</td>
+                  <td>
+                    <span className={`sg-badge ${COR_PAPEL[u.papel] ?? "sg-badge--cinza"}`}>
+                      {NOME_PAPEL[u.papel] ?? u.papel}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={`sg-badge ${u.senha_provisoria ? "sg-badge--amarelo" : "sg-badge--verde"}`}
+                    >
+                      {u.senha_provisoria ? "Provisória" : "Definitiva"}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={`sg-badge ${u.ativo ? "sg-badge--verde" : "sg-badge--vermelho"}`}
+                    >
+                      {u.ativo ? "Ativo" : "Inativo"}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="d-flex gap-2">
+                      {podeVerEstatisticasDoUsuario(u) && (
+                        <Botao
+                          variante="secundario"
+                          tamanho="sm"
+                          onClick={() =>
+                            router.push(`/usuarios/${u.id}/dossie?retorno=${encodeURIComponent("/equipe?aba=acessos")}`)
+                          }
+                        >
+                          Dossiê
+                        </Botao>
+                      )}
 
-        <DicaContextual chave="dica_gestao_usuarios" className="mb-3" />
+                      <ButtonGroup size="sm">
+                        <Button
+                          variant="outline-secondary"
+                          className="sg-btn sg-btn--subtle sg-btn--sm"
+                          onClick={() => setModal(u)}
+                        >
+                          Editar
+                        </Button>
 
-        {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
-
-        {carregando ? (
-          <EstadoCarregamento mensagem="Carregando usuários..." />
-        ) : usuarios.length === 0 ? (
-          <EstadoVazio
-            titulo="Nenhum usuário cadastrado"
-            descricao="Cadastre o primeiro usuário para começar."
-          />
-        ) : (
-          <div className="sg-tabela-wrap">
-            <Table hover responsive className="align-middle">
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Email</th>
-                  <th>Setor</th>
-                  <th>Papel</th>
-                  <th>Senha</th>
-                  <th>Status</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usuarios.map((u) => (
-                  <tr
-                    key={u.id}
-                    className={u.ativo ? "" : "table-secondary text-muted"}
-                  >
-                    <td>{u.nome}</td>
-                    <td>{u.email}</td>
-                    <td>{u.setor || "-"}</td>
-                    <td>
-                      <span className={`sg-badge ${COR_PAPEL[u.papel] ?? "sg-badge--cinza"}`}>
-                        {NOME_PAPEL[u.papel] ?? u.papel}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`sg-badge ${u.senha_provisoria ? "sg-badge--amarelo" : "sg-badge--verde"}`}
-                      >
-                        {u.senha_provisoria ? "Provisória" : "Definitiva"}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`sg-badge ${u.ativo ? "sg-badge--verde" : "sg-badge--vermelho"}`}
-                      >
-                        {u.ativo ? "Ativo" : "Inativo"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="d-flex gap-2">
-                        {podeVerEstatisticasDoUsuario(u) && (
-                          <Botao
-                            variante="secundario"
-                            tamanho="sm"
-                            onClick={() =>
-                              router.push(`/usuarios/${u.id}/dossie?retorno=%2Fusuarios`)
-                            }
-                          >
-                            Dossiê
-                          </Botao>
-                        )}
-
-                        <ButtonGroup size="sm">
+                        {u.id !== usuarioLogado?.id && (
                           <Button
-                            variant="outline-secondary"
-                            className="sg-btn sg-btn--subtle sg-btn--sm"
-                            onClick={() => setModal(u)}
+                            variant={u.ativo ? "outline-danger" : "outline-success"}
+                            className={`sg-btn sg-btn--sm ${u.ativo ? "sg-btn--perigo" : "sg-btn--sucesso"}`}
+                            onClick={() => toggleAtivo(u)}
                           >
-                            Editar
+                            {u.ativo ? "Desativar" : "Reativar"}
                           </Button>
-
-                          {u.id !== usuarioLogado?.id && (
-                            <Button
-                              variant={u.ativo ? "outline-danger" : "outline-success"}
-                              className={`sg-btn sg-btn--sm ${u.ativo ? "sg-btn--perigo" : "sg-btn--sucesso"}`}
-                              onClick={() => toggleAtivo(u)}
-                            >
-                              {u.ativo ? "Desativar" : "Reativar"}
-                            </Button>
-                          )}
-                        </ButtonGroup>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
-        )}
-      </Container>
+                        )}
+                      </ButtonGroup>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      )}
 
       <Modal show={modal !== null} onHide={() => setModal(null)} centered>
         <Modal.Header closeButton>

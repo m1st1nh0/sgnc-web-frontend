@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "../../features/auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../features/onboarding/components/OnboardingContext.jsx";
 import MarcaSgnc from "../ui/MarcaSgnc.jsx";
-import { ehAdminSistema, ehQualidade, NOME_PAPEL } from "../../lib/auth/papeis.js";
+import { ehQualidade, NOME_PAPEL } from "../../lib/auth/papeis.js";
 
 const ROTULO_HOME = { adm: "Gestão de NCs", qualidade: "Gestão de NCs", supervisor: "Minha equipe", funcionario: "Minhas NCs" };
 const ICONS = {
@@ -66,7 +66,6 @@ export default function AppNavigation({ children, compactaInicial = false }) {
     { label: "Meu dossiê", href: `/usuarios/${usuario?.id}/dossie`, icon: "folder", show: !!usuario, active: pathname === `/usuarios/${usuario?.id}/dossie` },
     { label: "Causas", href: "/causas", icon: "cause", show: ehQualidade(usuario?.papel), active: pathname === "/causas" },
     { label: "Medidas disciplinares", href: "/medidas", icon: "report", show: ehQualidade(usuario?.papel), active: pathname === "/medidas" },
-    { label: "Usuários", href: "/usuarios", icon: "user", show: ehAdminSistema(usuario?.papel), active: pathname === "/usuarios" },
   ].filter((link) => link.show);
 
   useEffect(() => {

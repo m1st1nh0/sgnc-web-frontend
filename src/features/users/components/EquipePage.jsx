@@ -13,17 +13,31 @@ import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import { listarEquipe } from "../client/usuarioService.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
-import { ehQualidade } from "../../../lib/auth/papeis.js";
-import Botao from "../../../components/ui/Botao.jsx";
+import { ehAdminSistema, ehQualidade } from "../../../lib/auth/papeis.js";
 import GestaoEquipes from "./GestaoEquipes.jsx";
+import UsuariosPage from "./UsuariosPage.jsx";
 
 const ROTULOS_PAPEL = { supervisor: "Liderança", funcionario: "Colaborador" };
 
-export default function EquipePage() {
+export default function EquipePage({ abaInicial }) {
   const { usuario } = useAuth();
   const { concluirEtapa } = useOnboarding();
   const gestorEquipes = ehQualidade(usuario?.papel);
-  const [visao, setVisao] = useState("equipes");
+  // "Acessos" (contas, senha e status) é só do Administrador do sistema.
+  const abas = [
+    ["equipes", "Equipes"],
+    ["lista", "Lista"],
+    ...(ehAdminSistema(usuario?.papel) ? [["acessos", "Acessos"]] : []),
+  ];
+  const [abaEscolhida, setAbaEscolhida] = useState(abaInicial || "equipes");
+  // Aba de um perfil sem acesso a ela cai em "Equipes".
+  const visao = abas.some(([valor]) => valor === abaEscolhida) ? abaEscolhida : "equipes";
+
+  function trocarAba(valor) {
+    setAbaEscolhida(valor);
+    // Só atualiza o endereço (para favoritos e o "Voltar"), sem nova ida ao servidor.
+    window.history.replaceState(null, "", valor === "equipes" ? "/equipe" : `/equipe?aba=${valor}`);
+  }
   const [pessoas, setPessoas] = useState([]);
   const [busca, setBusca] = useState("");
   const [incluirInativos, setIncluirInativos] = useState(true);
@@ -63,19 +77,26 @@ export default function EquipePage() {
           subtitulo={gestorEquipes
             ? "Organize as equipes por liderança e consulte as NCs e o histórico de cada pessoa."
             : "Abra cada liderado para consultar suas NCs, indicadores e histórico autorizado."}
-          acoes={gestorEquipes && (
-            <div className="d-flex gap-2" role="group" aria-label="Modo de visualização">
-              <Botao tamanho="sm" variante={visao === "equipes" ? "primario" : "secundario"} aria-pressed={visao === "equipes"} onClick={() => setVisao("equipes")}>
-                Por liderança
-              </Botao>
-              <Botao tamanho="sm" variante={visao === "lista" ? "primario" : "secundario"} aria-pressed={visao === "lista"} onClick={() => setVisao("lista")}>
-                Lista
-              </Botao>
-            </div>
-          )}
         />
 
-        {gestorEquipes && visao === "equipes" ? <GestaoEquipes /> : (<>
+        {gestorEquipes && (
+          <div className="d-flex gap-2 mb-3" role="tablist" aria-label="Pessoas e equipes">
+            {abas.map(([valor, rotulo]) => (
+              <button
+                key={valor}
+                type="button"
+                role="tab"
+                aria-selected={visao === valor}
+                className={`sg-btn sg-btn--sm ${visao === valor ? "sg-btn--primario" : "sg-btn--secundario"}`}
+                onClick={() => trocarAba(valor)}
+              >
+                {rotulo}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {gestorEquipes && visao === "acessos" ? <UsuariosPage /> : gestorEquipes && visao === "equipes" ? <GestaoEquipes /> : (<>
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
         <div className="sg-card mb-3">
