@@ -36,29 +36,34 @@ Diretoria: Cristiano (CEO)
 └── RH/Financeiro: Carla (única do setor, tratada como Diretoria)
 ```
 
-## Decisões em aberto
+### Decisões de 11/10/2026 (segunda rodada)
 
-| # | Pergunta | Proposta |
+| # | Pergunta | Decisão |
 |---|---|---|
-| E6 | Carla: perfil e posição | Topo (Diretoria) com perfil Supervisor, sem liderados. Alternativa: Colaboradora abaixo do Cristiano. Uma Colaboradora no topo não teria quem desse o feedback das NCs dela. |
-| E7 | Quem pode ficar no topo (sem liderança)? | Supervisor, Qualidade e Adm. **Colaborador sempre tem liderança.** Colaborador sem liderança continua no alerta "Sem liderança ativa". |
+| E6 | Carla | No topo, como membro da Diretoria, com perfil Supervisor. |
+| E7 | Quem pode ficar sem liderança? | **Só a Diretoria.** Supervisores, Qualidade e Adm têm liderança, podem ser apontados em NCs, e os líderes deles ficam sabendo. |
 | E8 | Sub-áreas da Inteligência | Departamentos com pai: Sucesso do cliente, Qualidade, Implantação e Treinamento como filhos de Inteligência. |
-| E9 | Departamento × liderança | Cada pessoa tem um departamento e uma liderança. Ao escolher o departamento, a liderança **sugerida** é o responsável dele, mas pode ser outra (ex.: sócio da Produção sem liderança). |
-| E10 | Setor (texto) | O departamento substitui o setor. Os textos atuais são convertidos em departamentos na migração, e o campo antigo fica só para leitura até ser removido. |
-| E13 | Cargo × perfil | O **cargo** (CEO, Supervisor do suporte, Desenvolvedor...) é cadastrado livremente e descreve a função. O **perfil** continua sendo a permissão no sistema. Um cargo pode ser marcado como "de liderança", e aí sugere o perfil Supervisor, sem trocá-lo sozinho. |
-| E11 | Cristiano deixa de ser Qualidade | Ao virar Supervisor (E2), ele perde validar/invalidar NC, causas e medidas. Confirmar. |
+| E9 | Departamento × liderança | Cada pessoa tem um departamento e uma liderança. A liderança **sugerida** é o responsável do departamento, mas pode ser outra. |
+| E10 | Setor (texto) | O departamento substitui o setor. Os setores atuais são convertidos na migração. |
+| E11 | Cristiano deixa de ser Qualidade | **Confirmado.** Como Supervisor (E2), ele não valida NC nem cuida de causas e medidas. |
+| E13 | Cargo × perfil | O cargo descreve a função e é cadastrado livremente; o perfil é a permissão. Um cargo "de liderança" sugere o perfil Supervisor, sem trocá-lo sozinho. |
+| E14 | Quem mantém a estrutura | Qualidade e Administrador. Marcar quem é da Diretoria fica na aba Acessos (Administrador). |
+
+Decisão técnica: "Diretoria" é uma **marca na pessoa** (`usuarios.diretoria`), e não um departamento. Carla é de RH/Financeiro e o sócio é da Produção, mas os dois são da Diretoria.
 
 ## Fases
 
-### Fase A: hierarquia única (E1, E2, E3, E7)
-Uma migração aditiva e o app.
+### Fase A: hierarquia única (E1, E2, E3, E6, E7, E11)
+Migração `20261011120000_estrutura_diretoria.sql` (aditiva) e o app.
 
-- [ ] A.1 RPC `alterar_equipe_v2`: aceita mover Qualidade e Adm (sem `papel_fora_das_equipes`), mantém a proteção contra ciclo e a regra "Colaborador sempre tem liderança". A troca de perfil continua limitada a Supervisor ↔ Colaborador.
-- [ ] A.2 `nc_lidera_colaborador_v2` e chamadas: a cadeia sobe por qualquer pessoa com liderados, inclusive Qualidade e Adm.
-- [ ] A.3 `listarPessoasAbaixo` propaga por qualquer pessoa com liderados. `listarPessoasGerenciaveis` passa a incluir Qualidade e Adm.
-- [ ] A.4 `editarUsuario` e o cadastro: liderança opcional para Supervisor, Qualidade e Adm (podem ficar no topo) e obrigatória para Colaborador.
-- [ ] A.5 Aba Equipes: o topo são as pessoas sem liderança (Diretoria). Qualidade e Adm aparecem na árvore com o menu Ações. O alerta fica só para Colaborador sem liderança.
-- [ ] A.6 Testes: ciclo, Qualidade com liderança, cadeia de NC crítica passando por Qualidade, Colaborador sem liderança recusado.
+- [x] A.1 Coluna `usuarios.diretoria` e RPC `alterar_equipe_v2`: move qualquer pessoa, inclusive Qualidade e Adm (sem `papel_fora_das_equipes`). Recusa mover a Diretoria (`diretoria_no_topo`) e mantém a proteção contra ciclo. A troca de perfil continua limitada a Supervisor ↔ Colaborador.
+- [x] A.2 `nc_lidera_colaborador` (helper, mesma assinatura): a cadeia sobe por qualquer pessoa, inclusive a partir de Qualidade e Adm. Quem consulta continua tendo de ser um supervisor ativo.
+- [x] A.3 `listarPessoasAbaixo` e `mapearProfundidadeLiderados` propagam por qualquer pessoa com liderados. `listarPessoasGerenciaveis` inclui Qualidade e Adm.
+- [x] A.4 Cadastro e "Editar" (aba Acessos): opção "Membro da Diretoria". Quem é da Diretoria fica sem liderança; todos os demais precisam de uma.
+- [x] A.5 Aba Equipes: a Diretoria é o topo da árvore. Qualidade e Adm aparecem com o menu Ações. O alerta "Sem liderança ativa" vale para quem não é da Diretoria.
+- [x] A.6 Testes unitários (cadeia por Qualidade, Diretoria) e RPC exercitada num Postgres local: Qualidade com liderança, ciclo recusado, Diretoria não é movida, perfil de Qualidade não alterna, CEO lidera colaborador e Qualidade abaixo dele.
+- [ ] A.7 Aplicar a migração no Supabase (com autorização do responsável) e validar no Preview.
+- [ ] A.8 A política legada `private.e_meu_subordinado` (RLS de defesa em profundidade) ainda só considera liderados diretos. O app usa o service role, então nada muda para o usuário; revisar quando a RLS for atualizada.
 
 ### Fase B: departamentos e cargos (E5, E8, E9, E10, E12, E13)
 - [ ] B.1 Migração: tabelas `departamentos` (nome, `departamento_pai_id`, `responsavel_id`, ativo) e `cargos` (nome, `departamento_id` opcional, `lideranca` sim/não, ativo); `usuarios.departamento_id` e `usuarios.cargo_id`. Conversão dos setores atuais.

@@ -2608,23 +2608,6 @@ textarea:focus-visible {
   color: var(--texto-suave);
 }
 
-.sg-equipe-sem-equipe {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.sg-equipe-sem-equipe li {
-  font-size: 0.8125rem;
-  border: 1px solid var(--borda);
-  border-radius: 6px;
-  padding: 0.25rem 0.625rem;
-  background: var(--fundo-card);
-}
-
 .sg-equipe-de-para {
   display: flex;
   flex-wrap: wrap;

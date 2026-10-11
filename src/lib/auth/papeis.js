@@ -27,9 +27,12 @@ export function ehAdminSistema(papel) {
   return papel === "adm";
 }
 
-/** Papéis fora da hierarquia de equipes (não possuem liderança). */
-export function ehPapelSemLideranca(papel) {
-  return ehQualidade(papel);
+/**
+ * Só membros da Diretoria ficam sem liderança (topo da estrutura). Todos os demais,
+ * inclusive Qualidade e Administrador, respondem a alguém.
+ */
+export function precisaDeLideranca(pessoa) {
+  return !pessoa?.diretoria;
 }
 
 /** Quem pode ser liderança de outra pessoa. */

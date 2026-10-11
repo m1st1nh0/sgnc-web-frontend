@@ -26,7 +26,7 @@ import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
 import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
-import { ehPapelSemLideranca, ehQualidade, NOME_PAPEL, podeLiderar } from "../../../lib/auth/papeis.js";
+import { ehQualidade, NOME_PAPEL, podeLiderar } from "../../../lib/auth/papeis.js";
 
 const COR_PAPEL = {
   adm: "sg-badge--escuro",
@@ -50,6 +50,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
   const [papel, setPapel] = useState(usuario?.papel ?? "funcionario");
   const [setor, setSetor] = useState(usuario?.setor ?? "");
   const [supervisorId, setSupervisorId] = useState(usuario?.supervisor_id ?? "");
+  const [diretoria, setDiretoria] = useState(usuario?.diretoria ?? false);
   const [senhaInicial, setSenhaInicial] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
@@ -61,9 +62,9 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
       u.id !== usuario?.id
   );
 
-  // Na edição, a liderança só é escolhida por quem ainda não tem uma; trocar de liderança
-  // é feito na aba Equipes, com confirmação e histórico.
-  const escolheLideranca = !ehPapelSemLideranca(papel) && (!editando || !usuario.supervisor_id);
+  // Só a Diretoria fica sem liderança. Na edição, a liderança só é escolhida por quem ainda
+  // não tem uma; trocar de liderança é feito na aba Equipes, com confirmação e histórico.
+  const escolheLideranca = !diretoria && (!editando || !usuario.supervisor_id);
   const lideranca = usuarios.find((u) => u.id === usuario?.supervisor_id);
 
   async function aoEnviar(evento) {
@@ -71,7 +72,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
     setErro("");
 
     if (escolheLideranca && !supervisorId) {
-      setErro("Selecione o supervisor.");
+      setErro("Selecione a liderança. Só membros da Diretoria ficam sem liderança.");
       return;
     }
 
@@ -91,6 +92,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
           nome,
           papel,
           setor: setor || null,
+          diretoria,
           supervisor_id: escolheLideranca ? supervisorId : null,
         });
       } else {
@@ -99,7 +101,8 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
           email,
           papel,
           setor: setor || null,
-          supervisor_id: ehPapelSemLideranca(papel) ? null : supervisorId,
+          diretoria,
+          supervisor_id: diretoria ? null : supervisorId,
           senha_inicial: senhaInicial,
         });
       }
@@ -153,7 +156,16 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
         ))}
       </CampoSelecao>
 
-      {editando && !escolheLideranca && !ehPapelSemLideranca(papel) && (
+      <Form.Check
+        type="switch"
+        id="usuario-diretoria"
+        className="mb-3"
+        label="Membro da Diretoria (fica no topo da estrutura, sem liderança)"
+        checked={diretoria}
+        onChange={(e) => setDiretoria(e.target.checked)}
+      />
+
+      {editando && !escolheLideranca && !diretoria && (
         <p className="texto-sm mb-3">
           <span className="texto-suave">Liderança:</span> <strong>{lideranca?.nome ?? "—"}</strong>
           <span className="d-block texto-xs texto-suave">Para transferir esta pessoa, use a aba Equipes.</span>
@@ -162,7 +174,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
 
       {escolheLideranca && (
         <CampoSelecao
-          rotulo="Supervisor"
+          rotulo="Liderança"
           obrigatorio
           value={supervisorId}
           onChange={(e) => setSupervisorId(e.target.value)}
@@ -333,6 +345,7 @@ export default function UsuariosPage() {
                     <span className={`sg-badge ${COR_PAPEL[u.papel] ?? "sg-badge--cinza"}`}>
                       {NOME_PAPEL[u.papel] ?? u.papel}
                     </span>
+                    {u.diretoria && <span className="sg-badge sg-badge--escuro ms-1">Diretoria</span>}
                   </td>
                   <td>
                     <span

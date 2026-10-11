@@ -46,7 +46,7 @@ test("user management stays with the system administrator and teams are audited"
   expect(usuarios).toContain("registrarHistoricoEquipe(");
   const equipes = readFileSync("src/lib/equipes/service.ts", "utf8");
   expect(equipes).toContain("if (!ehQualidade(user.papel))");
-  expect(equipes).toContain('rpc("alterar_equipe_v1"');
+  expect(equipes).toContain('rpc("alterar_equipe_v2"');
   const migration = readFileSync("supabase/migrations/20261008122000_papel_qualidade_equipes.sql", "utf8");
   expect(migration).toMatch(/GRANT SELECT, INSERT ON TABLE public\.historico_equipes TO service_role;/);
   expect(migration).toContain("'ciclo'");
@@ -61,4 +61,13 @@ test("editing a user keeps the current leadership; transfers happen only in team
   expect(usuarios).toContain("dados.supervisor_id = atual.data.supervisor_id;");
   const formulario = readFileSync("src/features/users/components/UsuariosPage.jsx", "utf8");
   expect(formulario).toContain("Para transferir esta pessoa, use a aba Equipes.");
+});
+
+test("only the board stays without leadership; Quality and admins can be moved", () => {
+  const migration = readFileSync("supabase/migrations/20261011120000_estrutura_diretoria.sql", "utf8");
+  expect(migration).toContain("ADD COLUMN IF NOT EXISTS diretoria boolean NOT NULL DEFAULT false");
+  expect(migration).toContain("'diretoria_no_topo'");
+  expect(migration).not.toContain("'papel_fora_das_equipes'");
+  const usuarios = readFileSync("src/lib/usuarios/service.ts", "utf8");
+  expect(usuarios).toContain("Só membros da Diretoria ficam sem liderança.");
 });

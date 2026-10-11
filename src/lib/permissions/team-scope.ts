@@ -12,6 +12,7 @@ export type PessoaEquipe = {
   papel: string;
   setor: string | null;
   supervisor_id: string | null;
+  diretoria: boolean;
   ativo: boolean;
   nivel: number;
 };
@@ -27,9 +28,8 @@ async function carregarFilhos(supervisorIds: string[]) {
     for (let offset = 0; ; offset += 500) {
       const { data, error } = await admin
         .from("usuarios")
-        .select("id, nome, papel, setor, supervisor_id, ativo")
+        .select("id, nome, papel, setor, supervisor_id, diretoria, ativo")
         .in("supervisor_id", ids)
-        .not("papel", "in", "(adm,qualidade)")
         .order("id")
         .range(offset, offset + 499);
 
@@ -56,7 +56,8 @@ export async function listarPessoasAbaixo(supervisorId: string): Promise<PessoaE
       if (visitados.has(pessoa.id)) continue;
       visitados.add(pessoa.id);
       registros.push(pessoa);
-      if (pessoa.papel === "supervisor") proxima.push(pessoa.id);
+      // A cadeia passa por qualquer pessoa com liderados, inclusive Qualidade e adm.
+      proxima.push(pessoa.id);
     }
 
     fronteira = proxima;
@@ -77,8 +78,7 @@ export async function listarPessoasGerenciaveis(user: UsuarioAutenticado): Promi
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await admin
       .from("usuarios")
-      .select("id, nome, papel, setor, supervisor_id, ativo")
-      .not("papel", "in", "(adm,qualidade)")
+      .select("id, nome, papel, setor, supervisor_id, diretoria, ativo")
       .order("nome")
       .order("id")
       .range(offset, offset + 499);

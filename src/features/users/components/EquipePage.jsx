@@ -13,11 +13,11 @@ import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import { listarEquipe } from "../client/usuarioService.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
-import { ehAdminSistema, ehQualidade } from "../../../lib/auth/papeis.js";
+import { ehAdminSistema, ehQualidade, NOME_PAPEL } from "../../../lib/auth/papeis.js";
 import GestaoEquipes from "./GestaoEquipes.jsx";
 import UsuariosPage from "./UsuariosPage.jsx";
 
-const ROTULOS_PAPEL = { supervisor: "Liderança", funcionario: "Colaborador" };
+const ROTULOS_PAPEL = { ...NOME_PAPEL, supervisor: "Liderança" };
 
 export default function EquipePage({ abaInicial }) {
   const { usuario } = useAuth();
@@ -128,7 +128,7 @@ export default function EquipePage({ abaInicial }) {
                 <tr key={pessoa.id}>
                   <th scope="row">{pessoa.nome}<div className="texto-xs texto-suave fw-normal">{ROTULOS_PAPEL[pessoa.papel] ?? pessoa.papel}</div></th>
                   <td>{pessoa.setor || "—"}</td>
-                  <td>{pessoa.supervisor_id === usuario?.id ? usuario.nome : porId.get(pessoa.supervisor_id)?.nome || (gestorEquipes ? "Sem liderança atribuída" : "—")}</td>
+                  <td>{pessoa.supervisor_id === usuario?.id ? usuario.nome : porId.get(pessoa.supervisor_id)?.nome || (pessoa.diretoria ? "Diretoria (topo)" : gestorEquipes ? "Sem liderança atribuída" : "—")}</td>
                   <td>{pessoa.nivel ? `Nível ${pessoa.nivel}` : "Organização"}</td>
                   <td><span className={`sg-badge ${pessoa.ativo ? "sg-badge--verde" : "sg-badge--cinza"}`}>{pessoa.ativo ? "Ativa" : "Inativa · histórico"}</span></td>
                   <td><Link className="sg-btn sg-btn--secundario sg-btn--sm" href={`/equipe/${pessoa.id}`}>Ver NCs e indicadores</Link></td>
