@@ -55,3 +55,10 @@ test("user management stays with the system administrator and teams are audited"
   const usuariosPage = readFileSync("src/app/(app)/usuarios/page.tsx", "utf8");
   expect(usuariosPage).toContain('requireRole(["adm"])');
 });
+
+test("editing a user keeps the current leadership; transfers happen only in team management", () => {
+  const usuarios = readFileSync("src/lib/usuarios/service.ts", "utf8");
+  expect(usuarios).toContain("dados.supervisor_id = atual.data.supervisor_id;");
+  const formulario = readFileSync("src/features/users/components/UsuariosPage.jsx", "utf8");
+  expect(formulario).toContain("Para transferir esta pessoa, use a aba Equipes.");
+});

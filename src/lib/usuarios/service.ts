@@ -36,12 +36,14 @@ function parseUsuario(data: UsuarioInput, creating: boolean) {
 
   if (!nome) throw new ApiError("Nome é obrigatório.");
   if (!PAPEIS.has(papel)) throw new ApiError("papel inválido.");
-  if (!ehPapelSemLideranca(papel) && !supervisorId) {
-    throw new ApiError("Informe a liderança (supervisor) para perfis Colaborador ou Supervisor.");
-  }
 
+  // Na edição, a liderança é resolvida em editarUsuario (só a gestão de equipes transfere).
   if (!creating) {
     return { nome, papel, setor, supervisor_id: ehPapelSemLideranca(papel) ? null : supervisorId };
+  }
+
+  if (!ehPapelSemLideranca(papel) && !supervisorId) {
+    throw new ApiError("Informe a liderança (supervisor) para perfis Colaborador ou Supervisor.");
   }
 
   const email = String(data.email ?? "").trim().toLowerCase();
@@ -139,7 +141,6 @@ export async function criarUsuario(input: UsuarioInput) {
 export async function editarUsuario(usuarioId: string, input: UsuarioInput) {
   const requester = await requireAdmin();
   const dados = parseUsuario(input, false);
-  await validarResponsavel(dados.supervisor_id, usuarioId);
   if (requester.id === usuarioId && !ehAdminSistema(dados.papel)) {
     throw new ApiError("Você não pode remover o seu próprio perfil de administrador.");
   }
@@ -151,6 +152,17 @@ export async function editarUsuario(usuarioId: string, input: UsuarioInput) {
     .maybeSingle();
   if (atual.error) throw new ApiError("Não foi possível validar o usuário.", 500);
   if (!atual.data) throw new ApiError("Usuário não encontrado.", 404);
+
+  // Transferência entre lideranças é feita só na gestão de equipes. Aqui a liderança atual
+  // é mantida; só é escolhida quando a pessoa ainda não tem uma (ex.: Qualidade → Colaborador).
+  if (ehPapelSemLideranca(dados.papel)) {
+    dados.supervisor_id = null;
+  } else if (atual.data.supervisor_id) {
+    dados.supervisor_id = atual.data.supervisor_id;
+  } else if (!dados.supervisor_id) {
+    throw new ApiError("Informe a liderança (supervisor) para perfis Colaborador ou Supervisor.");
+  }
+  if (dados.supervisor_id !== atual.data.supervisor_id) await validarResponsavel(dados.supervisor_id, usuarioId);
   if (atual.data.papel === "supervisor" && dados.papel !== "supervisor") {
     const subordinados = await listarPessoasAbaixo(usuarioId);
     if (subordinados.length) {

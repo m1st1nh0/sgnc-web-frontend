@@ -61,11 +61,16 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
       u.id !== usuario?.id
   );
 
+  // Na edição, a liderança só é escolhida por quem ainda não tem uma; trocar de liderança
+  // é feito na aba Equipes, com confirmação e histórico.
+  const escolheLideranca = !ehPapelSemLideranca(papel) && (!editando || !usuario.supervisor_id);
+  const lideranca = usuarios.find((u) => u.id === usuario?.supervisor_id);
+
   async function aoEnviar(evento) {
     evento.preventDefault();
     setErro("");
 
-    if (!ehPapelSemLideranca(papel) && !supervisorId) {
+    if (escolheLideranca && !supervisorId) {
       setErro("Selecione o supervisor.");
       return;
     }
@@ -86,7 +91,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
           nome,
           papel,
           setor: setor || null,
-          supervisor_id: ehPapelSemLideranca(papel) ? null : supervisorId,
+          supervisor_id: escolheLideranca ? supervisorId : null,
         });
       } else {
         await cadastrarUsuario({
@@ -148,7 +153,14 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
         ))}
       </CampoSelecao>
 
-      {!ehPapelSemLideranca(papel) && (
+      {editando && !escolheLideranca && !ehPapelSemLideranca(papel) && (
+        <p className="texto-sm mb-3">
+          <span className="texto-suave">Liderança:</span> <strong>{lideranca?.nome ?? "—"}</strong>
+          <span className="d-block texto-xs texto-suave">Para transferir esta pessoa, use a aba Equipes.</span>
+        </p>
+      )}
+
+      {escolheLideranca && (
         <CampoSelecao
           rotulo="Supervisor"
           obrigatorio
@@ -164,7 +176,7 @@ function FormularioUsuario({ usuario, usuarios, aoSalvar, aoFechar }) {
         </CampoSelecao>
       )}
 
-      {editando && usuario.supervisor_id !== (ehPapelSemLideranca(papel) ? null : supervisorId) && (
+      {editando && escolheLideranca && supervisorId && (
         <p className="texto-xs texto-suave" role="status">
           Ao salvar a transferência, o acesso ao histórico de NCs passa a seguir a liderança atual: a nova cadeia poderá consultar o histórico; a anterior deixa de vê-lo. A Qualidade mantém a visão organizacional.
         </p>
