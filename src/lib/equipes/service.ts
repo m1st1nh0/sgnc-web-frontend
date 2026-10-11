@@ -29,7 +29,7 @@ export async function listarLiderancas() {
   await requireGestorEquipes();
   const { data, error } = await createAdminClient()
     .from("usuarios")
-    .select("id, nome, papel, setor, supervisor_id, diretoria")
+    .select("id, nome, papel, setor, departamento_id, cargo_id, supervisor_id, diretoria")
     .eq("ativo", true)
     .in("papel", ["supervisor", "qualidade", "adm"])
     .order("nome");
@@ -60,7 +60,7 @@ export async function listarHistoricoEquipe(usuarioId: string) {
   await requireGestorEquipes();
   const admin = createAdminClient() as any;
   const { data, error } = await admin.from("historico_equipes")
-    .select("id, alterado_por, papel_anterior, papel_novo, supervisor_anterior, supervisor_novo, origem, criado_em")
+    .select("id, alterado_por, papel_anterior, papel_novo, supervisor_anterior, supervisor_novo, departamento_anterior, departamento_novo, cargo_anterior, cargo_novo, origem, criado_em")
     .eq("usuario_id", usuarioId).order("criado_em", { ascending: false }).limit(50);
   if (error) throw new ApiError("Não foi possível carregar o histórico da equipe.", 500);
   const registros = (data ?? []) as Array<Record<string, unknown>>;
@@ -71,10 +71,25 @@ export async function listarHistoricoEquipe(usuarioId: string) {
     : { data: [] };
   const nomes = new Map((pessoas ?? []).map((pessoa: { id: string; nome: string }) => [pessoa.id, pessoa.nome]));
   const nome = (id: unknown) => (typeof id === "string" ? nomes.get(id) ?? "Usuário" : null);
+  const idsDe = (campos: string[]) => [...new Set(registros.flatMap((item) => campos.map((campo) => item[campo]))
+    .filter((id): id is string => typeof id === "string"))];
+  const idsDepartamentos = idsDe(["departamento_anterior", "departamento_novo"]);
+  const idsCargos = idsDe(["cargo_anterior", "cargo_novo"]);
+  const [{ data: departamentos }, { data: cargos }] = await Promise.all([
+    idsDepartamentos.length ? admin.from("departamentos").select("id, nome").in("id", idsDepartamentos) : { data: [] },
+    idsCargos.length ? admin.from("cargos").select("id, nome").in("id", idsCargos) : { data: [] },
+  ]);
+  const nomesEstrutura = new Map([...(departamentos ?? []), ...(cargos ?? [])]
+    .map((item: { id: string; nome: string }) => [item.id, item.nome]));
+  const nomeEstrutura = (id: unknown) => (typeof id === "string" ? nomesEstrutura.get(id) ?? "—" : null);
   return registros.map((item) => ({
     ...item,
     alterado_por_nome: nome(item.alterado_por),
     supervisor_anterior_nome: nome(item.supervisor_anterior),
     supervisor_novo_nome: nome(item.supervisor_novo),
+    departamento_anterior_nome: nomeEstrutura(item.departamento_anterior),
+    departamento_novo_nome: nomeEstrutura(item.departamento_novo),
+    cargo_anterior_nome: nomeEstrutura(item.cargo_anterior),
+    cargo_novo_nome: nomeEstrutura(item.cargo_novo),
   }));
 }
