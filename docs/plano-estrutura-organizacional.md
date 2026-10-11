@@ -64,7 +64,7 @@ Migração `20261011120000_estrutura_diretoria.sql` (aditiva) e o app.
 - [x] A.6 Testes unitários (cadeia por Qualidade, Diretoria) e RPC exercitada num Postgres local: Qualidade com liderança, ciclo recusado, Diretoria não é movida, perfil de Qualidade não alterna, CEO lidera colaborador e Qualidade abaixo dele.
 - [x] A.7 Migração aplicada no Supabase em 11/10, com autorização do responsável. Conferido: coluna `diretoria` criada (nenhum membro marcado ainda), `alterar_equipe_v2` executável só pelo service role, nova `nc_lidera_colaborador` ativa, sem alertas novos de segurança.
 - [ ] A.7b Validar no Preview com dados reais: marcar a Diretoria, posicionar Qualidade e Adm, mover pessoas.
-- [ ] A.9 A função `lideranca_de` da migração de notificações (aplicada no banco em 10/10, mas ainda fora do `main`) sobe a cadeia só por supervisores e só devolve supervisores. Com a Fase A, uma NC crítica de alguém abaixo da Keila não chegaria ao Cristiano. Ajustar no PR das notificações para subir por qualquer pessoa (E4/E7).
+- [x] A.9 A função `lideranca_de` da migração de notificações (aplicada no banco em 10/10, mas ainda fora do `main`) sobe a cadeia só por supervisores e só devolve supervisores. Com a Fase A, uma NC crítica de alguém abaixo da Keila não chegaria ao Cristiano. Ajustar no PR das notificações para subir por qualquer pessoa (E4/E7). **Feito (11/10)** na migração `20261011140000_notificacoes_cadeia_lideranca.sql`, no PR da Fase 5.
 - [ ] A.8 A política legada `private.e_meu_subordinado` (RLS de defesa em profundidade) ainda só considera liderados diretos. O app usa o service role, então nada muda para o usuário; revisar quando a RLS for atualizada.
 
 ### Fase B: departamentos e cargos (E5, E8, E9, E10, E12, E13)
