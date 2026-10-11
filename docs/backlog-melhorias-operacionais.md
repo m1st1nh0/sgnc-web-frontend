@@ -40,3 +40,18 @@ Concluir as correções e melhorias do mapa, integrar a navegação hierárquica
 4. Validar no Preview acesso direto/indireto, pessoa fora da cadeia e transferência entre lideranças; conferir NCs, indicadores, dossiê e exportações.
 5. Completar a matriz E2E de validação, conflito, falha de rede/indisponibilidade e UAT de abertura/edição, feedback/aceite e anexos por papel.
 6. Após fechar os gates, coordenar o cutover Next.js, migração de revogação direta no Supabase e rollback. Manter registrada a exceção temporária de proteção contra senhas vazadas.
+
+## Estado em 11/10/2026: retorno da diretoria
+
+O retorno da diretoria de 29/09 ([`plano-retorno-diretoria-2909.md`](plano-retorno-diretoria-2909.md)) cobriu boa parte dos achados acima. Fases 0 a 5 em produção (PRs #41 a #44 e #47):
+
+| Achado acima | Situação em 11/10 |
+|---|---|
+| P0 Lentidão e consultas | Funções na região `gru1` (mesma do banco), sessão em cache por requisição, causas em lote, carregamentos em paralelo no painel e no detalhe. **Pendente:** p50/p95 antes e depois com `scripts/medir-rotas.mjs`, e paginação de `listarNcs`. |
+| P1 Solicitação e aprovação de causas | Fechado: causa nova só pelo catálogo (`/causas`), para todos os perfis. |
+| P1 Acompanhamento da NC após abertura | Fechado: confirmação na abertura, etapas e linha do tempo no detalhe, coluna "Aguardando" e notificações no sino do menu. |
+| P1 Erros ao salvar e indisponibilidade | Erros no campo, com foco; causa pendente bloqueia o envio; 5xx preserva o formulário e mostra a referência. **Pendente:** matriz E2E de conflito (409) e falha de rede. |
+| P1 Feedback, causa raiz, ação e aceite | Fechado: feedback estruturado (causa raiz, ação, responsável, prazo, combinado), reincidência de 12 meses na tela, aceite com prazo de 2 dias úteis em horas de expediente, status "Não respondida" e medida disciplinar em etapas. Contestação ficou fora deste ciclo, por decisão do responsável. |
+| P2 Navegação e controles sem destino claro | Fechado: "Primeiros passos" recolhido depois do primeiro acesso; o botão de próxima ação filtra a lista. |
+
+Os achados de escopo hierárquico, relatório navegável e drill-down seguem como estavam. A estrutura organizacional (Diretoria no topo, departamentos e cargos) está em [`plano-estrutura-organizacional.md`](plano-estrutura-organizacional.md). A UAT dos três perfis segue o roteiro [`uat-retorno-diretoria.md`](uat-retorno-diretoria.md).
