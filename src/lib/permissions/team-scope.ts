@@ -12,6 +12,8 @@ export type PessoaEquipe = {
   papel: string;
   setor: string | null;
   supervisor_id: string | null;
+  departamento_id: string | null;
+  cargo_id: string | null;
   diretoria: boolean;
   ativo: boolean;
   nivel: number;
@@ -28,7 +30,7 @@ async function carregarFilhos(supervisorIds: string[]) {
     for (let offset = 0; ; offset += 500) {
       const { data, error } = await admin
         .from("usuarios")
-        .select("id, nome, papel, setor, supervisor_id, diretoria, ativo")
+        .select("id, nome, papel, setor, departamento_id, cargo_id, supervisor_id, diretoria, ativo")
         .in("supervisor_id", ids)
         .order("id")
         .range(offset, offset + 499);
@@ -78,7 +80,7 @@ export async function listarPessoasGerenciaveis(user: UsuarioAutenticado): Promi
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await admin
       .from("usuarios")
-      .select("id, nome, papel, setor, supervisor_id, diretoria, ativo")
+      .select("id, nome, papel, setor, departamento_id, cargo_id, supervisor_id, diretoria, ativo")
       .order("nome")
       .order("id")
       .range(offset, offset + 499);

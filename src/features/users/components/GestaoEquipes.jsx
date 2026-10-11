@@ -14,7 +14,8 @@ import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import { ErroApi } from "../../../lib/api/client/api.js";
 import { NOME_PAPEL } from "../../../lib/auth/papeis.js";
 import { formatarDataHora } from "../../../lib/utils/formato.js";
-import { alterarEquipe, listarEquipe, listarHistoricoEquipe, listarLiderancas } from "../client/usuarioService.js";
+import { caminhoDepartamento } from "../../../lib/estrutura/departamentos.js";
+import { alterarEquipe, alterarPosicao, listarEquipe, listarEstrutura, listarHistoricoEquipe, listarLiderancas } from "../client/usuarioService.js";
 
 const SEM_LIDERANCA = "__sem_lideranca__";
 const FILTROS_PAPEL = [["", "Todos"], ["supervisor", "Supervisor"], ["funcionario", "Colaborador"]];
@@ -56,7 +57,8 @@ export default function GestaoEquipes() {
   const [alterado, setAlterado] = useState(null);
   const [busca, setBusca] = useState("");
   const [filtroPapel, setFiltroPapel] = useState("");
-  const [filtroSetor, setFiltroSetor] = useState("");
+  const [filtroDepartamento, setFiltroDepartamento] = useState("");
+  const [estrutura, setEstrutura] = useState({ departamentos: [], cargos: [] });
   // Lideranças recolhidas na árvore; por padrão tudo aberto.
   const [recolhidos, setRecolhidos] = useState(() => new Set());
   const [salvando, setSalvando] = useState("");
@@ -73,18 +75,20 @@ export default function GestaoEquipes() {
   }, [alterado]);
 
   async function carregar() {
-    const [equipe, lideres] = await Promise.all([listarEquipe(), listarLiderancas()]);
+    const [equipe, lideres, dadosEstrutura] = await Promise.all([listarEquipe(), listarLiderancas(), listarEstrutura()]);
     setPessoas(equipe);
     setLiderancas(lideres);
+    setEstrutura(dadosEstrutura);
   }
 
   useEffect(() => {
     let ativo = true;
-    Promise.all([listarEquipe(), listarLiderancas()])
-      .then(([equipe, lideres]) => {
+    Promise.all([listarEquipe(), listarLiderancas(), listarEstrutura()])
+      .then(([equipe, lideres, dadosEstrutura]) => {
         if (!ativo) return;
         setPessoas(equipe);
         setLiderancas(lideres);
+        setEstrutura(dadosEstrutura);
       })
       .catch((e) => { if (ativo) setErro(e instanceof ErroApi ? e.message : "Não foi possível carregar as equipes."); })
       .finally(() => { if (ativo) setCarregando(false); });
@@ -106,6 +110,16 @@ export default function GestaoEquipes() {
     [liderancas, pessoas],
   );
 
+  const departamentoPorId = useMemo(() => new Map(estrutura.departamentos.map((item) => [item.id, item])), [estrutura]);
+  const cargoPorId = useMemo(() => new Map(estrutura.cargos.map((item) => [item.id, item])), [estrutura]);
+
+  /** "Inteligência › Qualidade · Analista" (cai no setor antigo para quem ainda não tem departamento). */
+  function descreverPosicao(pessoa) {
+    const area = pessoa.departamento_id ? caminhoDepartamento(estrutura.departamentos, pessoa.departamento_id) : pessoa.setor;
+    const cargo = cargoPorId.get(pessoa.cargo_id)?.nome;
+    return [area || "Sem departamento", cargo].filter(Boolean).join(" · ");
+  }
+
   const arvore = useMemo(() => {
     const idsLideres = new Set(liderancas.map((lider) => lider.id));
     // Só liderança ativa tem liderados na árvore; os de liderança inativa ficam em "sem liderança ativa".
@@ -116,11 +130,20 @@ export default function GestaoEquipes() {
     const orfaos = pessoas.filter((pessoa) => !pessoa.diretoria && (!pessoa.supervisor_id || !idsLideres.has(pessoa.supervisor_id)));
 
     const termo = normalizar(busca.trim());
-    const filtrando = Boolean(termo || filtroPapel || filtroSetor);
+    const filtrando = Boolean(termo || filtroPapel || filtroDepartamento);
+    // O filtro de departamento inclui as sub-áreas dele.
+    const noDepartamento = (pessoa) => {
+      for (let id = pessoa.departamento_id, passos = 0; id && passos < 50; passos += 1) {
+        if (id === filtroDepartamento) return true;
+        id = departamentoPorId.get(id)?.departamento_pai_id;
+      }
+      return false;
+    };
     const combina = (pessoa) =>
-      (!termo || [pessoa.nome, pessoa.setor, NOME_PAPEL[pessoa.papel]].some((v) => normalizar(v).includes(termo)))
+      (!termo || [pessoa.nome, pessoa.setor, NOME_PAPEL[pessoa.papel], cargoPorId.get(pessoa.cargo_id)?.nome]
+        .some((v) => normalizar(v).includes(termo)))
       && (!filtroPapel || pessoa.papel === filtroPapel)
-      && (!filtroSetor || pessoa.setor === filtroSetor);
+      && (!filtroDepartamento || noDepartamento(pessoa));
 
     // Nó visível quando combina com os filtros ou tem algum descendente que combina.
     const montar = (pessoa, nivel, vistos) => {
@@ -142,13 +165,7 @@ export default function GestaoEquipes() {
         orfaos: orfaos.length,
       },
     };
-  }, [liderancas, pessoas, porLider, busca, filtroPapel, filtroSetor]);
-
-  const setores = useMemo(
-    () => [...new Set([...liderancas, ...pessoas].map((pessoa) => pessoa.setor).filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, "pt-BR")),
-    [liderancas, pessoas],
-  );
+  }, [liderancas, pessoas, porLider, busca, filtroPapel, filtroDepartamento, departamentoPorId, cargoPorId]);
 
   const idsComFilhos = useMemo(
     () => liderancas.filter((lider) => (porLider.get(lider.id) ?? []).length > 0).map((lider) => lider.id),
@@ -174,17 +191,39 @@ export default function GestaoEquipes() {
     setConfirmando(true);
   }
 
+  /**
+   * Liderança sugerida ao mudar de departamento: o responsável dele, quando for uma liderança
+   * válida para a pessoa (não ela mesma, nem alguém abaixo dela) e diferente da atual.
+   */
+  function responsavelSugerido(pessoa, departamentoId) {
+    const responsavel = departamentoPorId.get(departamentoId)?.responsavel_id;
+    if (!responsavel || pessoa.diretoria || responsavel === pessoa.supervisor_id) return null;
+    return destinosDe(pessoa).some((lider) => lider.id === responsavel) ? responsavel : null;
+  }
+
   async function confirmar() {
     const { tipo, pessoa, destino, papel } = confirmacao;
-    const dados = tipo === "mover" ? { supervisor_id: destino } : { papel };
+    const sugerido = tipo === "posicao" && confirmacao.seguirResponsavel
+      ? responsavelSugerido(pessoa, confirmacao.departamento)
+      : null;
     const mensagem = tipo === "mover"
       ? `Movido para ${nomes.get(destino) ?? "nova liderança"}`
-      : `Agora é ${NOME_PAPEL[papel].toLocaleLowerCase("pt-BR")}`;
+      : tipo === "posicao"
+        ? `Agora em ${departamentoPorId.get(confirmacao.departamento)?.nome ?? "sem departamento"}${sugerido ? `, com ${nomes.get(sugerido)}` : ""}`
+        : `Agora é ${NOME_PAPEL[papel].toLocaleLowerCase("pt-BR")}`;
     setErro("");
     setAlterado(null);
     setSalvando(pessoa.id);
     try {
-      await alterarEquipe(pessoa.id, dados);
+      if (tipo === "posicao") {
+        const mudouPosicao = (pessoa.departamento_id ?? "") !== confirmacao.departamento || (pessoa.cargo_id ?? "") !== confirmacao.cargo;
+        if (mudouPosicao) {
+          await alterarPosicao(pessoa.id, { departamento_id: confirmacao.departamento || null, cargo_id: confirmacao.cargo || null });
+        }
+        if (sugerido) await alterarEquipe(pessoa.id, { supervisor_id: sugerido });
+      } else {
+        await alterarEquipe(pessoa.id, tipo === "mover" ? { supervisor_id: destino } : { papel });
+      }
       await carregar();
       setConfirmando(false);
       setAlterado({ id: pessoa.id, mensagem });
@@ -253,6 +292,18 @@ export default function GestaoEquipes() {
                 {motivoPapel && <small>{motivoPapel}</small>}
               </Dropdown.Item>
             )}
+            <Dropdown.Item
+              as="button"
+              onClick={() => abrirConfirmacao({
+                tipo: "posicao",
+                pessoa,
+                departamento: pessoa.departamento_id ?? "",
+                cargo: pessoa.cargo_id ?? "",
+                seguirResponsavel: true,
+              })}
+            >
+              Alterar departamento e cargo…
+            </Dropdown.Item>
             <Dropdown.Item as="button" onClick={() => abrirHistorico(pessoa)}>Ver histórico</Dropdown.Item>
             <Dropdown.Divider />
             <Dropdown.Item as={Link} href={`/equipe/${pessoa.id}`}>Abrir ficha da pessoa</Dropdown.Item>
@@ -289,7 +340,7 @@ export default function GestaoEquipes() {
             <div className="texto-xs texto-suave">
               {pessoa.diretoria && <span className="sg-badge sg-badge--escuro me-1">Diretoria</span>}
               <span className={`sg-badge ${COR_PAPEL[pessoa.papel] ?? "sg-badge--cinza"} me-1`}>{NOME_PAPEL[pessoa.papel] ?? pessoa.papel}</span>
-              {pessoa.setor || "Sem setor"}{inativa ? " · inativa" : ""}
+              {descreverPosicao(pessoa)}{inativa ? " · inativa" : ""}
             </div>
           </div>
           {lidera && <span className="sg-equipe-no__total texto-xs texto-suave">{contarPessoas(total)}</span>}
@@ -320,7 +371,7 @@ export default function GestaoEquipes() {
         <div className="sg-card-body">
           <div className="sg-equipe-filtros">
             <Form.Group controlId="busca-gestao-equipes" className="sg-equipe-filtros__busca">
-              <Form.Label>Buscar pessoa, liderança ou setor</Form.Label>
+              <Form.Label>Buscar pessoa, liderança, departamento ou cargo</Form.Label>
               <Form.Control value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Digite para filtrar as equipes" />
             </Form.Group>
             <div>
@@ -339,11 +390,13 @@ export default function GestaoEquipes() {
                 ))}
               </div>
             </div>
-            <Form.Group controlId="filtro-setor-equipes">
-              <Form.Label>Setor</Form.Label>
-              <Form.Select className="sg-input" value={filtroSetor} onChange={(e) => setFiltroSetor(e.target.value)}>
-                <option value="">Todos os setores</option>
-                {setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}
+            <Form.Group controlId="filtro-departamento-equipes">
+              <Form.Label>Departamento</Form.Label>
+              <Form.Select className="sg-input" value={filtroDepartamento} onChange={(e) => setFiltroDepartamento(e.target.value)}>
+                <option value="">Todos os departamentos</option>
+                {estrutura.departamentos.filter((item) => item.ativo).map((item) => (
+                  <option key={item.id} value={item.id}>{caminhoDepartamento(estrutura.departamentos, item.id)}</option>
+                ))}
               </Form.Select>
             </Form.Group>
           </div>
@@ -392,7 +445,9 @@ export default function GestaoEquipes() {
           <Modal.Title className="h5">
             {confirmacao?.tipo === "mover"
               ? `Mover ${confirmacao.pessoa.nome}?`
-              : `Tornar ${confirmacao?.pessoa.nome} ${confirmacao?.papel === "supervisor" ? "liderança" : "colaborador"}?`}
+              : confirmacao?.tipo === "posicao"
+                ? `Departamento e cargo de ${confirmacao.pessoa.nome}`
+                : `Tornar ${confirmacao?.pessoa.nome} ${confirmacao?.papel === "supervisor" ? "liderança" : "colaborador"}?`}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="d-flex flex-column gap-3">
@@ -418,6 +473,15 @@ export default function GestaoEquipes() {
                 </Form.Select>
               </Form.Group>
             </div>
+          ) : confirmacao?.tipo === "posicao" ? (
+            <CamposPosicao
+              confirmacao={confirmacao}
+              estrutura={estrutura}
+              desabilitado={!!salvando}
+              sugerido={responsavelSugerido(confirmacao.pessoa, confirmacao.departamento)}
+              nomes={nomes}
+              aoMudar={(campos) => setConfirmacao({ ...confirmacao, ...campos })}
+            />
           ) : confirmacao && (
             <p className="mb-0">
               Perfil: {NOME_PAPEL[confirmacao.pessoa.papel]} → <strong>{NOME_PAPEL[confirmacao.papel]}</strong>
@@ -430,7 +494,8 @@ export default function GestaoEquipes() {
           <Botao
             onClick={confirmar}
             carregando={!!salvando}
-            disabled={confirmacao?.tipo === "mover" && !confirmacao.destino}
+            disabled={(confirmacao?.tipo === "mover" && !confirmacao.destino) || (confirmacao?.tipo === "posicao"
+              && !posicaoMudou(confirmacao, responsavelSugerido(confirmacao.pessoa, confirmacao.departamento)))}
           >
             Confirmar mudança
           </Botao>
@@ -456,6 +521,12 @@ export default function GestaoEquipes() {
                   {item.supervisor_anterior !== item.supervisor_novo && (
                     <div>Liderança: {item.supervisor_anterior_nome ?? "—"} → {item.supervisor_novo_nome ?? "—"}</div>
                   )}
+                  {item.departamento_anterior !== item.departamento_novo && (
+                    <div>Departamento: {item.departamento_anterior_nome ?? "—"} → {item.departamento_novo_nome ?? "—"}</div>
+                  )}
+                  {item.cargo_anterior !== item.cargo_novo && (
+                    <div>Cargo: {item.cargo_anterior_nome ?? "—"} → {item.cargo_novo_nome ?? "—"}</div>
+                  )}
                   {item.papel_anterior !== item.papel_novo && (
                     <div>Perfil: {NOME_PAPEL[item.papel_anterior] ?? "—"} → {NOME_PAPEL[item.papel_novo] ?? "—"}</div>
                   )}
@@ -466,5 +537,63 @@ export default function GestaoEquipes() {
         </Modal.Body>
       </Modal>
     </div>
+  );
+}
+
+function posicaoMudou(confirmacao, sugerido) {
+  const { pessoa, departamento, cargo, seguirResponsavel } = confirmacao;
+  return (pessoa.departamento_id ?? "") !== departamento || (pessoa.cargo_id ?? "") !== cargo || Boolean(seguirResponsavel && sugerido);
+}
+
+/** Departamento, cargo e a liderança sugerida pelo responsável do departamento (E9). */
+function CamposPosicao({ confirmacao, estrutura, desabilitado, sugerido, nomes, aoMudar }) {
+  const { pessoa, departamento, cargo, seguirResponsavel } = confirmacao;
+  const departamentos = estrutura.departamentos.filter((item) => item.ativo || item.id === departamento);
+  // Cargos gerais ou do departamento escolhido.
+  const cargos = estrutura.cargos.filter((item) => (item.ativo || item.id === cargo)
+    && (!item.departamento_id || item.departamento_id === departamento));
+  const cargoEscolhido = estrutura.cargos.find((item) => item.id === cargo);
+  return (
+    <>
+      <Form.Group controlId="posicao-departamento">
+        <Form.Label>Departamento</Form.Label>
+        <Form.Select
+          className="sg-input"
+          value={departamento}
+          disabled={desabilitado}
+          onChange={(e) => {
+            const novo = e.target.value;
+            const cargoAtual = estrutura.cargos.find((item) => item.id === cargo);
+            // Cargo de outro departamento deixa de valer.
+            aoMudar({ departamento: novo, cargo: cargoAtual?.departamento_id && cargoAtual.departamento_id !== novo ? "" : cargo });
+          }}
+        >
+          <option value="">Sem departamento</option>
+          {departamentos.map((item) => (
+            <option key={item.id} value={item.id}>{caminhoDepartamento(estrutura.departamentos, item.id)}</option>
+          ))}
+        </Form.Select>
+      </Form.Group>
+      <Form.Group controlId="posicao-cargo">
+        <Form.Label>Cargo</Form.Label>
+        <Form.Select className="sg-input" value={cargo} disabled={desabilitado} onChange={(e) => aoMudar({ cargo: e.target.value })}>
+          <option value="">Sem cargo</option>
+          {cargos.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
+        </Form.Select>
+        {cargoEscolhido?.lideranca && pessoa.papel === "funcionario" && (
+          <Form.Text>Este é um cargo de liderança. Se for o caso, use também "Tornar liderança".</Form.Text>
+        )}
+      </Form.Group>
+      {sugerido && (
+        <Form.Check
+          type="checkbox"
+          id="posicao-seguir-responsavel"
+          label={`Passar a responder a ${nomes.get(sugerido)} (responsável pelo departamento)`}
+          checked={seguirResponsavel}
+          disabled={desabilitado}
+          onChange={(e) => aoMudar({ seguirResponsavel: e.target.checked })}
+        />
+      )}
+    </>
   );
 }
