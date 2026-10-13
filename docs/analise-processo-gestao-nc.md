@@ -141,19 +141,19 @@ Os percentuais são aproximados. Cada linha conta como um item, independentement
 |---|---|---|
 | Linha de base de 90 dias e auditoria amostral da completude dos registros | ❌ | Os indicadores servem à linha de base, mas não há visão de completude (evidência, procedimento, feedback e verificação preenchidos). |
 
-## Decisões que o responsável precisa tomar antes de implementar
+## Decisões do responsável (13/10/2026)
 
-Estes pontos divergem de decisões já registradas ou mudam regras em vigor. Não devem ser assumidos.
+As sete decisões foram respondidas e estão registradas em [`plano-processo-gestao-nc.md`](plano-processo-gestao-nc.md), que também lista as perguntas que ainda faltam (Q1 a Q11). Em resumo:
 
-1. **Escala de criticidade:** trocar Baixa/Média/Alta + "crítica" por Leve/Crítica, ou manter as duas coisas (mapeamento)?
-2. **Prazos:** adotar o prazo de feedback (5 dias úteis na leve, 1 dia útil na crítica) e a contenção em 24 h, convivendo com o prazo de aceite de 2 dias úteis já em vigor?
-3. **Gatilho da medida:** a 3ª NC da mesma causa (documento) ou a 4ª (regra atual)? O contador zera depois da medida ou continua a janela de 12 meses?
-4. **RH:** criar o papel RH para decidir e aplicar medidas, no lugar da Qualidade (decisão de 09/10)? E a NC crítica vai ao RH independentemente da contagem?
-5. **Quem registra:** manter a abertura por qualquer perfil, com validação da Qualidade, ou restringir o registro à Qualidade, com os demais apenas informando?
-6. **Encerramento da leve:** encerrar no feedback (documento) ou no aceite (regra atual)?
-7. **Supervisor na abertura:** avisar o supervisor já no registro (documento) ou só na validação (matriz atual)?
+1. Criticidade continua Baixa/Média/Alta; a marcação de crítica, só depois da validação.
+2. Prazo de feedback e contenção em 24 h: sim.
+3. A medida nasce na 3ª NC da mesma causa e o contador zera.
+4. Sem papel RH: o sistema registra, o RH aplica presencialmente.
+5. Qualquer perfil abre; a Qualidade valida.
+6. A NC sem plano encerra no aceite.
+7. O supervisor é avisado só na validação.
 
-## Proposta de ordem, depois das decisões
+## Proposta de ordem (detalhada no plano)
 
 1. **Premissa e classificação:** campos "procedimento" (com link da intranet) e "origem"; tipo de NC (cobrança ou orientativa); causa individual ou sistêmica. Só cobrança com causa individual conta para reincidência e medidas.
 2. **Criticidade com prazos:** prazo de feedback por criticidade, contenção em 24 h na crítica, NC crítica encaminhada à medida e plano de ação opcional na leve.
