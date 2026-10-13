@@ -66,10 +66,10 @@ Uma fase por PR, validada no Preview antes do merge.
 
 ### Fase R3: planilhas (propostas C + D)
 
-- [ ] Excel com abas NCs, Causas, Feedback, Linha do tempo, Indicadores e Leia-me; cabeçalho congelado, autofiltro, durações em `[h]:mm`.
-- [ ] CSV simples com 15 colunas: etapa atual, dias na etapa, líder direto, causa e ocorrência, prazo e situação do aceite, medida sugerida, link.
-- [ ] Botão principal "Baixar Excel" e "CSV simples" como opção secundária na tela de relatórios.
-- [ ] Dependência nova para gerar `.xlsx` no servidor, avaliada antes de entrar.
+- [x] Excel com abas NCs, Causas, Feedback, Linha do tempo, Indicadores e Leia-me; cabeçalho congelado, autofiltro, datas no horário de Brasília e durações em `[h]:mm`.
+- [x] CSV simples com 15 colunas: etapa atual, dias na etapa, líder direto, causa e ocorrência, prazo e situação do aceite, medida sugerida, link.
+- [x] Botão principal "Baixar Excel", com "CSV simples" e "Baixar PDF" ao lado, na tela de relatórios.
+- [x] Sem dependência nova: `src/lib/reports/xlsx.ts` monta o pacote (XML + zip com o deflate nativo do Node). Conferido abrindo o arquivo no openpyxl e no LibreOffice.
 - [ ] Validado no Preview (Qualidade e supervisor).
 
 ### Depois deste ciclo

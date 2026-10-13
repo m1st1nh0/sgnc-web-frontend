@@ -7,6 +7,7 @@ import { ehQualidade } from "@/lib/auth/papeis";
 import { buildNcTeamScopeFilter } from "@/lib/permissions/nc-scope";
 import { listarPessoasAbaixo } from "@/lib/permissions/team-scope";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { plural, rotuloStatus } from "./formato";
 import { STATUS_ATIVOS } from "./regras";
 
 type Row = Record<string, any>;
@@ -110,4 +111,35 @@ export async function carregarRecorte(params: URLSearchParams, opcoes: { lideres
   }
 
   return { admin, requester, teamIds, inicio: start, fim: end, doPeriodo, ativas, causas, feedbacks, medidas, lideres };
+}
+
+/** Escopo e filtros em texto: quem lê o relatório sabe exatamente o recorte. */
+export async function descreverRecorte(params: URLSearchParams, teamIds: string[] | null) {
+  const filtros: string[] = [];
+  const status = params.get("status"); if (status) filtros.push(`status ${rotuloStatus(status)}`);
+  const setor = params.get("setor")?.trim(); if (setor) filtros.push(`setor ${setor}`);
+  const colaboradorId = params.get("colaborador_id");
+  if (colaboradorId) {
+    const { data } = await createAdminClient().from("usuarios").select("nome").eq("id", colaboradorId).maybeSingle();
+    filtros.push(`colaborador ${data?.nome ?? "selecionado"}`);
+  }
+  return {
+    escopo: teamIds ? `Sua equipe (${plural(teamIds.length, "pessoa")})` : "Toda a empresa",
+    filtros: filtros.length ? filtros.join("; ") : "nenhum",
+  };
+}
+
+/** Mudanças de etapa das NCs, com o nome de quem fez (o recorte já limita às NCs que o usuário vê por completo). */
+export async function carregarHistorico(ncIds: number[]) {
+  if (!ncIds.length) return [];
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("historico_nc").select("nc_id, usuario_id, status_anterior, status_novo, observacao, criado_em").in("nc_id", ncIds);
+  if (error) throw new ApiError("Não foi possível carregar a linha do tempo.", 500);
+  const ids = [...new Set((data ?? []).map((evento) => evento.usuario_id).filter(Boolean))] as string[];
+  const { data: pessoas, error: pessoasError } = ids.length ? await admin.from("usuarios").select("id, nome").in("id", ids) : { data: [], error: null };
+  if (pessoasError) throw new ApiError("Não foi possível carregar a linha do tempo.", 500);
+  const nomes = new Map<string, string>((pessoas ?? []).map((pessoa: Row) => [pessoa.id, pessoa.nome] as [string, string]));
+  return (data ?? [])
+    .map((evento: Row) => ({ ...evento, autor_nome: evento.usuario_id ? nomes.get(evento.usuario_id) ?? "Usuário removido" : "Sistema" }))
+    .sort((a: Row, b: Row) => b.nc_id - a.nc_id || String(a.criado_em).localeCompare(String(b.criado_em)));
 }

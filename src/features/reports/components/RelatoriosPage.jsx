@@ -25,6 +25,7 @@ import ModalNcsIndicador from "../../insights/components/ModalNcsIndicador.jsx";
 import {
   baixarCsvNcs,
   baixarPdfResumo,
+  baixarXlsxNcs,
   nomeArquivoRelatorio,
 } from "../client/relatoriosService.js";
 import { salvarArquivoLocal } from "../../../lib/utils/arquivoLocal.js";
@@ -237,10 +238,12 @@ export default function RelatoriosPage() {
     setErro("");
     setBaixando(tipo);
     try {
-      const blob = tipo === "pdf" ? await baixarPdfResumo(aplicados) : await baixarCsvNcs(aplicados);
+      const baixar = { pdf: baixarPdfResumo, xlsx: baixarXlsxNcs, csv: baixarCsvNcs }[tipo];
+      const blob = await baixar(aplicados);
       salvarArquivoLocal(blob, nomeArquivoRelatorio(tipo, aplicados));
     } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : `Não foi possível gerar o arquivo ${tipo.toUpperCase()}.`);
+      const nome = { pdf: "do relatório em PDF", xlsx: "da planilha Excel", csv: "do CSV" }[tipo];
+      setErro(e instanceof ErroApi ? e.message : `Não foi possível gerar o arquivo ${nome}. Tente de novo em instantes.`);
     } finally {
       setBaixando("");
     }
@@ -325,8 +328,12 @@ export default function RelatoriosPage() {
                 <p>Visão na tela · {escopo} · {formatarPeriodo(aplicados.inicio, aplicados.fim)}</p>
               </div>
               <div className="sg-pagina-cabecalho__acoes">
-                <Botao variante="secundario" type="button" carregando={baixando === "csv"} disabled={ocupado} onClick={() => gerar("csv")}>Baixar CSV</Botao>
-                <Botao variante="primario" type="button" carregando={baixando === "pdf"} disabled={ocupado} onClick={() => gerar("pdf")}>Baixar PDF</Botao>
+                <Botao variante="secundario" type="button" carregando={baixando === "csv"} disabled={ocupado} onClick={() => gerar("csv")}
+                  title="Uma linha por NC, 15 colunas, para abrir em qualquer programa">CSV simples</Botao>
+                <Botao variante="secundario" type="button" carregando={baixando === "pdf"} disabled={ocupado} onClick={() => gerar("pdf")}
+                  title="Relatório gerencial: resumo na primeira página e detalhe nas seguintes">Baixar PDF</Botao>
+                <Botao variante="primario" type="button" carregando={baixando === "xlsx"} disabled={ocupado} onClick={() => gerar("xlsx")}
+                  title="Planilha com abas: NCs, Causas, Feedback, Linha do tempo, Indicadores e Leia-me">Baixar Excel</Botao>
               </div>
             </header>
 

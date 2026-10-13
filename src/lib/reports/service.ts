@@ -1,26 +1,24 @@
-import { csvCell } from "./csv";
 import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
 import { MARGEM, pdfWriter } from "./pdf";
-import { carregarRecorte, reportScope, ultimosFeedbacks } from "./dados";
+import { carregarHistorico, carregarRecorte, descreverRecorte, ultimosFeedbacks } from "./dados";
+import { montarAbas, montarCsvSimples } from "./planilhas";
+import { gerarXlsx } from "./xlsx";
 import { itensDeAtencao, ordenarParaAcao, periodoAnterior } from "./regras";
 import { escreverResumo } from "./resumo-pdf";
-import { ApiError } from "@/lib/api/error";
 import { obterEstatisticasUsuario, obterInsights } from "@/lib/analytics/service";
 
 import { buscarNc, obterTimeline } from "@/lib/nc/service";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { buildNcTeamScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
+import { SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
 import { ehQualidade } from "@/lib/auth/papeis";
 import { situacaoDoAceite } from "@/lib/nc/reincidencia";
-import { ROTULO_ACEITE, dataBr, dataHoraBr, plural, rotuloSituacaoMedida, rotuloStatus, rotuloTipoMedida } from "./formato";
+import { ROTULO_ACEITE, dataBr, dataHoraBr, periodoBr, plural, rotuloSituacaoMedida, rotuloStatus, rotuloTipoMedida } from "./formato";
 
 type Row = Record<string, any>;
 
 const canonical = (status: unknown) => ["validada", "aguardando_analise"].includes(String(status)) ? "aguardando_feedback" : String(status ?? "");
-const dateOnly = (value: unknown) => String(value ?? "").slice(0, 10);
-const hours = (start: unknown, end: unknown) => !start || !end ? "" : Math.max(0, (Date.parse(String(end)) - Date.parse(String(start))) / 3600000).toFixed(2).replace(".", ",");
 
 export async function gerarPdfNc(id: number) {
   const requester = await requireUser();
@@ -84,46 +82,28 @@ export async function gerarPdfDossie(userId: string) {
   return { bytes: await writer.finish(requester.nome), filename: `sgnc-dossie-${userId}.pdf` };
 }
 
-export const CABECALHO_CSV_NCS = ["NC","Data","Status","Colaborador","Setor","Criticidade","Chamado","Causas","Ocorrências por causa","Reincidente em 12 meses","Descrição","Criada em","Validada em","Feedback enviado em","Aceita em","Horas até validação","Horas validação-feedback","Horas feedback-aceite","Horas ciclo total","Causa raiz","Ação combinada","Responsável pela ação","Prazo da ação","Combinado","Prazo do aceite","Situação do aceite"];
-
-export async function gerarCsvNcs(params: URLSearchParams) {
-  const {admin,teamIds,user:requester}=await reportScope(); const end=params.get("fim")||new Date().toISOString().slice(0,10);const endDate=new Date(`${end}T12:00:00Z`);endDate.setUTCFullYear(endDate.getUTCFullYear()-1);const start=params.get("inicio")||endDate.toISOString().slice(0,10);if(start>end)throw new ApiError("A data de início não pode ser posterior à data de fim.");
-  const requestedEmployee=params.get("colaborador_id");
-  if(teamIds && requestedEmployee && requestedEmployee!==requester.id && !teamIds.includes(requestedEmployee))throw new ApiError("O colaborador selecionado está fora da sua hierarquia.",403);
-  let query=admin.from("nao_conformidades").select("id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, descricao, criado_em, validado_em, feedback_aplicado_em, aceito_em, aceito_fora_prazo");
-  if(teamIds){const scope=buildNcTeamScopeFilter(requester,teamIds);if(scope)query=query.or(scope);}
-  const {data,error}=await query;if(error)throw new ApiError("Não foi possível gerar o CSV.",500);
-  const status=params.get("status")?canonical(params.get("status")):null,employee=params.get("colaborador_id"),sector=params.get("setor")?.trim().toLocaleLowerCase();const rows=(data??[]).filter(nc=>{const date=dateOnly(nc.data||nc.criado_em);return date>=start&&date<=end&&(!status||canonical(nc.status)===status)&&(!employee||nc.colaborador_id===employee)&&(!sector||String(nc.setor||"").trim().toLocaleLowerCase()===sector);}).sort((a,b)=>String(b.data||b.criado_em).localeCompare(String(a.data||a.criado_em))||b.id-a.id);
-  const ids=rows.map(item=>item.id);const {data:relations}=ids.length?await admin.from("nc_causas").select("nc_id, ocorrencia_numero, causas(descricao)").in("nc_id",ids):{data:[]};const byNc=new Map<number,Row[]>();for(const relation of relations??[]){const joined=relation.causas as unknown as {descricao?:string}|null;byNc.set(relation.nc_id,[...(byNc.get(relation.nc_id)??[]),{descricao:joined?.descricao,ocorrencia_numero:relation.ocorrencia_numero}]);}
-  const feedbacks=await ultimosFeedbacks(ids);
-  const lines=[CABECALHO_CSV_NCS.map(csvCell).join(";")];
-  for(const nc of rows){
-    const causes=byNc.get(nc.id)??[]; const feedback=feedbacks.get(nc.id); const aceite=ROTULO_ACEITE[situacaoDoAceite(nc)];
-    lines.push([
-      nc.id,dataBr(nc.data||nc.criado_em,""),rotuloStatus(nc.status),nc.colaborador,nc.setor,nc.criticidade,nc.chamado,
-      causes.map(c=>c.descricao).join(", "),causes.filter(c=>c.ocorrencia_numero!=null).map(c=>`${c.descricao} (${c.ocorrencia_numero}ª)`).join(", "),causes.some(c=>Number(c.ocorrencia_numero)>1)?"Sim":"Não",
-      nc.descricao,dataHoraBr(nc.criado_em,""),dataHoraBr(nc.validado_em,""),dataHoraBr(nc.feedback_aplicado_em,""),dataHoraBr(nc.aceito_em,""),
-      hours(nc.criado_em,nc.validado_em),hours(nc.validado_em,nc.feedback_aplicado_em),hours(nc.feedback_aplicado_em,nc.aceito_em),hours(nc.criado_em,nc.aceito_em),
-      ...(feedback?[feedback.causa_raiz,feedback.acao_combinada,feedback.responsavel_acao_nome,dataBr(feedback.prazo_acao,""),feedback.combinado,dataHoraBr(feedback.prazo_aceite,"")]:["","","","","",""]),aceite,
-    ].map(csvCell).join(";"));
-  }
-  return {bytes:new TextEncoder().encode(`﻿${lines.join("\r\n")}`),filename:`sgnc-ncs-${start}-${end}.csv`};
+/** CSV simples (proposta C), na ordem de ação. */
+export async function gerarCsvNcs(params: URLSearchParams, origem: string) {
+  const recorte = await carregarRecorte(params, { lideres: true });
+  const texto = montarCsvSimples({ ncs: recorte.doPeriodo, causas: recorte.causas, feedbacks: recorte.feedbacks, medidas: recorte.medidas, lideres: recorte.lideres, origem });
+  return { bytes: new TextEncoder().encode(texto), filename: `sgnc-ncs-${recorte.inicio}-${recorte.fim}.csv` };
 }
 
-/** Escopo e filtros do resumo em texto: quem lê o PDF sabe exatamente o recorte. */
-async function recorteDoResumo(params: URLSearchParams, escopo: Row) {
-  const filtros: string[] = [];
-  const status = params.get("status"); if (status) filtros.push(`status ${rotuloStatus(status)}`);
-  const setor = params.get("setor")?.trim(); if (setor) filtros.push(`setor ${setor}`);
-  const colaboradorId = params.get("colaborador_id");
-  if (colaboradorId) {
-    const { data } = await createAdminClient().from("usuarios").select("nome").eq("id", colaboradorId).maybeSingle();
-    filtros.push(`colaborador ${data?.nome ?? "selecionado"}`);
-  }
-  const escopoTexto = escopo?.tipo === "equipe_hierarquica"
-    ? `Sua equipe (${plural(Number(escopo.quantidade_colaboradores ?? 0), "pessoa")})`
-    : "Toda a empresa";
-  return { escopo: escopoTexto, filtros: filtros.length ? filtros.join("; ") : "nenhum" };
+/** Excel com abas (proposta D): NCs, Causas, Feedback, Linha do tempo, Indicadores e Leia-me. */
+export async function gerarXlsxNcs(params: URLSearchParams, origem: string) {
+  const recorte = await carregarRecorte(params, { lideres: true });
+  const filtros = { status: params.get("status"), colaboradorId: params.get("colaborador_id"), setor: params.get("setor") };
+  const [insights, historico, texto] = await Promise.all([
+    obterInsights(recorte.inicio, recorte.fim, filtros) as Promise<Row>,
+    carregarHistorico(recorte.doPeriodo.map((nc) => nc.id)),
+    descreverRecorte(params, recorte.teamIds),
+  ]);
+  const abas = montarAbas({
+    ncs: recorte.doPeriodo, causas: recorte.causas, feedbacks: recorte.feedbacks, medidas: recorte.medidas, lideres: recorte.lideres,
+    historico, insights, origem,
+    leiaMe: { geradoPor: recorte.requester.nome, geradoEm: dataHoraBr(new Date().toISOString()), periodo: periodoBr(recorte.inicio, recorte.fim), escopo: texto.escopo, filtros: texto.filtros },
+  });
+  return { bytes: gerarXlsx(abas), filename: `sgnc-ncs-${recorte.inicio}-${recorte.fim}.xlsx` };
 }
 
 /** Relatório gerencial (R-D1): resumo executivo na página 1 e o detalhe do período nas seguintes. */
@@ -134,11 +114,11 @@ export async function gerarPdfResumo(params: URLSearchParams) {
   const { inicio, fim } = insights.periodo;
   const anteriorPeriodo = periodoAnterior(inicio, fim);
   const doRecorte = new URLSearchParams(params); doRecorte.set("inicio", inicio); doRecorte.set("fim", fim);
-  const [anterior, recorte, texto] = await Promise.all([
+  const [anterior, recorte] = await Promise.all([
     obterInsights(anteriorPeriodo.inicio, anteriorPeriodo.fim, filtros) as Promise<Row>,
     carregarRecorte(doRecorte),
-    recorteDoResumo(params, insights.escopo),
   ]);
+  const texto = await descreverRecorte(params, recorte.teamIds);
   const pendentes = recorte.medidas.filter((medida) => medida.status === "sugerida" || medida.status === "aprovada");
   const bytes = await escreverResumo({
     insights, anterior, escopo: texto.escopo, filtros: texto.filtros,

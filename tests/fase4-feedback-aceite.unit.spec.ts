@@ -197,7 +197,8 @@ test("4.14/4.15: Insights e relatórios trazem Não respondidas, aceite no prazo
   expect(analytics).toContain("taxa_aceite_no_prazo");
   expect(analytics).toContain("if(nc.status==='nao_respondida')si.nao_respondidas++");
   const reports = read("src/lib/reports/service.ts");
-  expect(reports).toContain('"Causa raiz","Ação combinada","Responsável pela ação","Prazo da ação","Combinado","Prazo do aceite","Situação do aceite"');
+  const planilhas = read("src/lib/reports/planilhas.ts");
+  for (const titulo of ["Causa raiz", "Ação combinada", "Responsável pela ação", "Prazo da ação", "Combinado", "Prazo do aceite", "Situação do aceite"]) expect(planilhas).toContain(`titulo: "${titulo}"`);
   expect(reports).toContain('writer.line("Situação do aceite"');
   const resumo = read("src/lib/reports/resumo-pdf.ts");
   expect(resumo).toContain('rotulo: "Aceite no prazo"');
