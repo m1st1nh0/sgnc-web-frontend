@@ -1349,7 +1349,7 @@ textarea:focus-visible {
 }
 
 .sg-governanca {
-  max-width: 1120px;
+  max-width: var(--largura-container);
 }
 
 .sg-governanca__intro {
@@ -2959,3 +2959,48 @@ textarea:focus-visible {
   .sg-leitura-faixa__vazio { grid-column: 1; }
   .sg-insights-pagina__periodo > * { flex: 1 1 140px; }
 }
+
+/* Causas: catálogo em destaque e fila de solicitações na lateral */
+.sg-governanca__grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); align-items: start; gap: 22px; }
+.sg-governanca__grade > .sg-governanca__panel { margin: 0; border-color: var(--borda); border-radius: var(--raio-cartao); }
+.sg-governanca__fila .sg-governanca__decision-grid { grid-template-columns: 1fr; }
+.sg-governanca__fila .sg-governanca__request-actions { flex-wrap: wrap; }
+.sg-governanca .btn, .sg-governanca .form-control, .sg-governanca .form-select { min-height: 44px; }
+
+/* Medidas disciplinares: quadro em três etapas */
+.sg-medidas__filtro { min-width: 220px; margin: 0; }
+.sg-medidas .sg-pagina-cabecalho__acoes { align-items: flex-end; }
+.sg-medidas__quadro { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 18px; }
+.sg-medidas__coluna { display: flex; min-width: 0; flex-direction: column; gap: 12px; padding: 14px; border-radius: var(--raio-cartao); background: #e9edea; }
+.sg-medidas__coluna-titulo { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 8px; margin: 0 0 2px; padding: 2px 4px; font-size: .9375rem; font-weight: 700; }
+.sg-medidas__vazio { margin: 0; padding: 16px; border: 1px dashed var(--borda-forte); border-radius: 10px; color: var(--texto-secundario); font-size: .875rem; text-align: center; }
+.sg-medida { margin: 0; border-radius: 10px !important; }
+.sg-medida .sg-btn--sm { min-height: 40px; }
+.sg-medidas__encerradas { margin-top: 28px; }
+.sg-medidas__grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+
+/* Dossiê */
+.sg-dossie .sg-voltar { display: inline-flex; min-height: 44px; align-items: center; font-size: .875rem; font-weight: 600; }
+.sg-dossie__identidade { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.sg-dossie__avatar { display: grid; width: 56px; height: 56px; flex: none; place-items: center; border-radius: 50%; color: #fff; background: var(--cor-norma); font-size: 1.125rem; font-weight: 700; }
+.sg-dossie__conteudo { display: flex; flex-direction: column; gap: 20px; }
+.sg-dossie__causas { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; }
+.sg-dossie__causas > .sg-card { margin: 0; }
+.sg-numero__valor--texto { font-size: 1.125rem; line-height: 1.3; }
+.sg-numero .sg-texto-apoio { font-size: .75rem; }
+.sg-tabela--compacta { min-width: 520px; }
+.sg-tabela--compacta th, .sg-tabela--compacta td { padding: 10px 12px; }
+
+/* Pessoas e equipes */
+.sg-equipe-lista__filtros { padding: 16px 20px; }
+@media (max-width: 1099.98px) {
+  .sg-governanca__grade { grid-template-columns: minmax(0, 1fr); }
+  .sg-medidas__quadro { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .sg-dossie__causas { grid-template-columns: minmax(0, 1fr); }
+  .sg-medidas__filtro { min-width: 0; flex: 1 1 100%; }
+}
+.sg-governanca__fila .sg-governanca__panel-head { flex-wrap: wrap; }
+.sg-governanca__fila .sg-governanca__panel-title { flex: 1 1 200px; }
+.sg-governanca__fila .sg-governanca__refresh { flex: 1 1 100%; justify-content: center; }

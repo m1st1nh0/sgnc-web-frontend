@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import Container from "react-bootstrap/Container";
-import Table from "react-bootstrap/Table";
 
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
@@ -14,8 +13,6 @@ import { baixarPdfDossie } from "../../reports/client/relatoriosService.js";
 import { salvarArquivoLocal } from "../../../lib/utils/arquivoLocal.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
 import { normalizarRetorno, rotuloRetorno } from "../../../lib/utils/retorno.js";
-import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
-import CardMetrica from "../../../components/ui/CardMetrica.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
@@ -142,30 +139,36 @@ export default function EstatisticasUsuarioPage() {
 
   return (
     <div>
-      <Container className="sg-container" style={{ maxWidth: "1100px" }}>
-        <Link href={retorno} className="sg-voltar mb-3 d-inline-flex">
+      <Container className="sg-container sg-dossie">
+        <Link href={retorno} className="sg-voltar">
           &larr; {retorno === "/" ? "Voltar ao início" : rotuloRetorno(retorno)}
         </Link>
 
-        <CabecalhoPagina
-          titulo={
-            ehPropriaEstatistica
-              ? "Meu dossiê"
-              : "Dossiê do colaborador"
-          }
-          subtitulo="Histórico consolidado de não conformidades, recorrências e medidas registradas."
-          acoes={
+        <header className="sg-pagina-cabecalho sg-dossie__cabecalho">
+          <div className="sg-dossie__identidade">
+            <span className="sg-dossie__avatar" aria-hidden="true">
+              {(estatisticas?.nome || "?").trim().split(/\s+/).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()}
+            </span>
+            <div className="sg-pagina-cabecalho__texto">
+              <h1>{ehPropriaEstatistica ? "Meu dossiê" : "Dossiê do colaborador"}</h1>
+              <p>
+                {estatisticas
+                  ? `${estatisticas.nome} · ${estatisticas.setor || "Setor não informado"} · últimos 12 meses`
+                  : "Histórico consolidado de não conformidades, recorrências e medidas registradas."}
+              </p>
+            </div>
+          </div>
+          <div className="sg-pagina-cabecalho__acoes">
             <Botao
               variante="primario"
-              tamanho="sm"
               carregando={baixandoPdf}
               disabled={baixandoPdf}
               onClick={baixarDossie}
             >
               Baixar resumo em PDF
             </Botao>
-          }
-        />
+          </div>
+        </header>
 
         {usuario?.papel === "supervisor" && (
           <DicaContextual chave="dica_dossie_equipe" className="mb-3" />
@@ -179,23 +182,31 @@ export default function EstatisticasUsuarioPage() {
         {erro && <MensagemErro mensagem={erro} />}
 
         {!carregando && !erro && estatisticas && (
-          <div className="d-flex flex-column gap-4">
-            {/* Card do colaborador */}
-            <div className="sg-card">
-              <div className="sg-card-body p-4">
-                <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
-                  <div>
-                    <h2 className="h5 mb-1">{estatisticas.nome}</h2>
-                    <p className="texto-secundario mb-0">
-                      {estatisticas.setor || "Setor não informado"}
-                    </p>
-                  </div>
-                  <span className="sg-badge sg-badge--azul">
-                    Últimos 12 meses
-                  </span>
-                </div>
+          <div className="sg-dossie__conteudo">
+            <section className="sg-numeros" aria-label="Resumo dos últimos 12 meses">
+              <div className="sg-numero sg-numero--estatico">
+                <span className="sg-numero__rotulo">Não conformidades</span>
+                <span className="sg-numero__valor">{estatisticas.total_nc_12m ?? 0}</span>
+                <span className="sg-texto-apoio">contabilizadas nos últimos 12 meses</span>
               </div>
-            </div>
+              <div className="sg-numero sg-numero--estatico">
+                <span className="sg-numero__rotulo">Causas reincidentes</span>
+                <span className="sg-numero__valor">{causasReincidentes}</span>
+                <span className="sg-texto-apoio">apareceram mais de uma vez</span>
+              </div>
+              <div className="sg-numero sg-numero--estatico">
+                <span className="sg-numero__rotulo">Causa mais frequente</span>
+                <span className="sg-numero__valor sg-numero__valor--texto">{principalCausa?.causa || "—"}</span>
+                <span className="sg-texto-apoio">{principalCausa ? `${principalCausa.ocorrencias_12m} ocorrência(s)` : "Nenhuma causa no período"}</span>
+              </div>
+              {ehAdm && (
+                <div className="sg-numero sg-numero--estatico">
+                  <span className="sg-numero__rotulo">Medidas aplicadas</span>
+                  <span className="sg-numero__valor">{totalMedidas}</span>
+                  <span className="sg-texto-apoio">decisões manuais registradas</span>
+                </div>
+              )}
+            </section>
 
             <div className="sg-guia-leitura">
               <strong>Como esta página é calculada</strong>
@@ -205,38 +216,7 @@ export default function EstatisticasUsuarioPage() {
               </p>
             </div>
 
-            {/* Métricas */}
-            <div className="row g-3">
-              <div className="col-md-4">
-                <CardMetrica
-                  rotulo="Não conformidades"
-                  valor={estatisticas.total_nc_12m ?? 0}
-                  descricao="Contabilizadas nos últimos 12 meses"
-                  cor="azul"
-                />
-              </div>
-              <div className="col-md-4">
-                <CardMetrica
-                  rotulo="Causas reincidentes"
-                  valor={causasReincidentes}
-                  descricao="Causas que apareceram mais de uma vez"
-                  cor="amarela"
-                />
-              </div>
-              <div className="col-md-4">
-                <CardMetrica
-                  rotulo={ehAdm ? "Medidas aplicadas" : "Causa mais frequente"}
-                  valor={ehAdm ? totalMedidas : principalCausa?.ocorrencias_12m ?? 0}
-                  descricao={
-                    ehAdm
-                      ? "Decisões manuais registradas"
-                      : principalCausa?.causa || "Nenhuma causa no período"
-                  }
-                  cor="vermelha"
-                />
-              </div>
-            </div>
-
+            <h2 className="sg-secao-titulo mb-0">Causas contabilizadas</h2>
             {/* Causas / reincidências */}
             {estatisticas.causas?.length === 0 ? (
               <EstadoVazio
@@ -244,7 +224,7 @@ export default function EstatisticasUsuarioPage() {
                 descricao="Não há NC procedente com causa registrada nesta janela de 12 meses."
               />
             ) : (
-              estatisticas.causas.map((causa) => (
+              <div className="sg-dossie__causas">{estatisticas.causas.map((causa) => (
                 <div className="sg-card" key={causa.causa_id}>
                   <div className="sg-card-body p-4">
                     <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
@@ -307,8 +287,8 @@ export default function EstatisticasUsuarioPage() {
                     {causa.medidas?.length > 0 ? (
                       <div>
                         <h3 className="h6 mb-2">Medidas disciplinares</h3>
-                        <div className="sg-tabela-wrap">
-                          <Table responsive bordered hover size="sm" className="mb-0">
+                        <div className="sg-tabela-caixa">
+                          <table className="sg-tabela sg-tabela--compacta">
                             <thead>
                               <tr>
                                 <th>Ocorrência</th>
@@ -342,7 +322,7 @@ export default function EstatisticasUsuarioPage() {
                                 </tr>
                               ))}
                             </tbody>
-                          </Table>
+                          </table>
                         </div>
                       </div>
                     ) : (
@@ -352,7 +332,7 @@ export default function EstatisticasUsuarioPage() {
                     )}
                   </div>
                 </div>
-              ))
+              ))}</div>
             )}
           </div>
         )}
