@@ -43,11 +43,11 @@ function faixaAtual() {
 
 function Icon({ name }) { return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{ICONS[name]}</svg>; }
 
-export default function AppNavigation({ children, compactaInicial = false }) {
+export default function AppNavigation({ children, compactaInicial = true }) {
   const { usuario, sair } = useAuth();
   const { progresso, restaurar, abrirRevisao } = useOnboarding();
   const pathname = usePathname();
-  // Desktop e iPad paisagem: menu aberto por padrão; a escolha do usuário fica em cookie.
+  // Desktop e iPad paisagem: menu recolhido por padrão; a escolha do usuário fica em cookie.
   const [compacta, setCompacta] = useState(compactaInicial);
   // iPad retrato: trilho de ícones que expande sobre o conteúdo.
   const [overlayAberta, setOverlayAberta] = useState(false);
