@@ -108,7 +108,7 @@ export function montarAbas(dados: DadosPlanilha): Aba[] {
       const feedback = dados.feedbacks.get(nc.id)!;
       return [
         nc.id, nc.colaborador, feedback.causa_raiz, feedback.acao_combinada, feedback.responsavel_acao_nome, feedback.prazo_acao, feedback.combinado,
-        nc.feedback_aplicado_em || feedback.criado_em, feedback.prazo_aceite, ROTULO_ACEITE[situacaoDoAceite(nc)], nc.aceito_em,
+        nc.feedback_aplicado_em || feedback.registrado_em, feedback.prazo_aceite, ROTULO_ACEITE[situacaoDoAceite(nc)], nc.aceito_em,
       ];
     }),
   };

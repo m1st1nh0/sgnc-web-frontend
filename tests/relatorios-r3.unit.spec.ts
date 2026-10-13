@@ -98,3 +98,13 @@ test("R3: rotas e botão da tela", () => {
   expect(pagina).toContain(">CSV simples</Botao>");
   expect(readFileSync("src/app/api/relatorios/ncs.xlsx/route.ts", "utf8")).toContain("gerarXlsxNcs(url.searchParams,url.origin)");
 });
+
+test("R3: colunas lidas de nc_feedbacks existem na migração (o dossiê e os relatórios dependem disso)", () => {
+  const dadosTs = readFileSync("src/lib/reports/dados.ts", "utf8");
+  const migracao = readFileSync("supabase/migrations/20261010121000_feedback_estruturado_aceite_prazo.sql", "utf8");
+  const tabela = migracao.slice(migracao.indexOf("CREATE TABLE public.nc_feedbacks"), migracao.indexOf(");", migracao.indexOf("CREATE TABLE public.nc_feedbacks")));
+  const select = dadosTs.match(/from\("nc_feedbacks"\)\s*\.select\("([^"]+)"\)/)?.[1] ?? "";
+  const colunas = select.split(",").map((coluna) => coluna.trim()).filter(Boolean);
+  expect(colunas.length).toBeGreaterThan(5);
+  for (const coluna of colunas) expect(tabela, `coluna ${coluna}`).toMatch(new RegExp(`\\n\\s+${coluna}\\s`));
+});
