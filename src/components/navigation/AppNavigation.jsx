@@ -9,7 +9,7 @@ import MarcaSgnc from "../ui/MarcaSgnc.jsx";
 import SinoNotificacoes from "../../features/notificacoes/components/SinoNotificacoes.jsx";
 import { ehQualidade, NOME_PAPEL } from "../../lib/auth/papeis.js";
 
-const ROTULO_HOME = { adm: "Gestão de NCs", qualidade: "Gestão de NCs", supervisor: "Minha equipe", funcionario: "Minhas NCs" };
+const ROTULO_HOME = { adm: "Gestão de NCs", qualidade: "Gestão de NCs", supervisor: "NCs da equipe", funcionario: "Minhas NCs" };
 const ICONS = {
   home: <><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h3"/></>,
   eye: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></>,
