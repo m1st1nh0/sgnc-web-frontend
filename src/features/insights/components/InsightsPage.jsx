@@ -22,7 +22,6 @@ import {
   rotuloEscopo,
   resumoMetodologia,
 } from "../client/insightsUx.js";
-import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import CardMetrica from "../../../components/ui/CardMetrica.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
@@ -283,84 +282,73 @@ export default function InsightsPage() {
 
   return (
     <div>
-      <Container className="sg-container">
-        <CabecalhoPagina
-          titulo="Insights operacionais"
-          subtitulo={
-            dados
-              ? `${rotuloEscopo(dados.escopo)} · ${metodologia.periodo}`
-              : "Backlog, tempos de ciclo, reincidência e tendências"
-          }
-        />
-
-        <div className="sg-card mb-4">
-          <div className="sg-card-body p-3 p-md-4">
-            <Form onSubmit={aplicarFiltros}>
-              <div className="row g-3 align-items-end">
-                <Form.Group className="col-sm-6 col-lg-3" controlId="insights-inicio">
-                  <Form.Label className="sg-label">Início do período</Form.Label>
-                  <Form.Control
-                    type="date"
-                    className="sg-input"
-                    value={filtros.inicio}
-                    onChange={(e) =>
-                      setFiltros((atual) => ({
-                        ...atual,
-                        inicio: e.target.value,
-                      }))
-                    }
-                    disabled={carregando}
-                  />
-                </Form.Group>
-                <Form.Group className="col-sm-6 col-lg-3" controlId="insights-fim">
-                  <Form.Label className="sg-label">Fim do período</Form.Label>
-                  <Form.Control
-                    type="date"
-                    className="sg-input"
-                    value={filtros.fim}
-                    onChange={(e) =>
-                      setFiltros((atual) => ({
-                        ...atual,
-                        fim: e.target.value,
-                      }))
-                    }
-                    disabled={carregando}
-                  />
-                </Form.Group>
-                <div className="col-lg-6 d-flex flex-wrap gap-2">
-                  <Botao
-                    type="submit"
-                    variante="primario"
-                    carregando={carregando}
-                  >
-                    Aplicar período
-                  </Botao>
-                  <Botao
-                    type="button"
-                    variante="secundario"
-                    disabled={carregando}
-                    onClick={restaurarPeriodo}
-                  >
-                    Últimos 12 meses
-                  </Botao>
-                </div>
-              </div>
-            </Form>
-
-            {dados && (
-              <div className="sg-periodo-explicado mt-3">
-                <div>
-                  <strong>Fotografia atual</strong>
-                  <span>Backlog e aging não mudam com o filtro de datas.</span>
-                </div>
-                <div>
-                  <strong>Histórico do período</strong>
-                  <span>Volume, tendências e tempos respeitam o intervalo selecionado.</span>
-                </div>
-              </div>
-            )}
+      <Container className="sg-container sg-insights-pagina">
+        <header className="sg-pagina-cabecalho">
+          <div className="sg-pagina-cabecalho__texto">
+            <h1>Insights operacionais</h1>
+            <p>{dados ? `${rotuloEscopo(dados.escopo)} · ${metodologia.periodo}` : "Backlog, tempos de ciclo, reincidência e tendências"}</p>
           </div>
-        </div>
+          <Form onSubmit={aplicarFiltros} className="sg-insights-pagina__periodo">
+            <Form.Group controlId="insights-inicio">
+              <Form.Label className="sg-label">Início do período</Form.Label>
+              <Form.Control
+                type="date"
+                className="sg-input"
+                value={filtros.inicio}
+                onChange={(e) =>
+                  setFiltros((atual) => ({
+                    ...atual,
+                    inicio: e.target.value,
+                  }))
+                }
+                disabled={carregando}
+              />
+            </Form.Group>
+            <Form.Group controlId="insights-fim">
+              <Form.Label className="sg-label">Fim do período</Form.Label>
+              <Form.Control
+                type="date"
+                className="sg-input"
+                value={filtros.fim}
+                onChange={(e) =>
+                  setFiltros((atual) => ({
+                    ...atual,
+                    fim: e.target.value,
+                  }))
+                }
+                disabled={carregando}
+              />
+            </Form.Group>
+            <Botao
+              type="submit"
+              variante="primario"
+              carregando={carregando}
+            >
+              Aplicar período
+            </Botao>
+            <Botao
+              type="button"
+              variante="secundario"
+              disabled={carregando}
+              onClick={restaurarPeriodo}
+            >
+              Últimos 12 meses
+            </Botao>
+          </Form>
+        </header>
+
+        {dados && (
+          <div className="sg-periodo-explicado mb-3">
+            <div>
+              <strong>Fotografia atual</strong>
+              <span>Backlog e aging não mudam com o filtro de datas.</span>
+            </div>
+            <div>
+              <strong>Histórico do período</strong>
+              <span>Volume, tendências e tempos respeitam o intervalo selecionado.</span>
+            </div>
+          </div>
+        )}
 
         {carregando && !dados && (
           <EstadoCarregamento mensagem="Carregando insights..." />
@@ -373,64 +361,41 @@ export default function InsightsPage() {
         )}
 
         {dados && (
-          <>
-          <div className="sg-analiticos-layout sg-insights-layout" aria-busy={carregando}>
-            <aside className="sg-analiticos-aside" aria-label="Ações e atalhos dos Insights">
-              <section className="sg-card sg-proxima-acao">
-                <div className="sg-card-body">
-                  <span className="sg-proxima-acao__rotulo">Próxima ação</span>
-                  <h2 className="h6 mt-2 mb-2">{leituraExecutiva[0]?.titulo || "Acompanhar a operação"}</h2>
-                  <p className="texto-sm mb-3">{leituraExecutiva[0]?.texto || "Consulte os indicadores e as NCs dentro do seu escopo."}</p>
-                  {backlogAtual > 0 ? (
+          <div className="sg-insights-pagina__conteudo" aria-busy={carregando}>
+            <nav className="sg-ancoras" aria-label="Ir para seção dos Insights">
+              <a href="#operacao">Operação agora</a>
+              <a href="#movimento">Movimento no período</a>
+              <a href="#tempos">Velocidade do fluxo</a>
+              <a href="#reincidencia">Causas e reincidência</a>
+              <a href="#distribuicao">Distribuição</a>
+              <a href="#disciplina">Disciplina</a>
+            </nav>
+
+            <section className="sg-leitura-faixa" aria-labelledby="leitura-executiva">
+              <div className="sg-leitura-faixa__titulo">
+                <span className="sg-proxima-faixa__rotulo">Leitura rápida</span>
+                <h2 id="leitura-executiva">O que os dados indicam</h2>
+                <p>Resumo para orientar a análise. A decisão continua com a gestão.</p>
+              </div>
+              <ul className="sg-leitura-faixa__itens">
+                {leituraExecutiva.map((item) => (
+                  <li key={item.id}>
                     <button
                       type="button"
-                      className="sg-btn sg-btn--primario sg-proxima-acao__botao"
-                      onClick={() => leituraExecutiva[0]?.filtro && abrirDetalhe(leituraExecutiva[0].titulo, leituraExecutiva[0].filtro)}
+                      className="sg-leitura-faixa__item"
+                      disabled={!item.filtro}
+                      onClick={() => item.filtro && abrirDetalhe(item.titulo, item.filtro)}
+                      aria-label={item.filtro ? `Ver NCs: ${item.titulo}` : item.titulo}
                     >
-                      Ver NCs do backlog
+                      <strong>{item.titulo}</strong>
+                      <span>{item.texto}</span>
+                      {item.filtro && <span className="sg-leitura-faixa__acao">Ver NCs →</span>}
                     </button>
-                  ) : (
-                    <span className="sg-proxima-acao__sem-pendencia" role="status">Sem NCs ativas para tratar</span>
-                  )}
-                </div>
-              </section>
-
-              <section className="sg-card sg-leitura-rapida" aria-labelledby="leitura-executiva">
-                <div className="sg-card-body">
-                  <span className="sg-leitura-executiva__rotulo">Leitura rápida</span>
-                  <h2 id="leitura-executiva" className="h6 mt-2 mb-1">O que os dados indicam</h2>
-                  <p className="texto-xs texto-suave mb-3">Resumo para orientar a análise. A decisão continua com a gestão.</p>
-                  <div className="sg-leitura-executiva__itens">
-                    {leituraExecutiva.slice(1).map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className="sg-leitura-executiva__item"
-                        disabled={!item.filtro}
-                        onClick={() => item.filtro && abrirDetalhe(item.titulo, item.filtro)}
-                        aria-label={item.filtro ? `Ver NCs: ${item.titulo}` : item.titulo}
-                      >
-                        <strong>{item.titulo}</strong>
-                        <span>{item.texto}</span>
-                        {item.filtro && <span className="sg-leitura-executiva__acao">Ver NCs</span>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </section>
-
-              <nav className="sg-card sg-atalhos-modulo" aria-label="Ir para seção dos Insights">
-                <div className="sg-card-body">
-                  <h2 className="h6 mb-2">Atalhos</h2>
-                  <a href="#operacao">Operação agora</a>
-                  <a href="#movimento">Movimento no período</a>
-                  <a href="#tempos">Velocidade do fluxo</a>
-                  <a href="#reincidencia">Causas e reincidência</a>
-                  <a href="#distribuicao">Distribuição</a>
-                  <a href="#disciplina">Disciplina</a>
-                </div>
-              </nav>
-            </aside>
+                  </li>
+                ))}
+              </ul>
+              {backlogAtual === 0 && <span className="sg-leitura-faixa__vazio" role="status">Sem NCs ativas para tratar</span>}
+            </section>
 
           <div className="sg-insights d-flex flex-column gap-5">
             <section id="operacao" className="sg-insights__secao sg-insights__secao--norma">
@@ -931,7 +896,6 @@ export default function InsightsPage() {
             </section>
           </div>
           </div>
-          </>
         )}
       </Container>
       {detalheIndicador && (
