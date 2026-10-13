@@ -259,9 +259,9 @@ Expediente: segunda a sexta, 9h às 18h. Exemplo: feedback na segunda às 14h, p
 
 ### Fase 6: validação e devolutiva
 
-- [ ] 6.1 UAT no Preview com Qualidade, supervisor e funcionário, cobrindo os 9 pontos e as notificações, desktop e mobile.
-- [ ] 6.2 Atualizar `backlog-melhorias-operacionais.md` com o estado final.
-- [ ] 6.3 Preencher a seção "Devolutiva" abaixo, em linguagem de negócio, ponto a ponto.
+- [ ] 6.1 UAT no Preview com Qualidade, supervisor e funcionário, cobrindo os 9 pontos e as notificações, desktop e mobile. Roteiro pronto em [`uat-retorno-diretoria.md`](uat-retorno-diretoria.md) (11/10); falta a execução pelo responsável.
+- [x] 6.2 Atualizar `backlog-melhorias-operacionais.md` com o estado final.
+- [x] 6.3 Preencher a seção "Devolutiva" abaixo, em linguagem de negócio, ponto a ponto.
 
 ## Avaliação: notificações no aplicativo
 
@@ -290,16 +290,20 @@ Expediente: segunda a sexta, 9h às 18h. Exemplo: feedback na segunda às 14h, p
 
 ## Devolutiva para a diretoria
 
-_Preencher na Fase 5._
+Estado em 11/10/2026, depois das Fases 0 a 5 em produção. A validação final nos três perfis segue o roteiro [`uat-retorno-diretoria.md`](uat-retorno-diretoria.md).
 
 | # | Ponto | O que mudou | Onde ver |
 |---|---|---|---|
-| 1 | Lentidão | | |
-| 2 | Causa cadastrada | | |
-| 3 | Status após abrir | | |
-| 4 | Erro ao salvar | | |
-| 5 | Onboarding sem destino | Resolvido em 01/10 | Painel → Primeiros passos |
-| 6 | Primeiros passos repetitivo | | |
-| 7 | Botão redundante | | |
-| 8 | Cards filtrando a lista | Resolvido em 02/10 | Painel → cards de status |
-| 9 | Controle do feedback | | |
+| 1 | Lentidão | O sistema passou a rodar em São Paulo, na mesma região do banco; antes rodava nos EUA, e cada consulta cruzava o continente. As telas também deixaram de fazer em fila consultas que podem ser feitas juntas: as causas da NC vêm de uma vez, o detalhe carrega NC e evidências em paralelo, e o painel não espera mais o registro do "Primeiros passos". A medição em números, antes e depois, ainda está pendente (ver "Medições"). | Qualquer tela; a diferença aparece mais no painel e no detalhe da NC. |
+| 2 | Causa cadastrada | Ninguém cria causa digitando na abertura ou na edição da NC, nem a Qualidade. Causa nova só entra pela tela de causas; o colaborador pode pedir a inclusão. | Abrir NC → campo Causas; menu → Causas. |
+| 3 | Status após abrir | Quem abre a NC vê a confirmação e o próximo passo. O detalhe mostra as etapas do fluxo, a etapa atual, quem precisa agir e a linha do tempo com autor e data. As listas ganharam a coluna "Aguardando". Além disso, cada pessoa recebe avisos no sino do menu quando precisa agir ou quando acompanha a NC (validação, feedback, prazo do aceite, NC crítica, medidas). | Detalhe da NC; painel; Minhas NCs; sino no menu. |
+| 4 | Erro ao salvar | O erro aparece no campo que precisa de correção, com o cursor levado até ele. Causa digitada e não escolhida da lista impede o envio, com aviso. Falha do servidor mantém o que foi preenchido e mostra um código para o suporte. | Abrir NC; registrar feedback. |
+| 5 | Onboarding sem destino | Resolvido em 01/10. | Painel → Primeiros passos. |
+| 6 | Primeiros passos repetitivo | Depois do primeiro acesso, o bloco aparece recolhido. | Painel. |
+| 7 | Botão redundante | O botão de próxima ação passou a filtrar a lista; não leva mais só para a parte de baixo da tela. | Painel. |
+| 8 | Cards filtrando a lista | Resolvido em 02/10. | Painel → cards de status. |
+| 9 | Controle do feedback | O feedback agora tem campos obrigatórios: causa raiz, ação combinada, responsável pela ação, prazo da ação e combinado. O anexo de evidências é opcional. A tela mostra as NCs anteriores do mesmo colaborador com a mesma causa nos últimos 12 meses. O colaborador tem 2 dias úteis, contados só no expediente, para o aceite. Vencido o prazo, a NC vira "Não respondida" e o colaborador e o líder são avisados. O aceite tardio fica marcado como fora do prazo, e a NC não respondida conta para reincidência. A medida disciplinar passou a ter etapas (sugerida, aprovada ou reprovada, aplicada), decididas só por alguém da Qualidade que não seja o colaborador da NC. | Detalhe da NC → Feedback e Aceite; menu → Medidas. |
+
+**Pendências para fechar o goal**
+- **Medições (critério 8):** a região `gru1` está confirmada. Os tempos de antes e depois precisam ser medidos com `scripts/medir-rotas.mjs` por quem tem acesso ao Preview. O ambiente do Claude não alcança `*.vercel.app`, e o plano Hobby da Vercel não guarda logs nem observabilidade suficientes para extrair a medição. A medição de antes (região `iad1`) já não é reproduzível na produção; ela pode ser feita num deployment antigo, anterior ao PR da Fase 2, se ele ainda estiver disponível.
+- **UAT (critério 9 e item 6.1):** rodar o roteiro nos três perfis, no computador e no celular.
