@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
 import Alert from "react-bootstrap/Alert";
 
 import CampoCausas from "./CampoCausas.jsx";
@@ -20,7 +19,6 @@ import { buscarNc, editarNc, listarCausasConhecidas } from "../client/ncService.
 import { listarUsuarios } from "../../users/client/usuarioService.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { ErroApi } from "../../../lib/api/client/api.js";
-import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
 import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
@@ -150,11 +148,14 @@ export default function EditarNcPage() {
 
   return (
     <div>
-      <Container className="sg-container" style={{ maxWidth: "820px" }}>
-        <CabecalhoPagina
-          titulo={`Editar NC #${id}`}
-          subtitulo="Atualize as informações desta não conformidade"
-        />
+      <Container className="sg-container sg-form-nc">
+        <Link href={`/nc/${id}`} className="sg-voltar">&larr; NC #{id}</Link>
+        <header className="sg-pagina-cabecalho">
+          <div className="sg-pagina-cabecalho__texto">
+            <h1>Editar NC #{id}</h1>
+            <p>Atualize as informações desta não conformidade enquanto ela aguarda avaliação.</p>
+          </div>
+        </header>
 
         {!acesso && (
           <Alert variant="warning" className="sg-alerta sg-alerta--atencao">
@@ -168,23 +169,19 @@ export default function EditarNcPage() {
         {carregandoDados ? (
           <EstadoCarregamento mensagem="Carregando não conformidade..." />
         ) : acesso ? (
-          <div className="sg-card">
-            <Form onSubmit={aoEnviar}>
-              <div className="sg-secao-form">
-                <h2 className="sg-secao-form__titulo">Informações da ocorrência</h2>
-                <p className="sg-secao-form__descricao">
-                  Atualize os dados do chamado e do colaborador.
-                </p>
+          <div className="sg-form-nc__grade">
+            <Form id="form-editar-nc" onSubmit={aoEnviar} className="sg-form-nc__secoes">
+              <section className="sg-cartao" aria-labelledby="editar-passo-1">
+                <div className="sg-form-nc__passo">
+                  <span className="sg-form-nc__numero" aria-hidden="true">1</span>
+                  <div>
+                    <h2 id="editar-passo-1" className="sg-secao-titulo mb-1">Quem e onde</h2>
+                    <p className="sg-texto-apoio mb-0">Atualize os dados do chamado e do colaborador.</p>
+                  </div>
+                </div>
 
-                <CampoTexto
-                  rotulo="Chamado"
-                  value={chamado}
-                  onChange={(e) => setChamado(e.target.value)}
-                  placeholder="Número ou referência do chamado"
-                />
-
-                <Row>
-                  <Col md={8}>
+                <div className="sg-form-nc__linha">
+                  <div className="sg-form-nc__campo-largo">
                     <CampoSelecao
                       rotulo="Colaborador analisado"
                       id={IDS_CAMPOS.colaborador}
@@ -200,53 +197,68 @@ export default function EditarNcPage() {
                         </option>
                       ))}
                     </CampoSelecao>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="sg-label">Setor</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="sg-input"
-                        value={colaboradorSelecionado?.setor || ""}
-                        readOnly
-                        disabled
-                        placeholder="Definido pelo cadastro"
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
+                  </div>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="sg-label" htmlFor="setor-colaborador">Setor</Form.Label>
+                    <Form.Control
+                      id="setor-colaborador"
+                      type="text"
+                      className="sg-input"
+                      value={colaboradorSelecionado?.setor || ""}
+                      readOnly
+                      disabled
+                      placeholder="Definido pelo cadastro"
+                    />
+                  </Form.Group>
+                </div>
 
-                <CampoSelecao
-                  rotulo="Criticidade"
-                  value={criticidade}
-                  onChange={(e) => setCriticidade(e.target.value)}
-                >
-                  {OPCOES_CRITICIDADE.map((opcao) => (
-                    <option key={opcao} value={opcao}>
-                      {opcao}
-                    </option>
-                  ))}
-                </CampoSelecao>
-              </div>
+                <CampoTexto
+                  rotulo="Chamado"
+                  value={chamado}
+                  onChange={(e) => setChamado(e.target.value)}
+                  placeholder="Número ou referência do chamado"
+                />
+              </section>
 
-              <div className="sg-secao-form">
-                <h2 className="sg-secao-form__titulo">Detalhes</h2>
-                <p className="sg-secao-form__descricao">
-                  Descreva a situação e atualize as causas.
-                </p>
+              <section className="sg-cartao" aria-labelledby="editar-passo-2">
+                <div className="sg-form-nc__passo">
+                  <span className="sg-form-nc__numero" aria-hidden="true">2</span>
+                  <div>
+                    <h2 id="editar-passo-2" className="sg-secao-titulo mb-1">O que aconteceu</h2>
+                    <p className="sg-texto-apoio mb-0">Descreva a situação e atualize as causas.</p>
+                  </div>
+                </div>
+
+                <fieldset className="sg-segmentado">
+                  <legend className="sg-label">Criticidade</legend>
+                  <div className="sg-segmentado__opcoes">
+                    {OPCOES_CRITICIDADE.map((opcao) => (
+                      <label key={opcao} className="sg-segmentado__opcao">
+                        <input
+                          type="radio"
+                          name="criticidade"
+                          value={opcao}
+                          checked={criticidade === opcao}
+                          onChange={() => setCriticidade(opcao)}
+                        />
+                        <span>{opcao}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
 
                 <CampoTextoArea
                   rotulo="Descrição"
                   id={IDS_CAMPOS.descricao}
                   obrigatorio
-                  rows={4}
+                  rows={5}
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}
                   erro={errosCampo.descricao}
                   placeholder="Descreva o que aconteceu..."
                 />
 
-                <Form.Group className="mb-4">
+                <Form.Group className="mb-0">
                   <Form.Label className="sg-label" htmlFor={IDS_CAMPOS.causas}>Causas</Form.Label>
                   <CampoCausas
                     idCampo={IDS_CAMPOS.causas}
@@ -261,22 +273,30 @@ export default function EditarNcPage() {
                     Selecione causas do catálogo. Causas novas são cadastradas em Gestão de causas.
                   </Form.Text>
                 </Form.Group>
-              </div>
-
-              <div className="sg-secao-form d-flex gap-2">
-                <Botao type="submit" variante="primario" carregando={enviando} tamanho="lg">
-                  Salvar alterações
-                </Botao>
-                <Botao
-                  variante="secundario"
-                  tamanho="lg"
-                  onClick={() => router.push(`/nc/${id}`)}
-                  disabled={enviando}
-                >
-                  Cancelar
-                </Botao>
-              </div>
+              </section>
             </Form>
+
+            <aside className="sg-cartao sg-form-nc__resumo" aria-labelledby="revisao-editar-nc">
+              <h2 id="revisao-editar-nc" className="sg-secao-titulo">Revise as alterações</h2>
+              <dl className="sg-form-nc__revisao">
+                <div><dt>Colaborador</dt><dd>{colaboradorSelecionado?.nome || "Ainda não selecionado"}</dd></div>
+                <div><dt>Setor</dt><dd>{colaboradorSelecionado?.setor || "—"}</dd></div>
+                <div><dt>Criticidade</dt><dd>{criticidade}</dd></div>
+                <div><dt>Causas</dt><dd>{causas.length ? causas.join(", ") : "Não informadas"}</dd></div>
+              </dl>
+              <Botao type="submit" form="form-editar-nc" variante="sucesso" carregando={enviando} tamanho="lg" className="w-100">
+                Salvar alterações
+              </Botao>
+              <Botao
+                variante="secundario"
+                tamanho="lg"
+                className="w-100"
+                onClick={() => router.push(`/nc/${id}`)}
+                disabled={enviando}
+              >
+                Cancelar
+              </Botao>
+            </aside>
           </div>
         ) : null}
       </Container>

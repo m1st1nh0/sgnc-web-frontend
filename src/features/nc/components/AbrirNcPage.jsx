@@ -9,10 +9,8 @@ import CampoCausas from "./CampoCausas.jsx";
 import { listarOpcoesNc } from "../../users/client/usuarioService.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
 import { abrirNc, listarCausasConhecidas, anexarEvidencia, solicitarCausa } from "../client/ncService.js";
-import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
-import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
 import CampoTextoArea from "../../../components/ui/CampoTextoArea.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
@@ -233,125 +231,132 @@ export default function AbrirNcPage() {
 
   return (
     <div>
-      <Container className="sg-container" style={{ maxWidth: "820px" }}>
-        <CabecalhoPagina
-          titulo="Abrir Não Conformidade"
-          subtitulo="Registre o fato com clareza. A equipe responsável fará a avaliação depois."
-        />
+      <Container className="sg-container sg-form-nc">
+        <header className="sg-pagina-cabecalho">
+          <div className="sg-pagina-cabecalho__texto">
+            <h1>Abrir não conformidade</h1>
+            <p>Registre o fato com clareza. A Qualidade fará a avaliação depois.</p>
+          </div>
+        </header>
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
-        {avisoCausa && <div className="alert alert-success" role="status">{avisoCausa}</div>}
+        {avisoCausa && <div className="sg-alerta sg-alerta--sucesso mb-3" role="status">{avisoCausa}</div>}
 
         {carregandoDados ? (
           <EstadoCarregamento mensagem="Carregando dados do formulário..." />
         ) : (
-          <div className="sg-card">
-            <Form onSubmit={aoEnviar}>
-              <div className="sg-secao-form">
-                <div className="sg-etapa-form">
-                  <span className="sg-etapa-form__numero">1</span>
+          <div className="sg-form-nc__grade">
+            <Form id="form-abrir-nc" onSubmit={aoEnviar} className="sg-form-nc__secoes">
+              <section className="sg-cartao" aria-labelledby="abrir-passo-1">
+                <div className="sg-form-nc__passo">
+                  <span className="sg-form-nc__numero" aria-hidden="true">1</span>
                   <div>
-                    <h2 className="sg-secao-form__titulo">Quem e onde</h2>
-                    <p className="sg-secao-form__descricao">
-                      Localize o colaborador ativo e confira o setor antes de continuar.
-                    </p>
+                    <h2 id="abrir-passo-1" className="sg-secao-titulo mb-1">Quem e onde</h2>
+                    <p className="sg-texto-apoio mb-0">Localize o colaborador ativo e confira o setor antes de continuar.</p>
                   </div>
                 </div>
-
-                <CampoTexto
-                  rotulo="Chamado"
-                  value={chamado}
-                  onChange={(e) => setChamado(e.target.value)}
-                  placeholder="Número ou referência do chamado"
-                  helper="Campo opcional. Use para relacionar a NC a um chamado do helpdesk."
-                />
 
                 <DicaContextual
                   chave="dica_abertura_colaborador"
                   className="mb-3"
                 />
 
-                <Form.Group className="mb-4">
-                  <Form.Label className="sg-label">
-                    Colaborador analisado <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    id={IDS_CAMPOS.colaborador}
-                    type="search"
-                    className="sg-input"
-                    aria-invalid={errosCampo.colaborador ? true : undefined}
-                    value={buscaColaborador}
-                    onChange={(e) => setBuscaColaborador(e.target.value)}
-                    placeholder="Digite o nome ou setor para localizar"
-                    aria-describedby="ajuda-colaborador"
+                <div className="sg-form-nc__linha">
+                  <Form.Group className="sg-form-nc__campo-largo">
+                    <Form.Label className="sg-label" htmlFor={IDS_CAMPOS.colaborador}>
+                      Colaborador analisado <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      id={IDS_CAMPOS.colaborador}
+                      type="search"
+                      className="sg-input"
+                      aria-invalid={errosCampo.colaborador ? true : undefined}
+                      value={buscaColaborador}
+                      onChange={(e) => setBuscaColaborador(e.target.value)}
+                      placeholder="Digite o nome ou setor para localizar"
+                      aria-describedby="ajuda-colaborador"
+                    />
+                    <Form.Text id="ajuda-colaborador" className="sg-helper">
+                      Clique em uma pessoa abaixo para selecioná-la. A busca apenas filtra os resultados.
+                    </Form.Text>
+                  </Form.Group>
+                  <CampoTexto
+                    rotulo="Chamado"
+                    value={chamado}
+                    onChange={(e) => setChamado(e.target.value)}
+                    placeholder="Número ou referência do chamado"
+                    helper="Opcional. Relaciona a NC a um chamado do helpdesk."
                   />
-                  <Form.Text id="ajuda-colaborador" className="sg-helper">
-                    Clique em uma pessoa abaixo para selecioná-la. A busca apenas filtra os resultados.
-                  </Form.Text>
+                </div>
 
-                  <div className="sg-seletor-colaborador mt-2" role="listbox" aria-label="Colaboradores ativos">
-                    {usuariosFiltrados.length === 0 ? (
-                      <div className="sg-seletor-colaborador__vazio">
-                        Nenhum colaborador encontrado para “{buscaColaborador}”.
-                      </div>
-                    ) : (
-                      usuariosFiltrados.map((pessoa) => {
-                        const selecionado = pessoa.id === colaboradorId;
-                        return (
-                          <button
-                            type="button"
-                            role="option"
-                            aria-selected={selecionado}
-                            className={`sg-seletor-colaborador__opcao ${selecionado ? "sg-seletor-colaborador__opcao--ativa" : ""}`}
-                            key={pessoa.id}
-                            onClick={() => {
-                              setColaboradorId(pessoa.id);
-                              setErrosCampo((atual) => ({ ...atual, colaborador: "" }));
-                            }}
-                          >
-                            <span className="sg-seletor-colaborador__avatar" aria-hidden="true">
-                              {(pessoa.nome || "?").trim().charAt(0).toUpperCase()}
-                            </span>
-                            <span><strong>{pessoa.nome}</strong><small>{pessoa.setor || "Setor não informado"}</small></span>
-                            <span className="sg-seletor-colaborador__marca">{selecionado ? "Selecionado" : "Selecionar"}</span>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                  {errosCampo.colaborador && <div className="sg-erro-campo mt-2">{errosCampo.colaborador}</div>}
-                </Form.Group>
+                <div className="sg-seletor-colaborador" role="listbox" aria-label="Colaboradores ativos">
+                  {usuariosFiltrados.length === 0 ? (
+                    <div className="sg-seletor-colaborador__vazio">
+                      Nenhum colaborador encontrado para “{buscaColaborador}”.
+                    </div>
+                  ) : (
+                    usuariosFiltrados.map((pessoa) => {
+                      const selecionado = pessoa.id === colaboradorId;
+                      return (
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={selecionado}
+                          className={`sg-seletor-colaborador__opcao ${selecionado ? "sg-seletor-colaborador__opcao--ativa" : ""}`}
+                          key={pessoa.id}
+                          onClick={() => {
+                            setColaboradorId(pessoa.id);
+                            setErrosCampo((atual) => ({ ...atual, colaborador: "" }));
+                          }}
+                        >
+                          <span className="sg-seletor-colaborador__avatar" aria-hidden="true">
+                            {(pessoa.nome || "?").trim().charAt(0).toUpperCase()}
+                          </span>
+                          <span><strong>{pessoa.nome}</strong><small>{pessoa.setor || "Setor não informado"}</small></span>
+                          <span className="sg-seletor-colaborador__marca">{selecionado ? "Selecionado" : "Selecionar"}</span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+                {errosCampo.colaborador && <div className="sg-erro-campo mt-2">{errosCampo.colaborador}</div>}
+              </section>
 
-                <CampoSelecao
-                  rotulo="Criticidade"
-                  id={IDS_CAMPOS.criticidade}
-                  erro={errosCampo.criticidade}
-                  value={criticidade}
-                  onChange={(e) => setCriticidade(e.target.value)}
-                >
-                  {OPCOES_CRITICIDADE.map((opcao) => (
-                    <option key={opcao} value={opcao}>{opcao}</option>
-                  ))}
-                </CampoSelecao>
-                <p className="sg-helper mt-n2">{EXPLICACOES_CRITICIDADE[criticidade]}</p>
-              </div>
-
-              <div className="sg-secao-form">
-                <div className="sg-etapa-form">
-                  <span className="sg-etapa-form__numero">2</span>
+              <section className="sg-cartao" aria-labelledby="abrir-passo-2">
+                <div className="sg-form-nc__passo">
+                  <span className="sg-form-nc__numero" aria-hidden="true">2</span>
                   <div>
-                    <h2 className="sg-secao-form__titulo">O que aconteceu</h2>
-                    <p className="sg-secao-form__descricao">
-                      Informe fatos observáveis, impacto e contexto. Evite julgamentos pessoais.
-                    </p>
+                    <h2 id="abrir-passo-2" className="sg-secao-titulo mb-1">O que aconteceu</h2>
+                    <p className="sg-texto-apoio mb-0">Informe fatos observáveis, impacto e contexto. Evite julgamentos pessoais.</p>
                   </div>
                 </div>
+
+                <fieldset className="sg-segmentado" aria-describedby="explicacao-criticidade">
+                  <legend className="sg-label">Criticidade <span className="text-danger">*</span></legend>
+                  <div className="sg-segmentado__opcoes">
+                    {OPCOES_CRITICIDADE.map((opcao, indice) => (
+                      <label key={opcao} className="sg-segmentado__opcao">
+                        <input
+                          type="radio"
+                          name="criticidade"
+                          id={indice === 0 ? IDS_CAMPOS.criticidade : undefined}
+                          value={opcao}
+                          checked={criticidade === opcao}
+                          onChange={() => setCriticidade(opcao)}
+                        />
+                        <span>{opcao}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p id="explicacao-criticidade" className="sg-helper mb-0">{EXPLICACOES_CRITICIDADE[criticidade]}</p>
+                  {errosCampo.criticidade && <div className="sg-erro-campo mt-2">{errosCampo.criticidade}</div>}
+                </fieldset>
 
                 <CampoTextoArea
                   rotulo="Descrição"
                   id={IDS_CAMPOS.descricao}
                   obrigatorio
-                  rows={4}
+                  rows={5}
                   value={descricao}
                   onChange={(e) => {
                     setDescricao(e.target.value);
@@ -362,7 +367,7 @@ export default function AbrirNcPage() {
                 />
                 <div className="texto-xs texto-suave text-end mb-3">{descricao.trim().length} caracteres</div>
 
-                <Form.Group className="mb-4">
+                <Form.Group className="mb-0">
                   <Form.Label className="sg-label" htmlFor={IDS_CAMPOS.causas}>Causas</Form.Label>
                   <CampoCausas
                     idCampo={IDS_CAMPOS.causas}
@@ -386,16 +391,14 @@ export default function AbrirNcPage() {
                       : "Selecione uma causa do catálogo ou solicite a inclusão de uma nova."}
                   </Form.Text>
                 </Form.Group>
-              </div>
+              </section>
 
-              <div className="sg-secao-form">
-                <div className="sg-etapa-form">
-                  <span className="sg-etapa-form__numero">3</span>
+              <section className="sg-cartao" aria-labelledby="abrir-passo-3">
+                <div className="sg-form-nc__passo">
+                  <span className="sg-form-nc__numero" aria-hidden="true">3</span>
                   <div>
-                    <h2 className="sg-secao-form__titulo">Evidências e revisão</h2>
-                    <p className="sg-secao-form__descricao">
-                      Anexe arquivos úteis e confira o resumo antes de registrar.
-                    </p>
+                    <h2 id="abrir-passo-3" className="sg-secao-titulo mb-1">Evidências <span className="sg-texto-apoio fw-normal">opcional</span></h2>
+                    <p className="sg-texto-apoio mb-0">Imagens, PDFs ou planilhas que ajudem a entender o fato.</p>
                   </div>
                 </div>
                 <DicaContextual
@@ -404,7 +407,9 @@ export default function AbrirNcPage() {
                 />
 
                 <Form.Group className="mb-1">
+                  <Form.Label className="sg-label" htmlFor="evidencias-abertura">Arquivos</Form.Label>
                   <Form.Control
+                    id="evidencias-abertura"
                     type="file"
                     multiple
                     accept={FORMATOS_EVIDENCIA}
@@ -438,33 +443,32 @@ export default function AbrirNcPage() {
                 {previewArquivo && (
                   <PreviewImagem arquivo={previewArquivo} aoFechar={() => setPreviewArquivo(null)} />
                 )}
-
-                <div className="sg-revisao-nc mt-4">
-                  <h3>Revise antes de abrir</h3>
-                  <dl>
-                    <div><dt>Colaborador</dt><dd>{colaboradorSelecionado?.nome || "Ainda não selecionado"}</dd></div>
-                    <div><dt>Setor</dt><dd>{colaboradorSelecionado?.setor || "—"}</dd></div>
-                    <div><dt>Criticidade</dt><dd>{criticidade}</dd></div>
-                    <div><dt>Causas</dt><dd>{causas.length ? causas.join(", ") : "Não informadas"}</dd></div>
-                    <div><dt>Evidências</dt><dd>{arquivosEvidencias.length} arquivo(s)</dd></div>
-                  </dl>
-                </div>
-              </div>
-
-              <div className="sg-secao-form d-flex gap-2">
-                <Botao type="submit" variante="primario" carregando={enviando} tamanho="lg">
-                  {enviando ? etapaEnvio : "Abrir Não Conformidade"}
-                </Botao>
-                <Botao
-                  variante="secundario"
-                  tamanho="lg"
-                  onClick={() => router.push("/")}
-                  disabled={enviando}
-                >
-                  Cancelar
-                </Botao>
-              </div>
+              </section>
             </Form>
+
+            <aside className="sg-cartao sg-form-nc__resumo" aria-labelledby="revisao-abrir-nc">
+              <h2 id="revisao-abrir-nc" className="sg-secao-titulo">Revise antes de abrir</h2>
+              <dl className="sg-form-nc__revisao">
+                <div><dt>Colaborador</dt><dd>{colaboradorSelecionado?.nome || "Ainda não selecionado"}</dd></div>
+                <div><dt>Setor</dt><dd>{colaboradorSelecionado?.setor || "—"}</dd></div>
+                <div><dt>Criticidade</dt><dd>{criticidade}</dd></div>
+                <div><dt>Causas</dt><dd>{causas.length ? causas.join(", ") : "Não informadas"}</dd></div>
+                <div><dt>Evidências</dt><dd>{arquivosEvidencias.length} arquivo(s)</dd></div>
+              </dl>
+              <Botao type="submit" form="form-abrir-nc" variante="sucesso" carregando={enviando} tamanho="lg" className="w-100">
+                {enviando ? etapaEnvio : "Abrir NC"}
+              </Botao>
+              <Botao
+                variante="secundario"
+                tamanho="lg"
+                className="w-100"
+                onClick={() => router.push("/")}
+                disabled={enviando}
+              >
+                Cancelar
+              </Botao>
+              <p className="sg-texto-apoio mb-0">A Qualidade e a Adm recebem o aviso. Você recebe a decisão quando a NC for avaliada.</p>
+            </aside>
           </div>
         )}
       </Container>

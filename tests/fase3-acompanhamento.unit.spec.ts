@@ -90,5 +90,5 @@ test("3.2–3.5: detalhe com etapas e histórico, confirmação após abrir e co
   // Redesign 10/2026 (proposta B): lista com painel; "Com quem está" substitui "Aguardando".
   expect(home).toContain("Com quem está: <strong>{pendente.responsavel}</strong>");
   expect(home).toContain("<EtapasNc nc={nc} visualizadorId={usuario?.id} compacta />");
-  expect(read("src/features/nc/components/MinhasNcsPage.jsx")).toContain("Aguardando:");
+  expect(read("src/features/nc/components/MinhasNcsPage.jsx")).toContain("Com quem está: <strong>{pendente.responsavel}</strong>");
 });
