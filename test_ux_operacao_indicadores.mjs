@@ -93,7 +93,9 @@ for (const id of ["operacao", "tempos", "reincidencia", "distribuicao", "discipl
 assert.doesNotMatch(insights, /<section id="[^"]+">\s*<section/);
 
 assert.match(home, /aria-labelledby="proxima-acao-titulo"/);
-assert.match(home, /aria-labelledby="atalhos-do-papel"/);
+// Redesign 10/2026: os atalhos duplicados com o menu saíram; as etapas viram uma barra clicável.
+assert.doesNotMatch(home, /atalhos-do-papel/);
+assert.match(home, /className="sg-etapas-barra"/);
 assert.match(homeUx, /Visão da Qualidade/);
 assert.match(homeUx, /Sua equipe hierárquica/);
 assert.match(homeUx, /Seu próximo passo/);

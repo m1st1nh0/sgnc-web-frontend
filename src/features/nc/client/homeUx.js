@@ -27,6 +27,7 @@ export function filtrarNcsPorCardHome(ncs, rotulo, usuarioId) {
   // O colaborador ainda pode aceitar depois do prazo (D11): "Não respondida" segue pendente para ele.
   if (rotulo === "Aguardando meu aceite") return ncs.filter((nc) => ["aguardando_aceite", "nao_respondida"].includes(nc.status));
   if (rotulo === "Não respondidas") return ncs.filter((nc) => nc.status === "nao_respondida");
+  if (rotulo === "Em plano de ação") return ncs.filter((nc) => nc.status === "em_plano_acao");
   if (rotulo === "Concluídas") return ncs.filter((nc) => nc.status === "concluida");
   if (rotulo === "Abertas por mim") return ncs.filter((nc) => nc.aberto_por === usuarioId);
   if (rotulo === "Minhas NCs ativas") {
@@ -131,6 +132,12 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
           cor: "vermelha",
         },
         {
+          rotulo: "Em plano de ação",
+          valor: contar(ncs, "em_plano_acao"),
+          descricao: "NCs críticas em execução",
+          cor: "vermelha",
+        },
+        {
           rotulo: "Concluídas",
           valor: contar(ncs, "concluida"),
           descricao: "Ciclos encerrados",
@@ -196,6 +203,12 @@ export function criarVisaoHome(usuario, ncs, equipeIds = []) {
           rotulo: "Não respondidas",
           valor: contar(equipe, "nao_respondida"),
           descricao: "Prazo de aceite vencido",
+          cor: "vermelha",
+        },
+        {
+          rotulo: "Em plano de ação",
+          valor: contar(equipe, "em_plano_acao"),
+          descricao: "NCs críticas em execução",
           cor: "vermelha",
         },
         {
