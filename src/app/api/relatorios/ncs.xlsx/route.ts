@@ -1,0 +1,2 @@
+import { apiErrorResponse } from "@/lib/api/error"; import { gerarXlsxNcs } from "@/lib/reports/service"; import { downloadResponse } from "@/lib/reports/response";
+export async function GET(request:Request){try{const url=new URL(request.url);const file=await gerarXlsxNcs(url.searchParams,url.origin);return downloadResponse(file.bytes,file.filename,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");}catch(error){return apiErrorResponse(error);}}
