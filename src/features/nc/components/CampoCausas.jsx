@@ -30,7 +30,8 @@ export default function CampoCausas({
   const causaExistente = sugestoes.find((causa) => normalizar(causa) === termo);
   const sugestoesFiltradas = sugestoes.filter((sugestao) => {
     const jaEscolhida = valor.some((v) => normalizar(v) === normalizar(sugestao));
-    return !jaEscolhida && termo.length > 0 && normalizar(sugestao).includes(termo);
+    // Sem texto digitado, a lista mostra o catálogo inteiro (abre ao focar ou clicar no campo).
+    return !jaEscolhida && (termo.length === 0 || normalizar(sugestao).includes(termo));
   });
 
   function adicionarCausa(causa) {
@@ -39,9 +40,11 @@ export default function CampoCausas({
     const jaExiste = valor.some((v) => normalizar(v) === normalizar(causaLimpa));
     if (!jaExiste) aoMudar([...valor, causaLimpa]);
     atualizarTexto("");
-    setMostrarSugestoes(false);
+    // A lista continua aberta para escolher mais de uma causa; o foco volta ao campo.
+    setMostrarSugestoes(true);
     setMostrarSolicitacao(false);
     setJustificativa("");
+    referenciaCaixa.current?.querySelector("input")?.focus();
   }
 
   function removerCausa(causaParaRemover) {
@@ -49,7 +52,13 @@ export default function CampoCausas({
   }
 
   function aoPressionarTecla(evento) {
-    if (evento.key === "Enter") {
+    if (evento.key === "Escape") {
+      setMostrarSugestoes(false);
+    } else if (evento.key === "ArrowDown" && sugestoesFiltradas.length > 0) {
+      evento.preventDefault();
+      setMostrarSugestoes(true);
+      requestAnimationFrame(() => referenciaCaixa.current?.querySelector(".sg-tag-sugestao")?.focus());
+    } else if (evento.key === "Enter") {
       evento.preventDefault();
       if (causaExistente) adicionarCausa(causaExistente);
       else if (!linkCatalogo && aoSolicitarCausa && termo) setMostrarSolicitacao(true);
@@ -107,8 +116,9 @@ export default function CampoCausas({
             setErroSolicitacao("");
           }}
           onFocus={() => setMostrarSugestoes(true)}
+          onClick={() => setMostrarSugestoes(true)}
           onKeyDown={aoPressionarTecla}
-          placeholder={valor.length === 0 ? "Busque e selecione uma causa" : ""}
+          placeholder={valor.length === 0 ? "Clique para ver as causas ou digite para filtrar" : ""}
           aria-label="Causas"
           aria-invalid={erro ? true : undefined}
           aria-describedby={erro ? mensagemErroId : undefined}
@@ -119,7 +129,7 @@ export default function CampoCausas({
 
       {mostrarSugestoes && sugestoesFiltradas.length > 0 && (
         <div className="sg-tag-sugestoes" role="listbox" aria-label="Causas disponíveis">
-          {sugestoesFiltradas.slice(0, 8).map((sugestao) => (
+          {sugestoesFiltradas.map((sugestao) => (
             <button key={sugestao} type="button" role="option" aria-selected="false" className="sg-tag-sugestao" onClick={() => adicionarCausa(sugestao)}>
               {sugestao}
             </button>

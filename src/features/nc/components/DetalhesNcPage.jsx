@@ -20,6 +20,7 @@ import {
   anexarEvidencia,
   excluirEvidencia,
 } from "../client/ncService.js";
+import { listarOpcoesNc } from "../../users/client/usuarioService.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { ErroApi, chamarApi } from "../../../lib/api/client/api.js";
 import { baixarPdfNc } from "../../reports/client/relatoriosService.js";
@@ -85,6 +86,14 @@ export default function DetalhesNcPage({ retorno = "/" }) {
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const [avisoUploadInicial, setAvisoUploadInicial] = useState("");
   const [confirmacaoAbertura, setConfirmacaoAbertura] = useState(false);
+  const [pessoas, setPessoas] = useState([]);
+
+  useEffect(() => {
+    // Só para mostrar o nome de quem abriu; sem a lista, o detalhe segue normalmente.
+    let ativo = true;
+    listarOpcoesNc().then((lista) => { if (ativo) setPessoas(lista); }).catch(() => {});
+    return () => { ativo = false; };
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -298,6 +307,10 @@ export default function DetalhesNcPage({ retorno = "/" }) {
   // Anexos do feedback aparecem na seção Feedback; aqui ficam só as evidências da abertura.
   const anexosFeedback = evidencias.filter((ev) => ev.feedback_id != null);
   const evidenciasAbertura = evidencias.filter((ev) => ev.feedback_id == null);
+  const abertoPorNome = !nc?.aberto_por ? null
+    : nc.aberto_por === usuario?.id ? "você"
+      : pessoas.length === 0 ? null
+        : pessoas.find((pessoa) => pessoa.id === nc.aberto_por)?.nome || "usuário inativo";
   const aguardandoFeedback =
     nc && ["aguardando_feedback", "aguardando_analise"].includes(nc.status);
   return (
@@ -318,7 +331,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
             <h1>{nc?.colaborador || `NC #${id}`}</h1>
             {nc && (
               <p>
-                {[nc.setor, nc.chamado && `Chamado ${nc.chamado}`, `ocorrência em ${formatarData(nc.data)}`].filter(Boolean).join(" · ")}
+                {[nc.setor, nc.chamado && `Chamado ${nc.chamado}`, `ocorrência em ${formatarData(nc.data)}`, abertoPorNome && `aberta por ${abertoPorNome}${nc.criado_em ? ` em ${formatarDataHora(nc.criado_em)}` : ""}`].filter(Boolean).join(" · ")}
               </p>
             )}
           </div>
@@ -399,6 +412,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                     <div><dt>Setor</dt><dd>{nc.setor || "—"}</dd></div>
                     <div><dt>Chamado</dt><dd>{nc.chamado || "—"}</dd></div>
                     <div><dt>Data da ocorrência</dt><dd>{formatarData(nc.data)}</dd></div>
+                    <div><dt>Aberta por</dt><dd>{abertoPorNome ? abertoPorNome.charAt(0).toUpperCase() + abertoPorNome.slice(1) : "—"}</dd></div>
                     <div><dt>Causas</dt><dd>{nc.causas?.length > 0 ? nc.causas.join(", ") : "—"}</dd></div>
                     <div><dt>Reincidência</dt><dd>{nc.reincidencia ?? "—"}</dd></div>
                   </dl>

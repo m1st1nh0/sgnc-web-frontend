@@ -11,6 +11,7 @@ import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
 import { acaoPendente, etapasDaNc } from "../client/statusNc.js";
 import { listarMinhasNcs } from "../client/ncService.js";
+import { listarOpcoesNc } from "../../users/client/usuarioService.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { ErroApi } from "../../../lib/api/client/api.js";
 import { comRetorno } from "../../../lib/utils/retorno.js";
@@ -47,6 +48,14 @@ export default function MinhasNcsPage() {
   const [periodo, setPeriodo] = useState("30");
   const [busca, setBusca] = useState("");
   const [origem, setOrigem] = useState("abertas");
+  const [pessoas, setPessoas] = useState([]);
+
+  useEffect(() => {
+    // Nome de quem abriu cada NC; sem a lista, os cartões seguem sem o nome.
+    let ativo = true;
+    listarOpcoesNc().then((lista) => { if (ativo) setPessoas(lista); }).catch(() => {});
+    return () => { ativo = false; };
+  }, []);
   const [agora, setAgora] = useState(0);
 
   useEffect(() => {
@@ -145,6 +154,7 @@ export default function MinhasNcsPage() {
                       <strong>{nc.colaborador || usuario?.nome}</strong>
                       <span className="sg-texto-apoio">{[nc.setor, nc.chamado && `Chamado ${nc.chamado}`, nc.criticidade && `prioridade ${String(nc.criticidade).toLocaleLowerCase("pt-BR")}`].filter(Boolean).join(" · ")}</span>
                     </span>
+                    {(nc.aberto_por === usuario?.id || pessoas.length > 0) && <span className="sg-texto-apoio">Aberta por <strong>{nc.aberto_por === usuario?.id ? "você" : pessoas.find((pessoa) => pessoa.id === nc.aberto_por)?.nome || "usuário inativo"}</strong></span>}
                     {nc.descricao && <span className="sg-minhas__descricao">{nc.descricao}</span>}
                     <span className="sg-minhas__trilha" role="img" aria-label={`Etapa ${posicao} de ${etapas.length}`}>
                       {etapas.map((etapa) => <span key={etapa.chave} className={`sg-minhas__trilha-passo sg-minhas__trilha-passo--${etapa.situacao}`} />)}

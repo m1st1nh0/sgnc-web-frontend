@@ -3004,3 +3004,8 @@ textarea:focus-visible {
 .sg-governanca__fila .sg-governanca__panel-head { flex-wrap: wrap; }
 .sg-governanca__fila .sg-governanca__panel-title { flex: 1 1 200px; }
 .sg-governanca__fila .sg-governanca__refresh { flex: 1 1 100%; justify-content: center; }
+
+/* Causas na abertura/edição: lista aberta ao focar, com altura para ver o catálogo */
+.sg-tag-sugestoes { max-height: 300px; }
+.sg-tag-sugestao { min-height: 44px; }
+.sg-tag-sugestao:focus-visible { outline: 3px solid #287c82; outline-offset: -3px; }
