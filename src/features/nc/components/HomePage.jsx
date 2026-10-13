@@ -289,6 +289,7 @@ export default function HomePage() {
                         <span className="sg-gestao__item-meta">
                           {[nc.setor, nc.chamado && `Chamado ${nc.chamado}`, nc.criticidade && `prioridade ${String(nc.criticidade).toLocaleLowerCase("pt-BR")}`].filter(Boolean).join(" · ")}
                         </span>
+                        <span className="sg-gestao__item-meta">Aberta por <strong>{nc.aberto_por === usuario?.id ? "você" : obterNomeAbertoPor(nc) || "—"}</strong></span>
                         {pendente && <span className="sg-gestao__item-com">Com quem está: <strong>{pendente.responsavel}</strong></span>}
                       </Link>
                     </li>;
