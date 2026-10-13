@@ -26,7 +26,6 @@ import { baixarPdfNc } from "../../reports/client/relatoriosService.js";
 import { salvarArquivoLocal } from "../../../lib/utils/arquivoLocal.js";
 import { formatarData, formatarDataHora } from "../../../lib/utils/formato.js";
 import { rotuloRetorno } from "../../../lib/utils/retorno.js";
-import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
@@ -58,13 +57,6 @@ function ehImagem(nomeArquivo) {
   if (!nomeArquivo) return false;
   const extensao = nomeArquivo.split(".").pop()?.toLowerCase() || "";
   return EXTENSOES_IMAGEM.has(extensao);
-}
-
-function resumirDescricao(descricao, limite = 90) {
-  const texto = String(descricao || "").trim();
-  if (texto.length <= limite) return texto;
-  const corte = texto.slice(0, limite);
-  return `${corte.slice(0, Math.max(corte.lastIndexOf(" "), limite * 0.6)).trimEnd()}…`;
 }
 
 export default function DetalhesNcPage({ retorno = "/" }) {
@@ -310,23 +302,31 @@ export default function DetalhesNcPage({ retorno = "/" }) {
     nc && ["aguardando_feedback", "aguardando_analise"].includes(nc.status);
   return (
     <div>
-      <Container className="sg-container" style={{ maxWidth: "900px" }}>
-        <Link href={retorno} className="sg-voltar mb-3 d-inline-flex">
+      <Container className="sg-container sg-detalhe-nc">
+        <Link href={retorno} className="sg-voltar">
           &larr; {rotuloRetorno(retorno)}
         </Link>
-        <CabecalhoPagina
-          titulo={`NC #${id}`}
-          subtitulo={
-            nc
-              ? resumirDescricao(nc.descricao) || "Detalhes da não conformidade"
-              : ""
-          }
-          acoes={
-            nc && (
-              <>
+
+        <header className="sg-pagina-cabecalho sg-detalhe-nc__cabecalho">
+          <div className="sg-pagina-cabecalho__texto">
+            <div className="sg-detalhe-nc__selos">
+              <span className="sg-mono">NC #{id}</span>
+              {nc && <BadgeStatus status={nc.status} />}
+              {nc && <BadgePrioridade criticidade={nc.criticidade} />}
+              {nc?.critica && <span className="sg-badge sg-badge--vermelho">NC crítica</span>}
+            </div>
+            <h1>{nc?.colaborador || `NC #${id}`}</h1>
+            {nc && (
+              <p>
+                {[nc.setor, nc.chamado && `Chamado ${nc.chamado}`, `ocorrência em ${formatarData(nc.data)}`].filter(Boolean).join(" · ")}
+              </p>
+            )}
+          </div>
+          {nc && (
+            <div className="sg-pagina-cabecalho__acoes">
                 <Botao
                   variante="primario"
-                  tamanho="sm"
+                  tamanho="md"
                   carregando={baixandoPdf}
                   disabled={baixandoPdf}
                   onClick={baixarRelatorioPdf}
@@ -336,7 +336,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                 {podeEditar && (
                   <Botao
                     variante="secundario"
-                    tamanho="sm"
+                    tamanho="md"
                     disabled={enviandoArquivo}
                     onClick={() => router.push(`/nc/${id}/editar`)}
                   >
@@ -346,17 +346,16 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                 {podeExcluirNc && (
                   <Botao
                     variante="perigo"
-                    tamanho="sm"
+                    tamanho="md"
                     disabled={enviandoArquivo}
                     onClick={() => setConfirmarExclusaoNc(true)}
                   >
                     Excluir
                   </Botao>
                 )}
-              </>
-            )
-          }
-        />
+            </div>
+          )}
+        </header>
 
         <DicaContextual chave="dica_nc_pdf" className="mb-3" />
 
@@ -371,7 +370,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
 
         {nc && (
-          <div className="d-flex flex-column gap-3">
+          <div className="sg-detalhe-nc__conteudo">
             {confirmacaoAbertura && (
               <div className="sg-alerta sg-alerta--sucesso mb-0" role="status">
                 <div>
@@ -390,137 +389,54 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                 </div>
               </div>
             )}
-            <div className="sg-card">
-              <div className="sg-card-body p-4">
-                <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
-                  <h2 className="h5 mb-0">Dados da ocorrência</h2>
-                  <div className="d-flex gap-2 flex-wrap">
-                    {nc.critica && <span className="sg-badge sg-badge--vermelho">NC crítica</span>}
-                    <BadgePrioridade criticidade={nc.criticidade} />
-                    <BadgeStatus status={nc.status} />
-                  </div>
-                </div>
 
-                <dl className="mb-0">
-                  <div className="sg-detalhe">
-                    <dt className="sg-detalhe__rotulo">Ocorrência</dt>
-                    <dd className="sg-detalhe__valor">{formatarData(nc.data)}</dd>
+            <div className="sg-detalhe-nc__grade">
+              <div className="sg-detalhe-nc__principal">
+                <section className="sg-cartao" aria-labelledby="dados-ocorrencia-titulo">
+                  <h2 id="dados-ocorrencia-titulo" className="sg-secao-titulo">Dados da ocorrência</h2>
+                  <dl className="sg-dados">
+                    <div><dt>Colaborador analisado</dt><dd>{nc.colaborador || "—"}</dd></div>
+                    <div><dt>Setor</dt><dd>{nc.setor || "—"}</dd></div>
+                    <div><dt>Chamado</dt><dd>{nc.chamado || "—"}</dd></div>
+                    <div><dt>Data da ocorrência</dt><dd>{formatarData(nc.data)}</dd></div>
+                    <div><dt>Causas</dt><dd>{nc.causas?.length > 0 ? nc.causas.join(", ") : "—"}</dd></div>
+                    <div><dt>Reincidência</dt><dd>{nc.reincidencia ?? "—"}</dd></div>
+                  </dl>
+                  <div className="sg-detalhe-nc__descricao">
+                    <span className="sg-detalhe-nc__rotulo">Descrição</span>
+                    <p>{nc.descricao || "—"}</p>
                   </div>
-                  <div className="sg-detalhe">
-                    <dt className="sg-detalhe__rotulo">Colaborador analisado</dt>
-                    <dd className="sg-detalhe__valor">{nc.colaborador || "-"}</dd>
-                  </div>
-                  <div className="sg-detalhe">
-                    <dt className="sg-detalhe__rotulo">Setor</dt>
-                    <dd className="sg-detalhe__valor">{nc.setor || "-"}</dd>
-                  </div>
-                  <div className="sg-detalhe">
-                    <dt className="sg-detalhe__rotulo">Chamado</dt>
-                    <dd className="sg-detalhe__valor">{nc.chamado || "-"}</dd>
-                  </div>
-                  <div className="sg-detalhe">
-                    <dt className="sg-detalhe__rotulo">Reincidência</dt>
-                    <dd className="sg-detalhe__valor">{nc.reincidencia ?? "-"}</dd>
-                  </div>
-                  <div className="sg-detalhe">
-                    <dt className="sg-detalhe__rotulo">Descrição</dt>
-                    <dd className="sg-detalhe__valor">{nc.descricao || "-"}</dd>
-                  </div>
-                  <div className="sg-detalhe">
-                    <dt className="sg-detalhe__rotulo">Causas</dt>
-                    <dd className="sg-detalhe__valor">
-                      {nc.causas?.length > 0 ? nc.causas.join(", ") : "-"}
-                    </dd>
-                  </div>
-
                   {podeVerDetalhesCompletos && nc.motivo_invalidacao && (
-                    <div className="sg-detalhe">
-                      <dt
-                        className="sg-detalhe__rotulo"
-                        style={{ color: "var(--erro)" }}
-                      >
-                        Motivo da invalidação
-                      </dt>
-                      <dd
-                        className="sg-detalhe__valor"
-                        style={{ color: "var(--erro)" }}
-                      >
-                        {nc.motivo_invalidacao}
-                      </dd>
+                    <div className="sg-detalhe-nc__descricao sg-detalhe-nc__descricao--erro">
+                      <span className="sg-detalhe-nc__rotulo">Motivo da invalidação</span>
+                      <p>{nc.motivo_invalidacao}</p>
                     </div>
                   )}
                   {podeVerDetalhesCompletos && nc.feedback && !nc.feedback_estruturado && (
-                    <div className="sg-detalhe">
-                      <dt className="sg-detalhe__rotulo">Feedback</dt>
-                      <dd className="sg-detalhe__valor">{nc.feedback}</dd>
+                    <div className="sg-detalhe-nc__descricao">
+                      <span className="sg-detalhe-nc__rotulo">Feedback</span>
+                      <p>{nc.feedback}</p>
                     </div>
                   )}
                   {podeVerDetalhesCompletos && nc.texto_aceite && (
-                    <div className="sg-detalhe">
-                      <dt className="sg-detalhe__rotulo">Aceite registrado</dt>
-                      <dd className="sg-detalhe__valor fst-italic">
-                        "{nc.texto_aceite}"
-                      </dd>
+                    <div className="sg-detalhe-nc__descricao">
+                      <span className="sg-detalhe-nc__rotulo">Aceite registrado</span>
+                      <p className="fst-italic">"{nc.texto_aceite}"</p>
                     </div>
                   )}
-                  {podeVerDetalhesCompletos && (
-                    <>
-                      {nc.validado_em && (
-                        <div className="sg-detalhe">
-                          <dt className="sg-detalhe__rotulo">Validado em</dt>
-                          <dd className="sg-detalhe__valor">
-                            {formatarDataHora(nc.validado_em)}
-                          </dd>
-                        </div>
-                      )}
-                      {nc.feedback_aplicado_em && (
-                        <div className="sg-detalhe">
-                          <dt className="sg-detalhe__rotulo">
-                            Feedback aplicado em
-                          </dt>
-                          <dd className="sg-detalhe__valor">
-                            {formatarDataHora(nc.feedback_aplicado_em)}
-                          </dd>
-                        </div>
-                      )}
-                      {nc.aceito_em && (
-                        <div className="sg-detalhe">
-                          <dt className="sg-detalhe__rotulo">Aceito em</dt>
-                          <dd className="sg-detalhe__valor">
-                            {formatarDataHora(nc.aceito_em)}
-                          </dd>
-                        </div>
-                      )}
-                      <div className="sg-detalhe">
-                        <dt className="sg-detalhe__rotulo">Criado em</dt>
-                        <dd className="sg-detalhe__valor">
-                          {formatarDataHora(nc.criado_em)}
-                        </dd>
-                      </div>
-                      <div className="sg-detalhe">
-                        <dt className="sg-detalhe__rotulo">Atualizado em</dt>
-                        <dd className="sg-detalhe__valor">
-                          {formatarDataHora(nc.atualizado_em)}
-                        </dd>
-                      </div>
-                    </>
+                  {podeVerResumo && (
+                    <div className="sg-alerta sg-alerta--info mt-3 mb-0">
+                      Você abriu esta NC para {nc.colaborador}. Aqui você acompanha
+                      o status e os dados que registrou.
+                    </div>
                   )}
-                </dl>
-
-                {podeVerResumo && (
-                  <div className="sg-alerta sg-alerta--info mt-3 mb-0">
-                    Você abriu esta NC para {nc.colaborador}. Aqui você acompanha
-                    o status e os dados que registrou.
-                  </div>
-                )}
-              </div>
-            </div>
+                </section>
 
             {podeVerDetalhesCompletos && (
               <FeedbackNc nc={nc} anexos={anexosFeedback} aoVisualizarAnexo={setEvidenciaVisualizada} />
             )}
 
-            <div>
+            <div className="sg-detalhe-nc__acoes-fluxo">
               {ehAdm && ehColaboradorDaNc && !["concluida", "invalidada"].includes(nc.status) && (
                 <div className="sg-alerta sg-alerta--atencao mb-3" role="status">
                   Você é o colaborador analisado nesta NC. Avaliação, feedback, edição, exclusão e o
@@ -558,12 +474,16 @@ export default function DetalhesNcPage({ retorno = "/" }) {
               )}
             </div>
 
+              </div>
+
+              <aside className="sg-detalhe-nc__lateral" aria-label="Linha do tempo, evidências e datas">
+                <HistoricoNc ncId={id} versao={`${nc.status}-${nc.critica}-${nc.atualizado_em ?? ""}`} />
             {podeVerDetalhesCompletos && (
-              <div className="sg-card">
-                <div className="sg-card-body p-4">
-                  <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+              <section className="sg-cartao" aria-labelledby="evidencias-abertura-titulo">
+                <div>
+                  <div className="d-flex flex-column gap-2 mb-3">
                     <div>
-                      <h2 className="h6 mb-1">Evidências da abertura</h2>
+                      <h2 id="evidencias-abertura-titulo" className="sg-secao-titulo mb-1">Evidências da abertura</h2>
                       {enviandoArquivo && (
                         <div className="texto-xs texto-suave">
                           Enviando arquivo. Aguarde antes de avaliar a NC.
@@ -572,7 +492,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                     </div>
                     {nc.status === "aberta" &&
                       (ehAdm || ehAutor || ehColaboradorDaNc) && (
-                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <div className="sg-detalhe-nc__anexar">
                           <Form.Control
                             type="file"
                             size="sm"
@@ -660,9 +580,23 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                     </div>
                   )}
                 </div>
-              </div>
+              </section>
             )}
-            <HistoricoNc ncId={id} versao={`${nc.status}-${nc.critica}-${nc.atualizado_em ?? ""}`} />
+                {podeVerDetalhesCompletos && (
+                  <section className="sg-cartao" aria-labelledby="datas-nc-titulo">
+                    <h2 id="datas-nc-titulo" className="visually-hidden">Datas</h2>
+                    <dl className="sg-dados sg-dados--duas">
+                      <div><dt>Criada em</dt><dd>{formatarDataHora(nc.criado_em)}</dd></div>
+                      {nc.validado_em && <div><dt>Validada em</dt><dd>{formatarDataHora(nc.validado_em)}</dd></div>}
+                      {nc.feedback_aplicado_em && <div><dt>Feedback aplicado em</dt><dd>{formatarDataHora(nc.feedback_aplicado_em)}</dd></div>}
+                      {nc.aceito_em && <div><dt>Aceita em</dt><dd>{formatarDataHora(nc.aceito_em)}</dd></div>}
+                      <div><dt>Atualizada em</dt><dd>{formatarDataHora(nc.atualizado_em)}</dd></div>
+                      <div><dt>Crítica</dt><dd>{nc.critica ? "Sim" : "Não"}</dd></div>
+                    </dl>
+                  </section>
+                )}
+              </aside>
+            </div>
           </div>
         )}
       </Container>
