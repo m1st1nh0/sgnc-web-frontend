@@ -73,8 +73,8 @@ test("R1: relatórios sem texto sem acento, com rodapé e recorte", () => {
   }
   expect(service).toContain("Página ${index + 1} de ${pages.length}");
   expect(service).toContain("Gerado por ${geradoPor");
-  expect(service).toContain('writer.line("Escopo", recorte.escopo)');
-  expect(service).toContain('writer.line("Filtros", recorte.filtros)');
+  const resumo = readFileSync("src/lib/reports/resumo-pdf.ts", "utf8");
+  expect(resumo).toContain("${dados.escopo} · Filtros: ${dados.filtros}");
   expect(service).not.toContain("snapshot ocorrencia_numero");
 });
 

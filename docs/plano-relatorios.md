@@ -58,10 +58,10 @@ Uma fase por PR, validada no Preview antes do merge.
 
 ### Fase R2: relatório gerencial em PDF (propostas A + B)
 
-- [ ] Página 1: 4 números com comparação ao período anterior, "Pede atenção" (aceites vencendo, reincidência com medida sugerida, NC parada há mais tempo), etapas, tempos e principais causas.
-- [ ] Páginas seguintes: fluxo e prazos (NCs por mês, idade do backlog, aceites), causas, setores e pessoas (R-D4), medidas disciplinares, lista das NCs do período, "como ler este relatório".
-- [ ] Gráficos de barra desenhados com `pdf-lib`, sem dependência nova.
-- [ ] Testes de unidade da montagem de "Pede atenção" e da comparação de períodos.
+- [x] Página 1: 4 números com comparação ao período anterior ("Em andamento" é foto de hoje e diz isso no lugar da comparação), "Pede atenção" (aceites vencendo, reincidência com medida sugerida, NC parada há mais tempo), etapas, tempos e principais causas.
+- [x] Páginas seguintes: fluxo e prazos (NCs por mês, idade do backlog, aceites), causas, setores e pessoas (R-D4), medidas disciplinares, lista das NCs do período, "como ler este relatório".
+- [x] Gráficos de barra desenhados com `pdf-lib`, sem dependência nova.
+- [x] Testes de unidade da montagem de "Pede atenção" e da comparação de períodos.
 - [ ] Validado no Preview (Qualidade e supervisor).
 
 ### Fase R3: planilhas (propostas C + D)

@@ -3,16 +3,18 @@ import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
 import { MARGEM, pdfWriter } from "./pdf";
+import { carregarRecorte, reportScope, ultimosFeedbacks } from "./dados";
+import { itensDeAtencao, ordenarParaAcao, periodoAnterior } from "./regras";
+import { escreverResumo } from "./resumo-pdf";
 import { ApiError } from "@/lib/api/error";
 import { obterEstatisticasUsuario, obterInsights } from "@/lib/analytics/service";
 
 import { buscarNc, obterTimeline } from "@/lib/nc/service";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { buildNcReadScopeFilter, buildNcTeamScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
-import { listarPessoasAbaixo } from "@/lib/permissions/team-scope";
+import { buildNcTeamScopeFilter, SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
 import { ehQualidade } from "@/lib/auth/papeis";
 import { situacaoDoAceite } from "@/lib/nc/reincidencia";
-import { ROTULO_ACEITE, dataBr, dataHoraBr, duracao, periodoBr, plural, rotuloSituacaoMedida, rotuloStatus, rotuloTipoMedida } from "./formato";
+import { ROTULO_ACEITE, dataBr, dataHoraBr, plural, rotuloSituacaoMedida, rotuloStatus, rotuloTipoMedida } from "./formato";
 
 type Row = Record<string, any>;
 
@@ -82,32 +84,6 @@ export async function gerarPdfDossie(userId: string) {
   return { bytes: await writer.finish(requester.nome), filename: `sgnc-dossie-${userId}.pdf` };
 }
 
-/** Último feedback estruturado de cada NC, com o nome do responsável pela ação. */
-async function ultimosFeedbacks(ncIds: number[]) {
-  const result = new Map<number, Row>();
-  if (!ncIds.length) return result;
-  const admin = createAdminClient() as any;
-  const { data, error } = await admin.from("nc_feedbacks")
-    .select("nc_id, versao, causa_raiz, acao_combinada, responsavel_acao_id, prazo_acao, combinado, prazo_aceite, legado").in("nc_id", ncIds);
-  if (error) throw new ApiError("Não foi possível carregar os feedbacks.", 500);
-  for (const row of data ?? []) { const atual = result.get(row.nc_id); if (!atual || row.versao > atual.versao) result.set(row.nc_id, row); }
-  const ids = [...new Set([...result.values()].map((row) => row.responsavel_acao_id).filter(Boolean))];
-  if (ids.length) {
-    const { data: pessoas, error: pessoasError } = await admin.from("usuarios").select("id, nome").in("id", ids);
-    if (pessoasError) throw new ApiError("Não foi possível carregar os feedbacks.", 500);
-    const nomes = new Map((pessoas ?? []).map((pessoa: Row) => [pessoa.id, pessoa.nome]));
-    for (const row of result.values()) row.responsavel_acao_nome = nomes.get(row.responsavel_acao_id) ?? null;
-  }
-  return result;
-}
-
-async function reportScope() {
-  const user=await requireUser(); if(!ehQualidade(user.papel)&&user.papel!=="supervisor")throw new ApiError("Acesso restrito à Qualidade e às lideranças.",403);
-  const admin=createAdminClient(); let teamIds:string[]|null=null;
-  if(user.papel==="supervisor"){teamIds=(await listarPessoasAbaixo(user.id)).map((person)=>person.id);}
-  return {admin,teamIds,user};
-}
-
 export const CABECALHO_CSV_NCS = ["NC","Data","Status","Colaborador","Setor","Criticidade","Chamado","Causas","Ocorrências por causa","Reincidente em 12 meses","Descrição","Criada em","Validada em","Feedback enviado em","Aceita em","Horas até validação","Horas validação-feedback","Horas feedback-aceite","Horas ciclo total","Causa raiz","Ação combinada","Responsável pela ação","Prazo da ação","Combinado","Prazo do aceite","Situação do aceite"];
 
 export async function gerarCsvNcs(params: URLSearchParams) {
@@ -134,21 +110,6 @@ export async function gerarCsvNcs(params: URLSearchParams) {
   return {bytes:new TextEncoder().encode(`﻿${lines.join("\r\n")}`),filename:`sgnc-ncs-${start}-${end}.csv`};
 }
 
-const ROTULO_TEMPO: Record<string, string> = {
-  criacao_ate_validacao: "Da abertura à validação",
-  validacao_ate_feedback: "Da validação ao feedback",
-  feedback_ate_aceite: "Do feedback ao aceite",
-  ciclo_total: "Ciclo completo (abertura ao aceite)",
-  criacao_ate_decisao: "Da abertura à decisão",
-};
-
-const METODOLOGIA_RESUMO: Array<[string, string]> = [
-  ["Volume", "Conta as NCs abertas dentro do período."],
-  ["Em andamento", "Situação de hoje: todas as NCs ainda não concluídas nem invalidadas, de qualquer data de abertura."],
-  ["Tempos", "Mediana do tempo corrido de cada etapa, contando as NCs que concluíram a etapa dentro do período."],
-  ["Reincidência", "Mesmo colaborador e mesma causa mais de uma vez nos últimos 12 meses."],
-];
-
 /** Escopo e filtros do resumo em texto: quem lê o PDF sabe exatamente o recorte. */
 async function recorteDoResumo(params: URLSearchParams, escopo: Row) {
   const filtros: string[] = [];
@@ -162,28 +123,28 @@ async function recorteDoResumo(params: URLSearchParams, escopo: Row) {
   const escopoTexto = escopo?.tipo === "equipe_hierarquica"
     ? `Sua equipe (${plural(Number(escopo.quantidade_colaboradores ?? 0), "pessoa")})`
     : "Toda a empresa";
-  return { escopo: escopoTexto, filtros: filtros.length ? filtros.join("; ") : "Nenhum" };
+  return { escopo: escopoTexto, filtros: filtros.length ? filtros.join("; ") : "nenhum" };
 }
 
+/** Relatório gerencial (R-D1): resumo executivo na página 1 e o detalhe do período nas seguintes. */
 export async function gerarPdfResumo(params: URLSearchParams) {
   const requester = await requireUser();
-  const insights = await obterInsights(params.get("inicio"), params.get("fim"), { status: params.get("status"), colaboradorId: params.get("colaborador_id"), setor: params.get("setor") }) as Row;
-  const writer = await pdfWriter("Resumo Gerencial", periodoBr(insights.periodo.inicio, insights.periodo.fim));
-  const k = insights.kpis;
-  const recorte = await recorteDoResumo(params, insights.escopo);
-  writer.heading("Recorte"); writer.line("Período", periodoBr(insights.periodo.inicio, insights.periodo.fim)); writer.line("Escopo", recorte.escopo); writer.line("Filtros", recorte.filtros);
-  writer.heading("Indicadores");
-  writer.line("NCs abertas no período", k.total_ncs);
-  writer.line("Em andamento hoje", k.backlog_ativo_atual);
-  writer.line("Aguardando avaliação", k.abertas_atuais); writer.line("Aguardando feedback", k.aguardando_feedback_atual); writer.line("Aguardando aceite", k.aguardando_aceite_atual); writer.line("Não respondidas", k.nao_respondidas_atual);
-  writer.line("Taxa de aceite no prazo", k.taxa_aceite_no_prazo == null ? "Sem aceites no período" : `${String(Math.round(k.taxa_aceite_no_prazo * 1000) / 10).replace(".", ",")}% (${k.aceites_no_prazo} de ${plural(k.aceites_no_periodo, "aceite")})`);
-  writer.line("Concluídas no período", k.concluidas_no_periodo); writer.line("Invalidadas no período", k.invalidadas_no_periodo);
-  writer.heading("Tempos medianos");
-  for (const [key, value] of Object.entries(insights.tempos as Row)) writer.line(ROTULO_TEMPO[key] ?? key, value.amostras ? `${duracao(value.mediana_segundos)} (mediana de ${plural(value.amostras, "NC", "NCs")})` : "Sem NCs nesta etapa no período");
-  writer.heading("Principais causas");
-  const causas = (insights.ncs_por_causa ?? []).slice(0, 10);
-  if (!causas.length) writer.line("Causas", "Nenhuma NC com causa no período");
-  for (const cause of causas) writer.line(cause.causa, `${plural(cause.total, "NC", "NCs")}; ${plural(cause.total_reincidentes, "reincidente")}`);
-  writer.heading("Como ler este resumo"); for (const [rotulo, texto] of METODOLOGIA_RESUMO) writer.line(rotulo, texto);
-  return { bytes: await writer.finish(requester.nome), filename: `sgnc-resumo-${insights.periodo.inicio}-${insights.periodo.fim}.pdf` };
+  const filtros = { status: params.get("status"), colaboradorId: params.get("colaborador_id"), setor: params.get("setor") };
+  const insights = await obterInsights(params.get("inicio"), params.get("fim"), filtros) as Row;
+  const { inicio, fim } = insights.periodo;
+  const anteriorPeriodo = periodoAnterior(inicio, fim);
+  const doRecorte = new URLSearchParams(params); doRecorte.set("inicio", inicio); doRecorte.set("fim", fim);
+  const [anterior, recorte, texto] = await Promise.all([
+    obterInsights(anteriorPeriodo.inicio, anteriorPeriodo.fim, filtros) as Promise<Row>,
+    carregarRecorte(doRecorte),
+    recorteDoResumo(params, insights.escopo),
+  ]);
+  const pendentes = recorte.medidas.filter((medida) => medida.status === "sugerida" || medida.status === "aprovada");
+  const bytes = await escreverResumo({
+    insights, anterior, escopo: texto.escopo, filtros: texto.filtros,
+    atencao: itensDeAtencao({ ativas: recorte.ativas, medidas: pendentes }),
+    ncs: [...recorte.doPeriodo].sort(ordenarParaAcao), causas: recorte.causas, medidasPendentes: pendentes,
+    geradoPor: requester.nome,
+  });
+  return { bytes, filename: `sgnc-resumo-${inicio}-${fim}.pdf` };
 }
