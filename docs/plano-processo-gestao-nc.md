@@ -35,11 +35,11 @@ Precisam de resposta antes da fase indicada.
 
 | # | Pergunta | Fase |
 |---|---|---|
-| Q1 | O ciclo de 3 NCs conta **dentro da janela de 12 meses** (como hoje) ou sem limite de tempo, só pelo "ciclo vigente"? | 1 |
-| Q2 | A escada de medidas (3 advertências → suspensões → justa causa) é **por causa** (como hoje) ou **por colaborador**, somando todas as causas? | 1 |
-| Q3 | As medidas já sugeridas pela regra antiga (4ª ocorrência) ficam como estão ou são recalculadas pela regra nova? | 1 |
-| Q4 | Nomes das etapas da medida: "Sugerida" passa a "Passível de medida"? A confirmação pela Qualidade (aprovar ou reprovar) antes do registro "Aplicada" continua? "Alterada" é a troca do tipo, já existente? | 1 |
-| Q5 | A NC crítica fica passível de medida **independentemente da contagem**, como no documento? | 1 |
+| Q1 | ~~Janela de contagem~~ **Respondida (13/10):** ciclo de 12 meses contado a partir da 1ª NC da causa. Fechada a janela, tudo zera (contador e escada); a NC seguinte abre um ciclo novo. | 1 |
+| Q2 | ~~Escada~~ **Respondida (13/10):** por causa, como prevê a lei trabalhista. | 1 |
+| Q3 | ~~Medidas antigas~~ **Respondida (13/10):** recalcular; a base atual é de teste e será limpa antes da produção. | 1 |
+| Q4 | ~~Nomes~~ **Respondida (13/10):** "Sugerida" passa a se chamar "Passível de medida" na interface. A Qualidade continua aprovando ou reprovando; "Alterada" é a troca do tipo, já existente; o cancelamento continua. | 1 |
+| Q5 | ~~NC crítica~~ **Respondida (13/10):** fica passível de medida independentemente da contagem, ainda com aprovação ou reprovação pela Qualidade. | 1 |
 | Q6 | Adotar a premissa do procedimento: a Qualidade informa na validação o procedimento descumprido e o link da intranet, e marca a NC como **cobrança** ou **orientativa**, que não conta para reincidência nem medida? Quem abre informa a origem (monitoria, auditoria, supervisão, indicador ou reclamação)? | 2 |
 | Q7 | Causa **individual** ou **sistêmica**: a Qualidade marca no feedback? A NC sistêmica deixa de contar para reincidência e medidas, mas segue com aceite e plano? | 2 |
 | Q8 | Prazo de feedback: conta a partir da validação (5 dias úteis) e, na crítica, a partir da marcação (1 dia útil)? Vencido, quem é avisado: a Qualidade e o líder? | 3 |
@@ -53,11 +53,26 @@ Ordem: 1 → 2 → 3 → 4 → 5 → 6 → 7. As fases 3 e 4 são independentes 
 
 ### Fase 1: gatilho e escada da medida (P3, P4)
 
-- [ ] 1.1 Migração: `medida_sugerida_para` passa a gerar medida a cada 3 ocorrências (3ª, 6ª, 9ª…), conforme Q1 e Q2.
-- [ ] 1.2 Escada: 1ª a 3ª medida advertência, 4ª a 6ª suspensão, 7ª em diante avaliação de justa causa. A contagem segue Q2.
-- [ ] 1.3 Tratamento das medidas existentes (Q3) e da NC crítica (Q5).
-- [ ] 1.4 Interface e textos conforme Q4: o sistema registra a situação, e a aplicação é feita pelo RH, presencialmente.
-- [ ] 1.5 Testes unitários da regra e cenário no Supabase em transação desfeita.
+- [x] 1.1 Migração: `medida_sugerida_para` passa a gerar medida a cada 3 ocorrências (3ª, 6ª, 9ª…), conforme Q1 e Q2.
+- [x] 1.2 Escada: 1ª a 3ª medida advertência, 4ª a 6ª suspensão, 7ª em diante avaliação de justa causa. A contagem segue Q2.
+- [x] 1.3 Tratamento das medidas existentes (Q3) e da NC crítica (Q5).
+- [x] 1.4 Interface e textos conforme Q4: o sistema registra a situação, e a aplicação é feita pelo RH, presencialmente.
+- [x] 1.5 Testes unitários da regra e cenário no Supabase em transação desfeita.
+
+**Status (13/10):** implementada no PR da Fase 1. Migração `20261013120000_medida_ciclo_tres_ncs.sql`:
+- `ocorrencia_no_ciclo` faz a contagem no ciclo e `proxima_medida_do_ciclo` define a escada da causa, sem contar as medidas reprovadas e canceladas.
+- `medida_para_nc_critica` e o trigger `medida_ao_marcar_critica` deixam o colaborador passível de medida na NC crítica, com uma medida por NC.
+- O CHECK do gatilho passou de `>= 4` para `>= 1`.
+- Na coluna `origem`, a medida fica como `reincidencia` ou `nc_critica`.
+- O aviso diz "Colaborador passível de medida".
+- O recálculo da base cancela as pendências da regra antiga, sem disparar avisos.
+
+O servidor deixou de recalcular a medida em TypeScript: o painel de feedback e os Insights leem a medida gerada pelo banco. Cenários conferidos no Postgres local:
+- medidas na 3ª, 6ª e 9ª NC;
+- a medida reprovada sai da escada;
+- 1ª a 3ª medida do ciclo: advertência; 4ª a 6ª: suspensão; 7ª em diante: avaliação de justa causa;
+- o ciclo zera depois de 12 meses;
+- a NC crítica gera medida fora da contagem e não duplica a medida que a contagem já gerou.
 
 ### Fase 2: procedimento, origem e tipo de causa (premissa, itens 2, 5.2 e 7 do documento)
 

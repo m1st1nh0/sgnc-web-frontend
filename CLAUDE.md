@@ -43,7 +43,7 @@ Estrutura organizacional (decisões de 11/10/2026, plano em [`docs/plano-estrutu
 Processo de Gestão de NCs da Qualidade (decisões de 13/10/2026, plano em [`docs/plano-processo-gestao-nc.md`](docs/plano-processo-gestao-nc.md)):
 - Criticidade continua Baixa/Média/Alta; "crítica" é marcação separada, feita só depois da validação.
 - Adotar prazo de feedback (5 dias úteis; 1 dia útil na NC crítica) e contenção em 24 h na NC crítica; o aceite continua com 2 dias úteis.
-- A cada 3 NCs da mesma causa o colaborador fica passível de medida e o contador zera (histórico mantido). Escada: 3 advertências, depois suspensões; completado esse ciclo, avaliação de justa causa.
+- A cada 3 NCs da mesma causa o colaborador fica "passível de medida" (valor interno `sugerida`). Ciclo de 12 meses por colaborador e causa, contado a partir da 1ª NC da causa; fechada a janela, tudo zera. Escada por causa no ciclo: medidas 1–3 advertência, 4–6 suspensão, 7ª em diante avaliação de justa causa (reprovadas e canceladas não contam). NC crítica fica passível de medida independentemente da contagem. A Qualidade continua aprovando ou reprovando.
 - Não há papel RH no sistema: o SGNC registra a situação da medida (passível, aplicada, alterada); a aplicação é feita pelo RH, presencialmente.
 - Qualquer perfil abre NC; a Qualidade valida. A NC sem plano encerra no aceite. O supervisor é avisado só na validação.
 

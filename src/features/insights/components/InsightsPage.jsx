@@ -866,7 +866,7 @@ export default function InsightsPage() {
                 </div>
                 <div className="col-sm-6 col-xl-3">
                   <CardMetrica
-                    rotulo="Gatilhos sugeridos"
+                    rotulo="Passíveis de medida"
                     valor={sugeridas.total ?? 0}
                     descricao="Não são aplicados automaticamente"
                     cor="laranja"
@@ -881,8 +881,8 @@ export default function InsightsPage() {
                 />
               ) : (
                 <PainelGrafico
-                  titulo="Sugestões disciplinares por causa"
-                  descricao="Limiar atingido pela ocorrência canônica de cada causa"
+                  titulo="Passíveis de medida por causa"
+                  descricao="A cada 3 NCs da mesma causa no ciclo de 12 meses, ou NC crítica"
                 >
                   <GraficoBarrasHorizontais
                     dados={sugestoesDisciplina}

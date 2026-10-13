@@ -101,8 +101,10 @@ function CartaoMedida({ medida, aoAlterar }) {
           <span className={`sg-badge ${situacao.classe}`}>{situacao.rotulo}</span>
         </div>
         <p className="texto-sm texto-secundario mb-2">
-          {medida.ocorrencia_gatilho}ª ocorrência de <strong>{medida.causa}</strong> em 12 meses ·{" "}
-          <Link href={`/nc/${medida.nc_id}`}>NC #{medida.nc_id}</Link> · sugerida em {formatarDataHora(medida.criado_em)}
+          {medida.origem === "nc_critica"
+            ? <>NC crítica, causa <strong>{medida.causa}</strong> ·{" "}</>
+            : <>{medida.ocorrencia_gatilho}ª NC de <strong>{medida.causa}</strong> no ciclo de 12 meses ·{" "}</>}
+          <Link href={`/nc/${medida.nc_id}`}>NC #{medida.nc_id}</Link> · passível desde {formatarDataHora(medida.criado_em)}
         </p>
         {medida.decidida_em && (
           <p className="texto-xs texto-secundario mb-1">
@@ -149,7 +151,7 @@ function CartaoMedida({ medida, aoAlterar }) {
               value={tipo}
               onChange={(e) => setTipo(e.target.value)}
               erro={errosCampo.tipo}
-              helper={`Sugerida pelo sistema: ${ROTULO_TIPO_MEDIDA[tipoSugerido]}.`}
+              helper={`Indicada pela escada da causa: ${ROTULO_TIPO_MEDIDA[tipoSugerido]}. A aplicação é feita pelo RH, presencialmente.`}
             >
               {Object.entries(ROTULO_TIPO_MEDIDA).map(([valor, rotulo]) => (
                 <option key={valor} value={valor}>{rotulo}</option>
@@ -267,7 +269,7 @@ export default function MedidasPage() {
         {carregando ? <EstadoCarregamento mensagem="Carregando medidas..." /> : medidas.length === 0 ? (
           <EstadoVazio
             titulo={situacao === "pendentes" ? "Nenhuma medida pendente" : "Nenhuma medida decidida"}
-            descricao={situacao === "pendentes" ? "As medidas sugeridas pela reincidência aparecem aqui para decisão." : "As medidas aprovadas, reprovadas e aplicadas aparecem aqui."}
+            descricao={situacao === "pendentes" ? "Os colaboradores passíveis de medida (a cada 3 NCs da mesma causa no ciclo, ou NC crítica) aparecem aqui para decisão." : "As medidas aprovadas, reprovadas e aplicadas aparecem aqui."}
           />
         ) : (
           <div className="d-flex flex-column gap-3">

@@ -282,7 +282,7 @@ export default function EstatisticasUsuarioPage() {
                     {causa.medida_sugerida && (
                       <div className="sg-alerta sg-alerta--atencao p-3 mb-3 d-flex flex-wrap align-items-center gap-2">
                         <span className="texto-sm fw-semibold">
-                          Sugestão para avaliação da gestão
+                          Passível de medida
                         </span>
                         <span
                           className={`sg-badge ${corDaMedida(causa.medida_sugerida)}`}
