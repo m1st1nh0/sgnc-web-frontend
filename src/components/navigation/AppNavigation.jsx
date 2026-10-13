@@ -18,6 +18,7 @@ const ICONS = {
   chart: <><path d="M3 3v18h18M8 16v-4M13 16V7M18 16v-7"/></>,
   report: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></>,
   folder: <><path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></>,
+  shield: <><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z"/></>,
   cause: <><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 4.6 1.3c-.9 1.2-2.2 1.4-2.2 3M12 17h.01"/></>,
   user: <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
   guide: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 0 4 22Z"/><path d="M4 5.5v14A2.5 2.5 0 0 1 6.5 17H20"/></>,
@@ -57,17 +58,27 @@ export default function AppNavigation({ children, compactaInicial = false }) {
   const botaoAlternarRef = useRef(null);
   const menuSobreposto = (faixa === "mobile" && mobileOpen) || (faixa === "tablet" && overlayAberta);
   const ehGestao = ehQualidade(usuario?.papel) || usuario?.papel === "supervisor";
-  const links = [
-    { label: ROTULO_HOME[usuario?.papel] || "Gestão de NCs", href: "/", icon: "home", show: true, active: pathname === "/" },
-    { label: "Acompanhar minhas NCs", href: "/minhas-ncs", icon: "eye", show: !!usuario, active: pathname === "/minhas-ncs" },
-    { label: "Abrir NC", href: "/abrir-nc", icon: "add", show: true, active: pathname === "/abrir-nc" },
-    { label: ehQualidade(usuario?.papel) ? "Pessoas e equipes" : "Minha equipe", href: "/equipe", icon: "people", show: ehGestao, active: pathname === "/equipe" || pathname.startsWith("/equipe/") },
-    { label: "Insights", href: "/insights", icon: "chart", show: ehGestao, active: pathname === "/insights" },
-    { label: "Relatórios", href: "/relatorios", icon: "report", show: ehGestao, active: pathname === "/relatorios" },
-    { label: "Meu dossiê", href: `/usuarios/${usuario?.id}/dossie`, icon: "folder", show: !!usuario, active: pathname === `/usuarios/${usuario?.id}/dossie` },
-    { label: "Causas", href: "/causas", icon: "cause", show: ehQualidade(usuario?.papel), active: pathname === "/causas" },
-    { label: "Medidas disciplinares", href: "/medidas", icon: "report", show: ehQualidade(usuario?.papel), active: pathname === "/medidas" },
-  ].filter((link) => link.show);
+  const ehQ = ehQualidade(usuario?.papel);
+  const rotuloHome = ROTULO_HOME[usuario?.papel] || "Gestão de NCs";
+  // Visibilidade por perfil igual à anterior; só a ordem e o agrupamento mudaram (redesign 10/2026).
+  const grupos = [
+    { titulo: "Operação", links: [
+      { label: rotuloHome, href: "/", icon: "home", show: true, active: pathname === "/" },
+      // O colaborador já tem "Minhas NCs" como início; o rótulo antigo evita dois itens com o mesmo nome.
+      { label: rotuloHome === "Minhas NCs" ? "Acompanhar minhas NCs" : "Minhas NCs", href: "/minhas-ncs", icon: "eye", show: !!usuario, active: pathname === "/minhas-ncs" },
+      { label: "Abrir NC", href: "/abrir-nc", icon: "add", show: true, active: pathname === "/abrir-nc" },
+    ] },
+    { titulo: "Análise", links: [
+      { label: "Insights", href: "/insights", icon: "chart", show: ehGestao, active: pathname === "/insights" },
+      { label: "Relatórios", href: "/relatorios", icon: "report", show: ehGestao, active: pathname === "/relatorios" },
+    ] },
+    { titulo: "Cadastros", links: [
+      { label: ehQ ? "Pessoas e equipes" : "Minha equipe", href: "/equipe", icon: "people", show: ehGestao, active: pathname === "/equipe" || pathname.startsWith("/equipe/") },
+      { label: "Causas", href: "/causas", icon: "cause", show: ehQ, active: pathname === "/causas" },
+      { label: "Medidas disciplinares", href: "/medidas", icon: "shield", show: ehQ, active: pathname === "/medidas" },
+      { label: "Meu dossiê", href: `/usuarios/${usuario?.id}/dossie`, icon: "folder", show: !!usuario, active: pathname === `/usuarios/${usuario?.id}/dossie` },
+    ] },
+  ].map((grupo) => ({ ...grupo, links: grupo.links.filter((link) => link.show) })).filter((grupo) => grupo.links.length > 0);
 
   useEffect(() => {
     document.body.classList.toggle("sg-mobile-menu-open", mobileOpen);
@@ -130,12 +141,18 @@ export default function AppNavigation({ children, compactaInicial = false }) {
         <button ref={botaoAlternarRef} type="button" className="sg-app-nav__toggle" onClick={alternarMenu} aria-label={rotuloAlternar} aria-expanded={!recolhida} aria-controls="sg-app-nav" title={rotuloAlternar}><Icon name={recolhida ? "right" : "left"} /></button>
         <button ref={botaoFecharRef} type="button" className="sg-app-nav__close" onClick={fecharMenuNavegacao} aria-label="Fechar menu"><Icon name="close" /></button>
       </div>
-      <nav className="sg-app-nav__links">{links.map((link) => <Link key={link.href} href={link.href} className={`sg-app-nav__link${link.active ? " is-active" : ""}`} onClick={fecharMenuNavegacao} aria-current={link.active ? "page" : undefined} title={mostrarDicas ? link.label : undefined}><Icon name={link.icon} /><span>{link.label}</span></Link>)}</nav>
+      <nav className="sg-app-nav__links" aria-label="Menu principal">{grupos.map((grupo, indice) => <div key={grupo.titulo} className="sg-app-nav__grupo" role="group" aria-labelledby={`sg-nav-grupo-${indice}`}>
+        <p id={`sg-nav-grupo-${indice}`} className="sg-app-nav__grupo-titulo">{grupo.titulo}</p>
+        {grupo.links.map((link) => <Link key={link.href} href={link.href} className={`sg-app-nav__link${link.active ? " is-active" : ""}`} onClick={fecharMenuNavegacao} aria-current={link.active ? "page" : undefined} title={mostrarDicas ? link.label : undefined}><Icon name={link.icon} /><span>{link.label}</span></Link>)}
+      </div>)}</nav>
       <div className="sg-app-nav__footer">
-        <div className="sg-app-nav__profile"><span className="sg-app-nav__avatar">{iniciais(usuario?.nome)}</span><div className="sg-app-nav__profile-copy"><strong>{usuario?.nome}</strong><small>{NOME_PAPEL[usuario?.papel] ?? usuario?.papel}</small></div></div>
         {usuario && faixa !== "mobile" && <SinoNotificacoes variante="menu" mostrarDica={mostrarDicas} />}
         <button type="button" className="sg-app-nav__link" onClick={guia} title={mostrarDicas ? "Guia" : undefined}><Icon name="guide"/><span>Guia</span></button>
-        <button type="button" className="sg-app-nav__link" onClick={() => sair()} title={mostrarDicas ? "Sair" : undefined}><Icon name="exit"/><span>Sair</span></button>
+        <div className="sg-app-nav__profile">
+          <span className="sg-app-nav__avatar" aria-hidden="true">{iniciais(usuario?.nome)}</span>
+          <div className="sg-app-nav__profile-copy"><strong>{usuario?.nome}</strong><small>{NOME_PAPEL[usuario?.papel] ?? usuario?.papel}</small></div>
+          <button type="button" className="sg-app-nav__sair" onClick={() => sair()} aria-label="Sair" title="Sair"><Icon name="exit"/></button>
+        </div>
       </div>
     </aside>
     <main id="sg-main-content" className="sg-app-main">{children}</main>
