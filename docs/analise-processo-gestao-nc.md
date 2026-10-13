@@ -159,5 +159,5 @@ As sete decisões foram respondidas e estão registradas em [`plano-processo-ges
 2. **Criticidade com prazos:** prazo de feedback por criticidade, contenção em 24 h na crítica, NC crítica encaminhada à medida e plano de ação opcional na leve.
 3. **Feedback completo:** participantes (Analista + Gestor), posicionamento do colaborador e resumo da conversa.
 4. **Verificação de 30 dias:** status "Em verificação", resultado eficaz ou não eficaz, "Reaberta" e "Escalada", e aviso de ação vencida aos gestores da área.
-5. **RH e gestores da área:** papéis e telas próprios, conforme a decisão 4.
+5. **Gestores da área:** aviso de ação vencida e escalonamento ao responsável do departamento (sem papel RH, conforme a decisão 4).
 6. **Indicadores de efetividade:** efetividade do feedback, feedback no prazo, redução por causa, eficácia dos planos, taxa de reincidência pela fórmula do documento e auditoria de completude.
