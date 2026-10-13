@@ -2,7 +2,7 @@ import { csvCell } from "./csv";
 import { requireApiUser as requireUser } from "@/lib/auth/api";
 import "server-only";
 
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { MARGEM, pdfWriter } from "./pdf";
 import { ApiError } from "@/lib/api/error";
 import { obterEstatisticasUsuario, obterInsights } from "@/lib/analytics/service";
 
@@ -12,66 +12,36 @@ import { buildNcReadScopeFilter, buildNcTeamScopeFilter, SUPERVISOR_VISIBLE_NC_S
 import { listarPessoasAbaixo } from "@/lib/permissions/team-scope";
 import { ehQualidade } from "@/lib/auth/papeis";
 import { situacaoDoAceite } from "@/lib/nc/reincidencia";
+import { ROTULO_ACEITE, dataBr, dataHoraBr, duracao, periodoBr, plural, rotuloSituacaoMedida, rotuloStatus, rotuloTipoMedida } from "./formato";
 
 type Row = Record<string, any>;
-const A4: [number, number] = [595.28, 841.89];
-const NAVY = rgb(0.09, 0.2, 0.3), GREEN = rgb(0.1, 0.66, 0.54), TEXT = rgb(0.13, 0.21, 0.29), MUTED = rgb(0.4, 0.46, 0.54);
 
 const canonical = (status: unknown) => ["validada", "aguardando_analise"].includes(String(status)) ? "aguardando_feedback" : String(status ?? "");
 const dateOnly = (value: unknown) => String(value ?? "").slice(0, 10);
-const brDate = (value: unknown) => { const date = dateOnly(value); return date ? date.split("-").reverse().join("/") : "-"; };
-const ROTULO_ACEITE: Record<string, string> = { aguardando: "Aguardando aceite", no_prazo: "Aceito no prazo", fora_prazo: "Aceito fora do prazo", nao_respondida: "Nao respondida", sem_feedback: "-" };
-const brDateTime = (value: unknown) => value ? new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }).format(new Date(String(value))) : "-";
 const hours = (start: unknown, end: unknown) => !start || !end ? "" : Math.max(0, (Date.parse(String(end)) - Date.parse(String(start))) / 3600000).toFixed(2).replace(".", ",");
 
-
-function splitText(text: string, font: PDFFont, size: number, maxWidth: number) {
-  const lines: string[] = [];
-  for (const paragraph of String(text || "-").split("\n")) {
-    let current = "";
-    for (const word of paragraph.split(/\s+/)) {
-      const candidate = current ? `${current} ${word}` : word;
-      if (font.widthOfTextAtSize(candidate, size) <= maxWidth) current = candidate;
-      else { if (current) lines.push(current); current = word; }
-    }
-    if (current) lines.push(current);
-  }
-  return lines.length ? lines : ["-"];
-}
-
-async function pdfWriter(title: string, subtitle: string) {
-  const doc = await PDFDocument.create();
-  const regular = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  let page: PDFPage, y = 0;
-  const addPage = () => { page = doc.addPage(A4); page.drawRectangle({ x: 0, y: A4[1] - 48, width: A4[0], height: 48, color: NAVY }); page.drawText("ARQUEM", { x: 42, y: A4[1] - 29, size: 12, font: bold, color: rgb(1,1,1) }); page.drawText("AUTOMACAO CORPORATIVA", { x: 42, y: A4[1] - 41, size: 6, font: regular, color: GREEN }); page.drawText(title, { x: 42, y: A4[1] - 78, size: 18, font: bold, color: NAVY }); page.drawText(subtitle, { x: 42, y: A4[1] - 94, size: 9, font: regular, color: MUTED }); y = A4[1] - 120; };
-  const ensure = (height: number) => { if (y - height < 42) addPage(); };
-  const heading = (text: string) => { ensure(28); y -= 8; page.drawText(text.toUpperCase(), { x: 42, y, size: 10, font: bold, color: NAVY }); y -= 18; };
-  const line = (label: string, value: unknown) => { const content = `${label}: ${String(value ?? "-")}`; const lines=splitText(content,regular,9,A4[0]-84); ensure(lines.length*13+4); for(const item of lines){page.drawText(item,{x:42,y,size:9,font:regular,color:TEXT});y-=13;} y-=3; };
-  addPage();
-  return { doc, regular, bold, get page(){return page;}, get y(){return y;}, set y(value:number){y=value;}, addPage, ensure, heading, line };
-}
-
 export async function gerarPdfNc(id: number) {
+  const requester = await requireUser();
   const nc = await buscarNc(id) as Row;
-  const writer = await pdfWriter("Relatorio de Nao Conformidade", `NC #${id}`);
-  writer.heading("Resumo"); writer.line("Status", canonical(nc.status)); writer.line("Criticidade", nc.criticidade); writer.line("Data", brDate(nc.data)); writer.line("Chamado", nc.chamado); writer.line("Colaborador", nc.colaborador); writer.line("Setor", nc.setor);
-  writer.heading("Descricao"); writer.line("Registro", nc.descricao);
+  const writer = await pdfWriter("Relatório de Não Conformidade", `NC #${id}`);
+  writer.heading("Resumo"); writer.line("Status", rotuloStatus(nc.status)); writer.line("Criticidade", nc.criticidade); writer.line("Data", dataBr(nc.data)); writer.line("Chamado", nc.chamado); writer.line("Colaborador", nc.colaborador); writer.line("Setor", nc.setor);
+  writer.heading("Descrição"); writer.line("Registro", nc.descricao);
   writer.heading("Causas"); writer.line("Relacionadas", (nc.causas ?? []).join(" | ") || "Nenhuma");
   writer.heading("Feedback");
   const feedback = nc.feedback_estruturado as Row | null;
   if (feedback) {
-    writer.line("Causa raiz", feedback.causa_raiz); writer.line("Acao combinada", feedback.acao_combinada);
-    writer.line("Responsavel pela acao", feedback.responsavel_acao_nome ?? "Nao informado"); writer.line("Prazo da acao", feedback.prazo_acao ? brDate(feedback.prazo_acao) : "Nao informado");
-    writer.line("Combinado", feedback.combinado); writer.line("Prazo do aceite", brDateTime(feedback.prazo_aceite));
-    writer.line("Situacao do aceite", ROTULO_ACEITE[situacaoDoAceite(nc)]);
+    writer.line("Causa raiz", feedback.causa_raiz); writer.line("Ação combinada", feedback.acao_combinada);
+    writer.line("Responsável pela ação", feedback.responsavel_acao_nome ?? "Não informado"); writer.line("Prazo da ação", dataBr(feedback.prazo_acao, "Não informado"));
+    writer.line("Combinado", feedback.combinado); writer.line("Prazo do aceite", dataHoraBr(feedback.prazo_aceite));
+    writer.line("Situação do aceite", ROTULO_ACEITE[situacaoDoAceite(nc)] || "-");
   } else writer.line("Registro", nc.feedback);
   const admin = createAdminClient();
   const { eventos: history } = await obterTimeline(id);
-  writer.heading("Andamento"); for(const event of history ?? []) writer.line(brDate(event.criado_em), `${canonical(event.status_novo)} - ${event.observacao || "Sem observacao"}`);
+  writer.heading("Andamento");
+  for (const event of history ?? []) writer.line(dataHoraBr(event.criado_em), `${rotuloStatus(canonical(event.status_novo))} · ${event.autor_nome ?? "Sistema"}${event.observacao ? ` · ${event.observacao}` : ""}`);
   const { data: evidence } = await admin.from("evidencias").select("nome_original, caminho_storage, criado_em").eq("nc_id", id).order("criado_em");
-  writer.heading("Evidencias anexadas");
-  if (!evidence?.length) writer.line("Arquivos", "Nenhuma evidencia anexada");
+  writer.heading("Evidências anexadas");
+  if (!evidence?.length) writer.line("Arquivos", "Nenhuma evidência anexada");
   for (const item of evidence ?? []) {
     writer.line("Arquivo", item.nome_original);
     if (!/\.(png|jpe?g)$/i.test(item.nome_original)) continue;
@@ -82,27 +52,34 @@ export async function gerarPdfNc(id: number) {
       const image = /\.png$/i.test(item.nome_original) ? await writer.doc.embedPng(bytes) : await writer.doc.embedJpg(bytes);
       const dimensions = image.scale(Math.min(1, 460 / image.width, 300 / image.height));
       writer.ensure(dimensions.height + 18);
-      writer.page.drawImage(image, { x: 42, y: writer.y - dimensions.height, width: dimensions.width, height: dimensions.height });
+      writer.page.drawImage(image, { x: MARGEM, y: writer.y - dimensions.height, width: dimensions.width, height: dimensions.height });
       writer.y -= dimensions.height + 18;
     } catch { /* arquivo de imagem inválido: mantém o nome no relatório */ }
   }
-  return { bytes: await writer.doc.save(), filename: `sgnc-nc-${id}.pdf` };
+  return { bytes: await writer.finish(requester.nome), filename: `sgnc-nc-${id}.pdf` };
 }
 
 export async function gerarPdfDossie(userId: string) {
   const requester = await requireUser();
   const stats = await obterEstatisticasUsuario(userId) as Row;
-  const writer = await pdfWriter("Dossie do Colaborador", stats.nome);
-  writer.heading("Resumo"); writer.line("Nome", stats.nome); writer.line("Setor", stats.setor); writer.line("Periodo", "Ultimos 12 meses"); writer.line("Total de NCs", stats.total_nc_12m);
-  writer.heading("Causas e recorrencia");
-  for(const cause of stats.causas ?? []) { writer.line(String(cause.causa), `${cause.ocorrencias_12m} ocorrencia(s); ultima NC #${cause.ultima_ocorrencia_nc_id ?? "-"}; medida sugerida: ${cause.medida_sugerida ?? "nenhuma"}`); }
-  const admin=createAdminClient(); let historyQuery=admin.from("nao_conformidades").select("id, data, status, criticidade, criado_em, aceito_em, aceito_fora_prazo").eq("colaborador_id",userId);
-  if(!ehQualidade(requester.papel))historyQuery=historyQuery.or(`status.in.(${SUPERVISOR_VISIBLE_NC_STATUSES.join(",")}),aberto_por.eq.${requester.id}`);
-  const {data:ncs}=await historyQuery.order("data",{ascending:false}).limit(12);
-  const feedbacks=await ultimosFeedbacks((ncs??[]).map((nc)=>nc.id));
-  writer.heading("Historico recente"); for(const nc of ncs??[]){const feedback=feedbacks.get(nc.id);const aceite=situacaoDoAceite(nc);writer.line(`NC #${nc.id}`, `${brDate(nc.data||nc.criado_em)} | ${canonical(nc.status)} | ${nc.criticidade||"-"}${aceite!=="sem_feedback"?` | ${ROTULO_ACEITE[aceite]}`:""}`);if(feedback&&!feedback.legado){writer.line("Causa raiz",feedback.causa_raiz);writer.line("Acao combinada",`${feedback.acao_combinada} (responsavel: ${feedback.responsavel_acao_nome??"-"}; prazo: ${brDate(feedback.prazo_acao)})`);}}
-  writer.heading("Medidas disciplinares"); const measures=(stats.causas??[]).flatMap((cause:Row)=>cause.medidas??[]); if(!measures.length)writer.line("Registro","Nenhuma medida disciplinar registrada");for(const measure of measures)writer.line(measure.tipo,`${measure.status}; ocorrencia ${measure.ocorrencia_gatilho}; ${measure.data_aplicacao?brDate(measure.data_aplicacao):"sem aplicacao"}`);
-  return {bytes:await writer.doc.save(),filename:`sgnc-dossie-${userId}.pdf`};
+  const writer = await pdfWriter("Dossiê do Colaborador", stats.nome);
+  writer.heading("Resumo"); writer.line("Nome", stats.nome); writer.line("Setor", stats.setor); writer.line("Período", "Últimos 12 meses"); writer.line("Total de NCs", stats.total_nc_12m);
+  writer.heading("Causas e recorrência");
+  for (const cause of stats.causas ?? []) writer.line(String(cause.causa), `${plural(Number(cause.ocorrencias_12m ?? 0), "ocorrência")}; última NC #${cause.ultima_ocorrencia_nc_id ?? "-"}; medida sugerida: ${cause.medida_sugerida ? rotuloTipoMedida(cause.medida_sugerida) : "nenhuma"}`);
+  const admin = createAdminClient(); let historyQuery = admin.from("nao_conformidades").select("id, data, status, criticidade, criado_em, aceito_em, aceito_fora_prazo").eq("colaborador_id", userId);
+  if (!ehQualidade(requester.papel)) historyQuery = historyQuery.or(`status.in.(${SUPERVISOR_VISIBLE_NC_STATUSES.join(",")}),aberto_por.eq.${requester.id}`);
+  const { data: ncs } = await historyQuery.order("data", { ascending: false }).limit(12);
+  const feedbacks = await ultimosFeedbacks((ncs ?? []).map((nc) => nc.id));
+  writer.heading("Histórico recente");
+  for (const nc of ncs ?? []) {
+    const feedback = feedbacks.get(nc.id); const aceite = ROTULO_ACEITE[situacaoDoAceite(nc)];
+    writer.line(`NC #${nc.id}`, `${dataBr(nc.data || nc.criado_em)} · ${rotuloStatus(nc.status)} · ${nc.criticidade || "-"}${aceite ? ` · ${aceite}` : ""}`);
+    if (feedback && !feedback.legado) { writer.line("Causa raiz", feedback.causa_raiz); writer.line("Ação combinada", `${feedback.acao_combinada} (responsável: ${feedback.responsavel_acao_nome ?? "-"}; prazo: ${dataBr(feedback.prazo_acao)})`); }
+  }
+  writer.heading("Medidas disciplinares"); const measures = (stats.causas ?? []).flatMap((cause: Row) => cause.medidas ?? []);
+  if (!measures.length) writer.line("Registro", "Nenhuma medida disciplinar registrada");
+  for (const measure of measures) writer.line(rotuloTipoMedida(measure.tipo), `${rotuloSituacaoMedida(measure.status)}; ${measure.ocorrencia_gatilho}ª ocorrência; ${measure.data_aplicacao ? `aplicada em ${dataBr(measure.data_aplicacao)}` : "sem aplicação"}`);
+  return { bytes: await writer.finish(requester.nome), filename: `sgnc-dossie-${userId}.pdf` };
 }
 
 /** Último feedback estruturado de cada NC, com o nome do responsável pela ação. */
@@ -131,6 +108,8 @@ async function reportScope() {
   return {admin,teamIds,user};
 }
 
+export const CABECALHO_CSV_NCS = ["NC","Data","Status","Colaborador","Setor","Criticidade","Chamado","Causas","Ocorrências por causa","Reincidente em 12 meses","Descrição","Criada em","Validada em","Feedback enviado em","Aceita em","Horas até validação","Horas validação-feedback","Horas feedback-aceite","Horas ciclo total","Causa raiz","Ação combinada","Responsável pela ação","Prazo da ação","Combinado","Prazo do aceite","Situação do aceite"];
+
 export async function gerarCsvNcs(params: URLSearchParams) {
   const {admin,teamIds,user:requester}=await reportScope(); const end=params.get("fim")||new Date().toISOString().slice(0,10);const endDate=new Date(`${end}T12:00:00Z`);endDate.setUTCFullYear(endDate.getUTCFullYear()-1);const start=params.get("inicio")||endDate.toISOString().slice(0,10);if(start>end)throw new ApiError("A data de início não pode ser posterior à data de fim.");
   const requestedEmployee=params.get("colaborador_id");
@@ -141,16 +120,70 @@ export async function gerarCsvNcs(params: URLSearchParams) {
   const status=params.get("status")?canonical(params.get("status")):null,employee=params.get("colaborador_id"),sector=params.get("setor")?.trim().toLocaleLowerCase();const rows=(data??[]).filter(nc=>{const date=dateOnly(nc.data||nc.criado_em);return date>=start&&date<=end&&(!status||canonical(nc.status)===status)&&(!employee||nc.colaborador_id===employee)&&(!sector||String(nc.setor||"").trim().toLocaleLowerCase()===sector);}).sort((a,b)=>String(b.data||b.criado_em).localeCompare(String(a.data||a.criado_em))||b.id-a.id);
   const ids=rows.map(item=>item.id);const {data:relations}=ids.length?await admin.from("nc_causas").select("nc_id, ocorrencia_numero, causas(descricao)").in("nc_id",ids):{data:[]};const byNc=new Map<number,Row[]>();for(const relation of relations??[]){const joined=relation.causas as unknown as {descricao?:string}|null;byNc.set(relation.nc_id,[...(byNc.get(relation.nc_id)??[]),{descricao:joined?.descricao,ocorrencia_numero:relation.ocorrencia_numero}]);}
   const feedbacks=await ultimosFeedbacks(ids);
-  const headers=["NC","Data","Status","Colaborador","Setor","Criticidade","Chamado","Causas","Ocorrencias por causa","Reincidente 12m","Descricao","Criado em","Validado em","Feedback aplicado em","Aceito em","Horas ate validacao","Horas validacao-feedback","Horas feedback-aceite","Horas ciclo total","Causa raiz","Acao combinada","Responsavel pela acao","Prazo da acao","Combinado","Prazo do aceite","Situacao do aceite"];
-  const lines=[headers.map(csvCell).join(";")];for(const nc of rows){const causes=byNc.get(nc.id)??[];lines.push([nc.id,dateOnly(nc.data||nc.criado_em),canonical(nc.status),nc.colaborador,nc.setor,nc.criticidade,nc.chamado,causes.map(c=>c.descricao).join(", "),causes.filter(c=>c.ocorrencia_numero!=null).map(c=>`${c.descricao} (#${c.ocorrencia_numero})`).join(", "),causes.some(c=>Number(c.ocorrencia_numero)>1)?"Sim":"Nao",nc.descricao,nc.criado_em,nc.validado_em,nc.feedback_aplicado_em,nc.aceito_em,hours(nc.criado_em,nc.validado_em),hours(nc.validado_em,nc.feedback_aplicado_em),hours(nc.feedback_aplicado_em,nc.aceito_em),hours(nc.criado_em,nc.aceito_em),...((feedback)=>feedback?[feedback.causa_raiz,feedback.acao_combinada,feedback.responsavel_acao_nome,feedback.prazo_acao,feedback.combinado,feedback.prazo_aceite,ROTULO_ACEITE[situacaoDoAceite(nc)]]:["","","","","","",ROTULO_ACEITE[situacaoDoAceite(nc)]])(feedbacks.get(nc.id))].map(csvCell).join(";"));}
-  return {bytes:new TextEncoder().encode(`\uFEFF${lines.join("\r\n")}`),filename:`sgnc-ncs-${start}-${end}.csv`};
+  const lines=[CABECALHO_CSV_NCS.map(csvCell).join(";")];
+  for(const nc of rows){
+    const causes=byNc.get(nc.id)??[]; const feedback=feedbacks.get(nc.id); const aceite=ROTULO_ACEITE[situacaoDoAceite(nc)];
+    lines.push([
+      nc.id,dataBr(nc.data||nc.criado_em,""),rotuloStatus(nc.status),nc.colaborador,nc.setor,nc.criticidade,nc.chamado,
+      causes.map(c=>c.descricao).join(", "),causes.filter(c=>c.ocorrencia_numero!=null).map(c=>`${c.descricao} (${c.ocorrencia_numero}ª)`).join(", "),causes.some(c=>Number(c.ocorrencia_numero)>1)?"Sim":"Não",
+      nc.descricao,dataHoraBr(nc.criado_em,""),dataHoraBr(nc.validado_em,""),dataHoraBr(nc.feedback_aplicado_em,""),dataHoraBr(nc.aceito_em,""),
+      hours(nc.criado_em,nc.validado_em),hours(nc.validado_em,nc.feedback_aplicado_em),hours(nc.feedback_aplicado_em,nc.aceito_em),hours(nc.criado_em,nc.aceito_em),
+      ...(feedback?[feedback.causa_raiz,feedback.acao_combinada,feedback.responsavel_acao_nome,dataBr(feedback.prazo_acao,""),feedback.combinado,dataHoraBr(feedback.prazo_aceite,"")]:["","","","","",""]),aceite,
+    ].map(csvCell).join(";"));
+  }
+  return {bytes:new TextEncoder().encode(`﻿${lines.join("\r\n")}`),filename:`sgnc-ncs-${start}-${end}.csv`};
+}
+
+const ROTULO_TEMPO: Record<string, string> = {
+  criacao_ate_validacao: "Da abertura à validação",
+  validacao_ate_feedback: "Da validação ao feedback",
+  feedback_ate_aceite: "Do feedback ao aceite",
+  ciclo_total: "Ciclo completo (abertura ao aceite)",
+  criacao_ate_decisao: "Da abertura à decisão",
+};
+
+const METODOLOGIA_RESUMO: Array<[string, string]> = [
+  ["Volume", "Conta as NCs abertas dentro do período."],
+  ["Em andamento", "Situação de hoje: todas as NCs ainda não concluídas nem invalidadas, de qualquer data de abertura."],
+  ["Tempos", "Mediana do tempo corrido de cada etapa, contando as NCs que concluíram a etapa dentro do período."],
+  ["Reincidência", "Mesmo colaborador e mesma causa mais de uma vez nos últimos 12 meses."],
+];
+
+/** Escopo e filtros do resumo em texto: quem lê o PDF sabe exatamente o recorte. */
+async function recorteDoResumo(params: URLSearchParams, escopo: Row) {
+  const filtros: string[] = [];
+  const status = params.get("status"); if (status) filtros.push(`status ${rotuloStatus(status)}`);
+  const setor = params.get("setor")?.trim(); if (setor) filtros.push(`setor ${setor}`);
+  const colaboradorId = params.get("colaborador_id");
+  if (colaboradorId) {
+    const { data } = await createAdminClient().from("usuarios").select("nome").eq("id", colaboradorId).maybeSingle();
+    filtros.push(`colaborador ${data?.nome ?? "selecionado"}`);
+  }
+  const escopoTexto = escopo?.tipo === "equipe_hierarquica"
+    ? `Sua equipe (${plural(Number(escopo.quantidade_colaboradores ?? 0), "pessoa")})`
+    : "Toda a empresa";
+  return { escopo: escopoTexto, filtros: filtros.length ? filtros.join("; ") : "Nenhum" };
 }
 
 export async function gerarPdfResumo(params: URLSearchParams) {
-  const insights=await obterInsights(params.get("inicio"),params.get("fim"),{status:params.get("status"),colaboradorId:params.get("colaborador_id"),setor:params.get("setor")}) as Row;const writer=await pdfWriter("Resumo Gerencial",`${insights.periodo.inicio} a ${insights.periodo.fim}`);const k=insights.kpis;
-  writer.heading("Indicadores");writer.line("Total de NCs",k.total_ncs);writer.line("Backlog ativo",k.backlog_ativo_atual);writer.line("Aguardando avaliacao",k.abertas_atuais);writer.line("Aguardando feedback",k.aguardando_feedback_atual);writer.line("Aguardando aceite",k.aguardando_aceite_atual);writer.line("Nao respondidas",k.nao_respondidas_atual);writer.line("Taxa de aceite no prazo",k.taxa_aceite_no_prazo==null?"Sem aceites no periodo":`${Math.round(k.taxa_aceite_no_prazo*1000)/10}% (${k.aceites_no_prazo} de ${k.aceites_no_periodo})`);writer.line("Concluidas no periodo",k.concluidas_no_periodo);writer.line("Invalidadas no periodo",k.invalidadas_no_periodo);
-  writer.heading("Tempos medianos");for(const [key,value] of Object.entries(insights.tempos as Row))writer.line(key.replaceAll("_"," "),value.mediana_horas==null?"Sem amostras":`${value.mediana_horas} h (${value.amostras} amostras)`);
-  writer.heading("Principais causas");for(const cause of (insights.ncs_por_causa??[]).slice(0,10))writer.line(cause.causa,`${cause.total} NC(s); ${cause.total_reincidentes} reincidente(s)`);
-  writer.heading("Metodologia");for(const [key,value] of Object.entries(insights.metodologia as Row))writer.line(key,value);
-  return {bytes:await writer.doc.save(),filename:`sgnc-resumo-${insights.periodo.inicio}-${insights.periodo.fim}.pdf`};
+  const requester = await requireUser();
+  const insights = await obterInsights(params.get("inicio"), params.get("fim"), { status: params.get("status"), colaboradorId: params.get("colaborador_id"), setor: params.get("setor") }) as Row;
+  const writer = await pdfWriter("Resumo Gerencial", periodoBr(insights.periodo.inicio, insights.periodo.fim));
+  const k = insights.kpis;
+  const recorte = await recorteDoResumo(params, insights.escopo);
+  writer.heading("Recorte"); writer.line("Período", periodoBr(insights.periodo.inicio, insights.periodo.fim)); writer.line("Escopo", recorte.escopo); writer.line("Filtros", recorte.filtros);
+  writer.heading("Indicadores");
+  writer.line("NCs abertas no período", k.total_ncs);
+  writer.line("Em andamento hoje", k.backlog_ativo_atual);
+  writer.line("Aguardando avaliação", k.abertas_atuais); writer.line("Aguardando feedback", k.aguardando_feedback_atual); writer.line("Aguardando aceite", k.aguardando_aceite_atual); writer.line("Não respondidas", k.nao_respondidas_atual);
+  writer.line("Taxa de aceite no prazo", k.taxa_aceite_no_prazo == null ? "Sem aceites no período" : `${String(Math.round(k.taxa_aceite_no_prazo * 1000) / 10).replace(".", ",")}% (${k.aceites_no_prazo} de ${plural(k.aceites_no_periodo, "aceite")})`);
+  writer.line("Concluídas no período", k.concluidas_no_periodo); writer.line("Invalidadas no período", k.invalidadas_no_periodo);
+  writer.heading("Tempos medianos");
+  for (const [key, value] of Object.entries(insights.tempos as Row)) writer.line(ROTULO_TEMPO[key] ?? key, value.amostras ? `${duracao(value.mediana_segundos)} (mediana de ${plural(value.amostras, "NC", "NCs")})` : "Sem NCs nesta etapa no período");
+  writer.heading("Principais causas");
+  const causas = (insights.ncs_por_causa ?? []).slice(0, 10);
+  if (!causas.length) writer.line("Causas", "Nenhuma NC com causa no período");
+  for (const cause of causas) writer.line(cause.causa, `${plural(cause.total, "NC", "NCs")}; ${plural(cause.total_reincidentes, "reincidente")}`);
+  writer.heading("Como ler este resumo"); for (const [rotulo, texto] of METODOLOGIA_RESUMO) writer.line(rotulo, texto);
+  return { bytes: await writer.finish(requester.nome), filename: `sgnc-resumo-${insights.periodo.inicio}-${insights.periodo.fim}.pdf` };
 }
