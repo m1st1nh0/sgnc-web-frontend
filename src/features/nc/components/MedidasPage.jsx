@@ -7,6 +7,7 @@ import Form from "react-bootstrap/Form";
 
 import { aplicarMedida, decidirMedida, listarMedidas } from "../client/ncService.js";
 import { ROTULO_TIPO_MEDIDA, situacaoDaMedida } from "../client/medidas.js";
+import { erroComprovante } from "../../../lib/nc/comprovante";
 import { ErroApi } from "../../../lib/api/client/api.js";
 import { formatarData, formatarDataHora } from "../../../lib/utils/formato.js";
 import Botao from "../../../components/ui/Botao.jsx";
@@ -31,6 +32,18 @@ function CartaoMedida({ medida, aoAlterar }) {
   const [data, setData] = useState(hojeEmSaoPaulo());
   const [dias, setDias] = useState("");
   const [observacao, setObservacao] = useState("");
+  const [arquivo, setArquivo] = useState(null);
+  const [previa, setPrevia] = useState("");
+  useEffect(() => () => { if (previa) URL.revokeObjectURL(previa); }, [previa]);
+
+  function selecionarArquivo(event) {
+    const foto = event.target.files?.[0] ?? null;
+    const mensagem = erroComprovante(foto);
+    setErrosCampo((anteriores) => ({ ...anteriores, arquivo: mensagem }));
+    setArquivo(mensagem ? null : foto);
+    setPrevia(mensagem ? "" : URL.createObjectURL(foto));
+    event.target.value = "";
+  }
   const [errosCampo, setErrosCampo] = useState({});
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -72,6 +85,10 @@ function CartaoMedida({ medida, aoAlterar }) {
   }
 
   function aplicar() {
+    if (enviando) return;
+    if (!data) { setErrosCampo({ data: "Informe a data da aplicação." }); return; }
+    const mensagem = erroComprovante(arquivo);
+    if (mensagem) { setErrosCampo({ arquivo: mensagem }); return; }
     if (medida.tipo === "suspensao") {
       const numero = Number(dias);
       if (!Number.isInteger(numero) || numero < 1 || numero > 30) {
@@ -83,7 +100,7 @@ function CartaoMedida({ medida, aoAlterar }) {
       data,
       dias_suspensao: medida.tipo === "suspensao" ? Number(dias) : null,
       observacao: observacao.trim() || null,
-    }));
+    }, arquivo));
   }
 
   return (
@@ -117,6 +134,15 @@ function CartaoMedida({ medida, aoAlterar }) {
             Aplicada em {formatarData(medida.data_aplicacao)} por {medida.aplicada_por_nome || "-"}
             {medida.observacao ? ` · ${medida.observacao}` : ""}
           </p>
+        )}
+
+        {medida.status === "aplicada" && (
+          medida.comprovante_nome ? (
+            <div className="d-flex flex-wrap gap-3 texto-sm mt-2">
+              <a href={`/api/nc/medidas-disciplinares/${medida.id}/comprovante`} target="_blank" rel="noopener noreferrer">Ver medida assinada</a>
+              <a href={`/api/nc/medidas-disciplinares/${medida.id}/comprovante?download=1`} target="_blank" rel="noopener noreferrer">Baixar foto</a>
+            </div>
+          ) : <p className="texto-xs texto-secundario mb-1">Sem comprovante anexado (registro anterior).</p>
         )}
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
@@ -215,6 +241,21 @@ function CartaoMedida({ medida, aoAlterar }) {
             </div>
             <CampoTextoArea rotulo="Observação" rows={2} value={observacao} onChange={(e) => setObservacao(e.target.value)}
               erro={errosCampo.observacao} helper="Contexto da aplicação (opcional)." maxLength={1000} />
+            <Form.Group className="mb-3" controlId={`comprovante-${medida.id}`}>
+              <Form.Label className="sg-label">Foto da medida assinada <span aria-hidden="true">*</span></Form.Label>
+              <Form.Control type="file" accept="image/jpeg,image/png,image/webp" required={!arquivo} disabled={enviando}
+                onChange={selecionarArquivo} isInvalid={Boolean(errosCampo.arquivo)}
+                aria-describedby={`comprovante-ajuda-${medida.id} comprovante-erro-${medida.id}`} />
+              <Form.Text id={`comprovante-ajuda-${medida.id}`}>Anexe uma foto legível do documento assinado. JPG, PNG ou WebP, até 4 MB.</Form.Text>
+              <Form.Control.Feedback type="invalid" id={`comprovante-erro-${medida.id}`} role="alert">{errosCampo.arquivo}</Form.Control.Feedback>
+              {previa && (
+                <div className="mt-2">
+                  <img src={previa} alt="Prévia da medida assinada selecionada" style={{ display: "block", maxWidth: "100%", maxHeight: 240, objectFit: "contain", borderRadius: 8 }} />
+                  <p className="texto-xs texto-secundario mt-1 mb-1" style={{ overflowWrap: "anywhere" }}>{arquivo?.name}</p>
+                  <Botao variante="secundario" tamanho="sm" disabled={enviando} onClick={() => { setArquivo(null); setPrevia(""); }}>Remover foto</Botao>
+                </div>
+              )}
+            </Form.Group>
             <div className="d-flex gap-2">
               <Botao variante="primario" tamanho="sm" carregando={enviando} onClick={aplicar}>Confirmar aplicação</Botao>
               <Botao variante="secundario" tamanho="sm" disabled={enviando} onClick={() => setModo(null)}>Cancelar</Botao>

@@ -125,10 +125,15 @@ export function decidirMedida(medidaId, decisao, motivo, tipo = null) {
   });
 }
 
-export function aplicarMedida(medidaId, dados) {
+export function aplicarMedida(medidaId, dados, arquivo) {
+  const form = new FormData();
+  for (const [chave, valor] of Object.entries(dados)) {
+    if (valor != null) form.append(chave, String(valor));
+  }
+  if (arquivo) form.append("arquivo", arquivo);
   return chamarApi(`/nc/medidas-disciplinares/${medidaId}/aplicar`, {
     method: "POST",
-    body: dados,
+    body: form,
   });
 }
 
