@@ -251,7 +251,6 @@ function CartaoMedida({ medida, aoAlterar }) {
               {previa && (
                 <div className="mt-2">
                   <img src={previa} alt="Prévia da medida assinada selecionada" style={{ display: "block", maxWidth: "100%", maxHeight: 240, objectFit: "contain", borderRadius: 8 }} />
-                  <p className="texto-xs texto-secundario mt-1 mb-1" style={{ overflowWrap: "anywhere" }}>{arquivo?.name}</p>
                   <Botao variante="secundario" tamanho="sm" disabled={enviando} onClick={() => { setArquivo(null); setPrevia(""); }}>Remover foto</Botao>
                 </div>
               )}
