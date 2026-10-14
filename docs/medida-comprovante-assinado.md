@@ -4,7 +4,7 @@ Decisão de 14/10/2026: a aplicação pelo RH ocorre fora do SGNC. No formulári
 
 ## Entrega
 
-- Uma foto JPG, PNG ou WebP de até 4 MiB, com prévia, remoção e substituição antes do registro.
+- Uma foto JPG, PNG ou WebP de até 4 MiB, com seleção confirmada, remoção e substituição antes do registro.
 - Validação no cliente, API e banco. MIME e cabeçalho binário são conferidos no servidor; legibilidade e assinatura são conferidas por quem registra.
 - Arquivo no bucket privado `medidas-assinadas`. A API mantém acesso restrito à Qualidade/Adm, como a tela atual; nunca permite aplicar a própria medida.
 - Upload precede a RPC `aplicar_medida_com_comprovante_v2`, que trava a medida e grava aplicação + caminho/nome numa transação. Upload malsucedido não altera a medida.
@@ -49,9 +49,9 @@ Rollback da aplicação antes da ativação: a v1 continua disponível. Depois d
 - O teste de ativação foi preparado, mas a ativação não foi executada no banco compartilhado.
 - Advisor: nenhum achado referente aos novos objetos. Avisos já existentes: RLS sem políticas em `nc_feedbacks`/`notificacoes` e proteção contra senhas vazadas desabilitada; fora do escopo deste PR.
 
-### Bloqueio atual do Preview
+### Validação do Preview
 
-O deployment `798e9fd` retorna HTTP 500 antes do login. Logs da Vercel: `Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (ou NEXT_PUBLIC_SUPABASE_ANON_KEY)`.
+O deployment anterior `798e9fd` retornou HTTP 500 antes do login. Logs da Vercel: `Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (ou NEXT_PUBLIC_SUPABASE_ANON_KEY)`.
 
 A inspeção de metadados confirmou que as três variáveis Supabase estão disponíveis em Production e, em Preview, somente na branch `claude/siga-conforme-prompt-4rd5by`. A branch deste PR não recebe nenhuma delas. É necessário configurar, especificamente para `feat/medida-comprovante-assinado`:
 
@@ -66,7 +66,7 @@ Depois, gerar novo Preview e entrar com conta de teste Qualidade/Adm. Não mover
 ## UAT no Preview
 
 1. Em uma medida aprovada de outro colaborador, abrir Registrar aplicação; tentar confirmar sem foto: deve bloquear.
-2. Selecionar imagem válida; conferir prévia; remover e substituir. Arquivo vazio, formato não suportado ou acima de 4 MiB deve ser recusado.
+2. Selecionar imagem válida; confirmar o estado de foto selecionada; remover e substituir. Arquivo vazio, formato não suportado ou acima de 4 MiB deve ser recusado.
 3. Simular falha no envio: data, observação e foto devem permanecer; medida continua aprovada.
 4. Confirmar com foto válida: medida aplicada; abrir e baixar a foto após recarregar a página.
 5. Repetir o registro em duas abas: só uma aplicação deve ser aceita.
