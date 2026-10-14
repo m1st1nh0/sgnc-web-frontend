@@ -37,6 +37,7 @@ import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
 import { ehQualidade } from "../../../lib/auth/papeis.js";
+import { ORIGENS_NC, TIPOS_NC } from "../../../lib/nc/classificacao.js";
 
 const EXTENSOES_IMAGEM = new Set([
   "jpg",
@@ -414,7 +415,18 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                     <div><dt>Data da ocorrência</dt><dd>{formatarData(nc.data)}</dd></div>
                     <div><dt>Aberta por</dt><dd>{abertoPorNome ? abertoPorNome.charAt(0).toUpperCase() + abertoPorNome.slice(1) : "—"}</dd></div>
                     <div><dt>Causas</dt><dd>{nc.causas?.length > 0 ? nc.causas.join(", ") : "—"}</dd></div>
-                    <div><dt>Reincidência</dt><dd>{nc.reincidencia ?? "—"}</dd></div>
+                    <div><dt>Reincidência</dt><dd>{nc.tipo_nc === "orientativa" ? "Não conta (NC orientativa)" : nc.reincidencia ?? "—"}</dd></div>
+                    {nc.origem && <div><dt>Origem</dt><dd>{ORIGENS_NC[nc.origem] ?? nc.origem}</dd></div>}
+                    {nc.origem && <div><dt>Tipo</dt><dd>{TIPOS_NC[nc.tipo_nc] ?? nc.tipo_nc}</dd></div>}
+                    {(nc.procedimento || nc.procedimento_url) && (
+                      <div>
+                        <dt>Procedimento</dt>
+                        <dd>
+                          {nc.procedimento || "Procedimento"}
+                          {nc.procedimento_url && <> · <a href={nc.procedimento_url} target="_blank" rel="noopener noreferrer">abrir na intranet</a></>}
+                        </dd>
+                      </div>
+                    )}
                   </dl>
                   <div className="sg-detalhe-nc__descricao">
                     <span className="sg-detalhe-nc__rotulo">Descrição</span>

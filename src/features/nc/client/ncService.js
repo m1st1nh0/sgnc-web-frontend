@@ -28,10 +28,11 @@ export function excluirNc(id) {
   return chamarApi(`/nc/${id}`, { method: "DELETE" });
 }
 
-export function avaliarNc(id, decisao, motivoInvalidacao) {
+/** Ao validar, `classificacao` leva origem, tipo_nc, procedimento e procedimento_url. */
+export function avaliarNc(id, decisao, motivoInvalidacao, classificacao = {}) {
   return chamarApi(`/nc/${id}/avaliar`, {
     method: "POST",
-    body: { decisao, motivo_invalidacao: motivoInvalidacao },
+    body: { decisao, motivo_invalidacao: motivoInvalidacao, ...classificacao },
   });
 }
 
