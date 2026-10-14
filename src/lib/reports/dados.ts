@@ -31,7 +31,7 @@ export async function ultimosFeedbacks(ncIds: number[]) {
   if (!ncIds.length) return result;
   const admin = createAdminClient() as any;
   const { data, error } = await admin.from("nc_feedbacks")
-    .select("nc_id, versao, causa_raiz, acao_combinada, responsavel_acao_id, prazo_acao, combinado, prazo_aceite, legado, criado_em").in("nc_id", ncIds);
+    .select("nc_id, versao, causa_raiz, acao_combinada, responsavel_acao_id, prazo_acao, combinado, prazo_aceite, legado, registrado_em").in("nc_id", ncIds);
   if (error) throw new ApiError("Não foi possível carregar os feedbacks.", 500);
   for (const row of data ?? []) { const atual = result.get(row.nc_id); if (!atual || row.versao > atual.versao) result.set(row.nc_id, row); }
   const ids = [...new Set([...result.values()].map((row) => row.responsavel_acao_id).filter(Boolean))];
