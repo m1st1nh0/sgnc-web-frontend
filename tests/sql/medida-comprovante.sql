@@ -1,4 +1,4 @@
--- Executar após a migração dentro de BEGIN/ROLLBACK. Nenhum dado de negócio é persistido.
+-- Executar após a preparação aditiva dentro de BEGIN/ROLLBACK. Nenhum dado de negócio é persistido.
 DO $$
 DECLARE
   m public.medidas_disciplinares%ROWTYPE;
@@ -14,8 +14,15 @@ BEGIN
   IF NOT (resultado->>'ok')::boolean THEN RAISE EXCEPTION 'Aprovação falhou: %', resultado; END IF;
   resultado := public.aplicar_medida_com_comprovante_v2(m.id, operador, CURRENT_DATE, CASE WHEN m.tipo='suspensao' THEN 1 ELSE NULL END, NULL, NULL, NULL);
   IF resultado->>'erro' IS DISTINCT FROM 'anexo_ausente' THEN RAISE EXCEPTION 'Ausência não bloqueada: %', resultado; END IF;
-  resultado := public.aplicar_medida_v1(m.id, operador, CURRENT_DATE, NULL, NULL);
-  IF resultado->>'erro' IS DISTINCT FROM 'anexo_ausente' THEN RAISE EXCEPTION 'Legado não bloqueado'; END IF;
+  -- A exceção desfaz somente a aplicação legada, sem alterar o fixture aprovado.
+  BEGIN
+    resultado := public.aplicar_medida_v1(m.id, operador, CURRENT_DATE, CASE WHEN m.tipo='suspensao' THEN 1 ELSE NULL END, NULL);
+    IF (resultado->>'ok') IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'Legado bloqueado: %', resultado; END IF;
+    UPDATE public.medidas_disciplinares SET observacao='Histórico legado continua editável' WHERE id=m.id;
+    RAISE EXCEPTION 'rollback_fixture_legado';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'rollback_fixture_legado' THEN RAISE; END IF;
+  END;
   IF (SELECT status FROM public.medidas_disciplinares WHERE id=m.id) <> 'aprovada' THEN RAISE EXCEPTION 'Falha alterou status'; END IF;
   resultado := public.aplicar_medida_com_comprovante_v2(m.id, m.colaborador_id, CURRENT_DATE, NULL, NULL, NULL, NULL);
   IF resultado->>'erro' NOT IN ('conflito_interesse','sem_permissao') THEN RAISE EXCEPTION 'Segregação falhou'; END IF;
@@ -35,6 +42,8 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'O comprovante registrado não pode ser substituído ou removido' THEN RAISE; END IF;
   END;
+  IF has_function_privilege('anon','public.aplicar_medida_com_comprovante_v2(bigint,uuid,date,integer,text,text,text)','EXECUTE') THEN RAISE EXCEPTION 'RPC exposta para anon'; END IF;
+  IF NOT has_function_privilege('service_role','public.aplicar_medida_com_comprovante_v2(bigint,uuid,date,integer,text,text,text)','EXECUTE') THEN RAISE EXCEPTION 'Servidor sem acesso à RPC'; END IF;
   IF has_function_privilege('authenticated','public.aplicar_medida_com_comprovante_v2(bigint,uuid,date,integer,text,text,text)','EXECUTE') THEN RAISE EXCEPTION 'RPC exposta'; END IF;
 END;
 $$;

@@ -12,18 +12,56 @@ Decisão de 14/10/2026: a aplicação pelo RH ocorre fora do SGNC. No formulári
 - Links de visualizar/baixar verificam sessão e perfil a cada clique e emitem URL com 60 segundos de validade, sem cache da resposta.
 - Medidas antigas continuam consultáveis sem anexo. Não há alteração ou exclusão de comprovante depois do registro nesta entrega.
 
-## Publicação
+## Publicação em duas fases
 
-Aplicar `supabase/migrations/20261014200521_medida_comprovante_assinado.sql` junto com a publicação da aplicação. A migração bloqueia o caminho antigo sem anexo; portanto, não deve ser aplicada isoladamente enquanto o código antigo continua recebendo registros. Um Preview com banco compartilhado também depende dessa coordenação; preferir banco isolado para UAT.
+### 1. Preparação aditiva (aplicada em 14/10/2026)
 
-A migração foi testada em transação com ROLLBACK no projeto SGNC e **não foi aplicada permanentemente**. Nenhum registro de negócio foi alterado. O teste SQL usa metadado de objeto temporário como fixture; não substitui um upload real pelo Storage.
+`supabase/migrations/20261014202345_medida_comprovante_assinado_preparacao.sql`
 
-## Verificação executada
+Aplicada no projeto SGNC (`bxnuslxrlmqzytryxzvv`), com versão alinhada ao histórico remoto. Substitui a migração original não aplicada `20261014200521_medida_comprovante_assinado.sql`.
 
-- `npm run lint`, `npm run typecheck`, `npm run build`: passaram.
-- `npm test`: regressões e 142 testes unitários passaram.
-- `tests/sql/medida-comprovante.sql`, após migração dentro de BEGIN/ROLLBACK: ausência, caminho legado, objeto inexistente, permissão, registro atômico, reenvio e imutabilidade passaram.
-- Navegador local indisponível: instalação do Chromium falhou por download inválido. Validação visual e upload real ponta a ponta pendentes no Preview.
+- Acrescenta as colunas opcionais, índice, bucket privado e RPC v2.
+- Mantém **intacta** a implementação e os privilégios da `aplicar_medida_v1`.
+- O trigger só valida integridade/imutabilidade de comprovantes presentes. Não exige foto em aplicações legadas.
+- A v2 já exige foto, sem depender da ativação global. Assim, o novo Preview pode coexistir com a produção antiga.
+- Storage tem RLS ativo e nenhuma política para acesso direto de anon/authenticated. Ambas as RPCs são executáveis somente por service_role/postgres; o servidor valida sessão, perfil e conflito de interesse.
+
+### 2. Ativação global (NÃO aplicada)
+
+`supabase/activation/medida_comprovante_obrigatorio.sql` fica deliberadamente **fora de migrations** para não ser executado por `db push` durante a preparação.
+
+Ordem operacional:
+1. Validar upload real, consulta/download e permissões no Preview.
+2. Publicar o código novo em produção e validar o fluxo com foto.
+3. Confirmar que não há instâncias antigas recebendo novos registros.
+4. Na mesma sessão SQL, executar `SET sgnc.novo_codigo_publicado = 'confirmado';` e depois o script de ativação.
+5. Executar `tests/sql/medida-comprovante-ativacao.sql` dentro de `BEGIN/ROLLBACK`.
+
+A confirmação é uma trava operacional explícita, não uma detecção automática do deploy. A ativação exige foto nas novas aplicações por trigger e passa a rejeitar a v1. Registros históricos sem foto continuam consultáveis/editáveis. O script é transacional: qualquer erro deve causar rollback, nunca execução parcial.
+
+Rollback da aplicação antes da ativação: a v1 continua disponível. Depois da ativação, não voltar ao código antigo sem restaurar previamente a implementação da v1 e o trigger permissivo da preparação, em uma operação coordenada. Nunca remover colunas, bucket ou arquivos durante rollback.
+
+## Verificação desta correção
+
+- Build, 142 testes unitários, regressões, lint e typecheck passaram.
+- `tests/sql/medida-comprovante.sql` executado em `BEGIN/ROLLBACK`: v1 registra sem foto; v2 rejeita ausência/objeto inexistente; autorização, gravação atômica, reenvio e imutabilidade verificados. Nenhum registro de negócio do teste foi persistido.
+- Consultas após aplicação confirmaram colunas, bucket privado (4 MiB; JPEG/PNG/WebP), RLS, ACLs e ausência de exigência global.
+- O teste de ativação foi preparado, mas a ativação não foi executada no banco compartilhado.
+- Advisor: nenhum achado referente aos novos objetos. Avisos já existentes: RLS sem políticas em `nc_feedbacks`/`notificacoes` e proteção contra senhas vazadas desabilitada; fora do escopo deste PR.
+
+### Bloqueio atual do Preview
+
+O deployment `798e9fd` retorna HTTP 500 antes do login. Logs da Vercel: `Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (ou NEXT_PUBLIC_SUPABASE_ANON_KEY)`.
+
+A inspeção de metadados confirmou que as três variáveis Supabase estão disponíveis em Production e, em Preview, somente na branch `claude/siga-conforme-prompt-4rd5by`. A branch deste PR não recebe nenhuma delas. É necessário configurar, especificamente para `feat/medida-comprovante-assinado`:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (Secret; apenas servidor)
+
+Depois, gerar novo Preview e entrar com conta de teste Qualidade/Adm. Não mover as variáveis da outra branch nem alterar as de Production. Não registrar teste em medida real de funcionário: usar fixture de UAT identificada como teste.
+
+**Upload real e testes de autorização ponta a ponta continuam pendentes.** Metadados de Storage usados no teste SQL não equivalem a envio de arquivo real. Manter PR em draft até concluir UAT.
 
 ## UAT no Preview
 
