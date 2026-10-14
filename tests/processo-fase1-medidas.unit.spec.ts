@@ -28,19 +28,21 @@ test("processo 1 (P3): a cada 3 NCs da mesma causa no ciclo, passível de medida
   expect(migracao).toContain("ADD CONSTRAINT medidas_disciplinares_ocorrencia_gatilho_check CHECK (ocorrencia_gatilho >= 1)");
 });
 
-test("processo 1 (Q2): escada por causa no ciclo; reprovadas e canceladas não contam", () => {
+test("processo 1 (Q2, 14/10): escada por causa no ciclo; só contam medidas aprovadas pela Qualidade", () => {
   const escada = corpo("proxima_medida_do_ciclo");
   expect(escada).toContain("WHEN n.ordem <= 3 THEN 'advertencia'");
   expect(escada).toContain("WHEN n.ordem <= 6 THEN 'suspensao'");
   expect(escada).toContain("ELSE 'avaliar_justa_causa'");
   expect(escada).toContain("AND m.causa_id = p_causa_id");
-  expect(escada).toContain("AND m.status NOT IN ('reprovada', 'cancelada')");
+  expect(escada).toContain("AND m.status IN ('aprovada', 'aplicada')");
 });
 
-test("processo 1 (Q5): NC crítica fica passível de medida sem contagem, uma por NC, e segue para decisão", () => {
+test("processo 1 (Q5, 14/10): NC crítica passível de medida em cada causa; junta com a da contagem, sem duplicar", () => {
   const critica = corpo("medida_para_nc_critica");
+  expect(critica).toContain("SELECT rel.causa_id, rel.ocorrencia_numero FROM public.nc_causas AS rel WHERE rel.nc_id = p_nc_id ORDER BY rel.causa_id");
+  expect(critica).toContain("SET origem = 'reincidencia_e_critica'");
   expect(critica).toContain("'sugerida', 'nc_critica'");
-  expect(critica).toContain("WHERE nc_id = p_nc_id AND status NOT IN ('reprovada', 'cancelada')");
+  expect(migracao).toContain("CHECK (origem IN ('reincidencia', 'nc_critica', 'reincidencia_e_critica'))");
   expect(migracao).toContain("FOR EACH ROW WHEN (NEW.critica AND NOT OLD.critica) EXECUTE FUNCTION public.medida_ao_marcar_critica()");
 });
 

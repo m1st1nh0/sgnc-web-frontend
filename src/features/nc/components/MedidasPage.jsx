@@ -103,7 +103,7 @@ function CartaoMedida({ medida, aoAlterar }) {
         <p className="texto-sm texto-secundario mb-2">
           {medida.origem === "nc_critica"
             ? <>NC crítica, causa <strong>{medida.causa}</strong> ·{" "}</>
-            : <>{medida.ocorrencia_gatilho}ª NC de <strong>{medida.causa}</strong> no ciclo de 12 meses ·{" "}</>}
+            : <>{medida.ocorrencia_gatilho}ª NC de <strong>{medida.causa}</strong> no ciclo de 12 meses{medida.origem === "reincidencia_e_critica" ? " e NC crítica" : ""} ·{" "}</>}
           <Link href={`/nc/${medida.nc_id}`}>NC #{medida.nc_id}</Link> · passível desde {formatarDataHora(medida.criado_em)}
         </p>
         {medida.decidida_em && (

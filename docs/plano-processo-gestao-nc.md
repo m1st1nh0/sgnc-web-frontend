@@ -59,6 +59,18 @@ Ordem: 1 → 2 → 3 → 4 → 5 → 6 → 7. As fases 3 e 4 são independentes 
 - [x] 1.4 Interface e textos conforme Q4: o sistema registra a situação, e a aplicação é feita pelo RH, presencialmente.
 - [x] 1.5 Testes unitários da regra e cenário no Supabase em transação desfeita.
 
+**Decisões de 14/10:**
+- Só sobem a escada as medidas aprovadas pela Qualidade (aprovadas ou aplicadas). Uma medida passível ainda sem decisão não conta.
+- A contagem é por causa. A NC com duas causas conta +1 em cada uma, e cada causa pode gerar a sua medida.
+- A NC crítica gera medida para cada causa dela.
+- Na 3ª, 6ª… NC, se ela também for crítica, sai uma única medida, que registra as duas origens (`reincidencia_e_critica`).
+
+**Status (14/10):** migração aplicada no Supabase com autorização. O recálculo da base de teste gerou duas medidas passíveis: a da 3ª NC da causa (NC #11) e a da NC crítica (NC #17); a medida já aplicada continua no histórico. Cenários repetidos no Supabase em transação desfeita:
+- com só a 1ª medida aprovada, a 2ª e a 3ª continuam advertência;
+- a NC com duas causas conta para as duas;
+- marcar como crítica uma NC que já gerou medida pela contagem junta as duas origens na mesma medida;
+- a outra causa da mesma NC ganha a sua medida.
+
 **Status (13/10):** implementada no PR da Fase 1. Migração `20261013120000_medida_ciclo_tres_ncs.sql`:
 - `ocorrencia_no_ciclo` faz a contagem no ciclo e `proxima_medida_do_ciclo` define a escada da causa, sem contar as medidas reprovadas e canceladas.
 - `medida_para_nc_critica` e o trigger `medida_ao_marcar_critica` deixam o colaborador passível de medida na NC crítica, com uma medida por NC.

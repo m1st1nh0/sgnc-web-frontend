@@ -5,16 +5,19 @@
 --     tudo zera: a próxima NC dessa causa abre um ciclo novo (contador e escada de medidas).
 --   - A cada 3 NCs da mesma causa no ciclo (3ª, 6ª, 9ª…) o colaborador fica passível de medida.
 --   - Escada por causa (lei trabalhista): 1ª a 3ª medida do ciclo advertência, 4ª a 6ª suspensão,
---     7ª em diante avaliação de justa causa. Medidas reprovadas ou canceladas não contam.
---   - NC crítica deixa o colaborador passível de medida independentemente da contagem; a Qualidade
---     continua aprovando ou reprovando, como no fluxo de medidas.
+--     7ª em diante avaliação de justa causa. Só contam as medidas aprovadas pela Qualidade
+--     (aprovadas ou aplicadas): uma passível ainda sem decisão, reprovada ou cancelada não sobe a escada.
+--   - A contagem é por causa: NC com duas causas soma +1 em cada uma, e cada causa pode gerar a sua medida.
+--   - NC crítica deixa o colaborador passível de medida independentemente da contagem, para cada causa
+--     da NC. Se a contagem já gerou medida para a causa (3ª, 6ª…), não nasce outra: a mesma medida passa
+--     a registrar as duas origens. A Qualidade continua aprovando ou reprovando.
 --   - "Sugerida" segue como valor interno; na interface é "Passível de medida". O RH aplica presencialmente.
 --   - Medidas pendentes da regra antiga (4ª ocorrência) são recalculadas (base de teste).
 
 -- ═══ Origem da medida ═══
 
 ALTER TABLE public.medidas_disciplinares
-  ADD COLUMN origem text NOT NULL DEFAULT 'reincidencia' CHECK (origem IN ('reincidencia', 'nc_critica')),
+  ADD COLUMN origem text NOT NULL DEFAULT 'reincidencia' CHECK (origem IN ('reincidencia', 'nc_critica', 'reincidencia_e_critica')),
   -- O gatilho deixa de ser a 4ª ocorrência: agora é a 3ª (reincidência) ou qualquer uma (NC crítica).
   DROP CONSTRAINT medidas_disciplinares_ocorrencia_gatilho_check,
   ADD CONSTRAINT medidas_disciplinares_ocorrencia_gatilho_check CHECK (ocorrencia_gatilho >= 1);
@@ -62,6 +65,7 @@ END;
 $$;
 
 -- Tipo da próxima medida do ciclo: 1ª a 3ª advertência, 4ª a 6ª suspensão, 7ª em diante justa causa.
+-- Só sobem a escada as medidas aprovadas pela Qualidade (aprovada ou aplicada).
 CREATE OR REPLACE FUNCTION public.proxima_medida_do_ciclo(p_colaborador_id uuid, p_causa_id bigint, p_inicio_ciclo date)
 RETURNS text
 LANGUAGE sql
@@ -79,16 +83,17 @@ AS $$
       JOIN public.nao_conformidades AS nc ON nc.id = m.nc_id
      WHERE m.colaborador_id = p_colaborador_id
        AND m.causa_id = p_causa_id
-       AND m.status NOT IN ('reprovada', 'cancelada')
+       AND m.status IN ('aprovada', 'aplicada')
        AND coalesce(nc.data, nc.criado_em::date) >= p_inicio_ciclo
        AND coalesce(nc.data, nc.criado_em::date) < (p_inicio_ciclo + interval '12 months')::date
   ) AS n;
 $$;
 
--- NC crítica: passível de medida independentemente da contagem (uma medida por NC).
--- A causa é a de maior ocorrência no ciclo (empate: menor id).
+-- NC crítica: passível de medida independentemente da contagem, para cada causa da NC.
+-- Se a causa já tem medida desta NC (gerada pela contagem), não cria outra: marca as duas origens.
+-- Devolve quantas medidas foram criadas.
 CREATE OR REPLACE FUNCTION public.medida_para_nc_critica(p_nc_id bigint)
-RETURNS bigint
+RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO ''
@@ -98,27 +103,29 @@ DECLARE
   v_causa record;
   v_ciclo record;
   v_tipo text;
-  v_id bigint;
+  v_criadas integer := 0;
 BEGIN
   SELECT * INTO v_nc FROM public.nao_conformidades WHERE id = p_nc_id;
-  IF NOT FOUND OR v_nc.colaborador_id IS NULL THEN RETURN NULL; END IF;
-  IF EXISTS (SELECT 1 FROM public.medidas_disciplinares
-              WHERE nc_id = p_nc_id AND status NOT IN ('reprovada', 'cancelada')) THEN
-    RETURN NULL;
-  END IF;
-  SELECT rel.causa_id, rel.ocorrencia_numero INTO v_causa
-    FROM public.nc_causas AS rel
-   WHERE rel.nc_id = p_nc_id
-   ORDER BY rel.ocorrencia_numero DESC NULLS LAST, rel.causa_id
-   LIMIT 1;
-  IF NOT FOUND THEN RETURN NULL; END IF;
-  SELECT * INTO v_ciclo FROM public.ocorrencia_no_ciclo(v_nc.colaborador_id, v_causa.causa_id, p_nc_id);
-  v_tipo := public.proxima_medida_do_ciclo(v_nc.colaborador_id, v_causa.causa_id, v_ciclo.inicio_ciclo);
-  INSERT INTO public.medidas_disciplinares (colaborador_id, causa_id, nc_id, ocorrencia_gatilho, tipo, tipo_sugerido, status, origem)
-  VALUES (v_nc.colaborador_id, v_causa.causa_id, p_nc_id, coalesce(v_causa.ocorrencia_numero, v_ciclo.numero), v_tipo, v_tipo, 'sugerida', 'nc_critica')
-  ON CONFLICT (nc_id, causa_id, ocorrencia_gatilho) DO NOTHING
-  RETURNING id INTO v_id;
-  RETURN v_id;
+  IF NOT FOUND OR v_nc.colaborador_id IS NULL THEN RETURN 0; END IF;
+  FOR v_causa IN
+    SELECT rel.causa_id, rel.ocorrencia_numero FROM public.nc_causas AS rel WHERE rel.nc_id = p_nc_id ORDER BY rel.causa_id
+  LOOP
+    UPDATE public.medidas_disciplinares
+       SET origem = 'reincidencia_e_critica'
+     WHERE nc_id = p_nc_id AND causa_id = v_causa.causa_id
+       AND status NOT IN ('reprovada', 'cancelada') AND origem = 'reincidencia';
+    IF EXISTS (SELECT 1 FROM public.medidas_disciplinares
+                WHERE nc_id = p_nc_id AND causa_id = v_causa.causa_id AND status NOT IN ('reprovada', 'cancelada')) THEN
+      CONTINUE;
+    END IF;
+    SELECT * INTO v_ciclo FROM public.ocorrencia_no_ciclo(v_nc.colaborador_id, v_causa.causa_id, p_nc_id);
+    v_tipo := public.proxima_medida_do_ciclo(v_nc.colaborador_id, v_causa.causa_id, v_ciclo.inicio_ciclo);
+    INSERT INTO public.medidas_disciplinares (colaborador_id, causa_id, nc_id, ocorrencia_gatilho, tipo, tipo_sugerido, status, origem)
+    VALUES (v_nc.colaborador_id, v_causa.causa_id, p_nc_id, coalesce(v_causa.ocorrencia_numero, v_ciclo.numero), v_tipo, v_tipo, 'sugerida', 'nc_critica')
+    ON CONFLICT (nc_id, causa_id, ocorrencia_gatilho) DO NOTHING;
+    IF FOUND THEN v_criadas := v_criadas + 1; END IF;
+  END LOOP;
+  RETURN v_criadas;
 END;
 $$;
 
@@ -384,7 +391,9 @@ BEGIN
     IF p_evento = 'medida_sugerida' THEN
       SELECT v_cand || coalesce(jsonb_agg(jsonb_build_object('u', q, 'papel', 'qualidade', 'p', 5, 'link', '/medidas',
         't', 'Colaborador passível de medida', 'm', v_nome || ' está passível de ' || v_rotulo_medida || ' (' ||
-          CASE WHEN v_medida.origem = 'nc_critica' THEN 'NC crítica' ELSE v_medida.ocorrencia_gatilho || 'ª NC da mesma causa no ciclo' END || ').',
+          CASE v_medida.origem WHEN 'nc_critica' THEN 'NC crítica'
+                                WHEN 'reincidencia_e_critica' THEN v_medida.ocorrencia_gatilho || 'ª NC da mesma causa no ciclo e NC crítica'
+                                ELSE v_medida.ocorrencia_gatilho || 'ª NC da mesma causa no ciclo' END || ').',
         'chave', 'medida:' || v_medida.id)), '[]') INTO v_cand FROM unnest(v_qualidade) AS q;
     ELSIF p_evento = 'medida_decidida' THEN
       UPDATE public.notificacoes SET resolvida_em = pg_catalog.now(), atualizada_em = pg_catalog.now()
