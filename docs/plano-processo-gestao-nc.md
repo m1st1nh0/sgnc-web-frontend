@@ -22,7 +22,7 @@ Base: [`analise-processo-gestao-nc.md`](analise-processo-gestao-nc.md) (13/10/20
 | # | Tema | Decisão |
 |---|---|---|
 | P1 | Criticidade | Continua **Baixa / Média / Alta**. "Crítica" segue como marcação separada, feita só depois da validação, como hoje. |
-| P2 | Prazos | Adotar o **prazo de feedback** (5 dias úteis; 1 dia útil na NC crítica) e a **contenção em 24 h** na NC crítica. O prazo de 2 dias úteis para o aceite continua. |
+| P2 | Prazos | Adotar o **prazo de feedback** (5 dias úteis; 1 dia útil na NC crítica) e a **contenção em 24 h** na NC crítica. O prazo de 2 dias úteis para o aceite continua. **Revista em 14/10:** prazo de feedback e contenção ficam fora por enquanto (Fase 3 adiada). |
 | P3 | Gatilho da medida | Segue o documento: **a 3ª NC da mesma causa** deixa o colaborador passível de medida. O **contador zera** e uma nova sequência de 3 gera nova medida. Escada: as 3 primeiras medidas são advertências; depois vêm suspensões; completado esse ciclo, avalia-se a justa causa. O histórico é mantido. |
 | P4 | RH | **Não há papel RH no sistema.** O sistema registra a situação da medida (passível, aplicada, alterada etc.). A aplicação é feita pelo RH, presencialmente. |
 | P5 | Quem registra | **Qualquer perfil abre**; a Qualidade valida se procede ou não (como hoje). |
@@ -42,8 +42,8 @@ Precisam de resposta antes da fase indicada.
 | Q5 | ~~NC crítica~~ **Respondida (13/10):** fica passível de medida independentemente da contagem, ainda com aprovação ou reprovação pela Qualidade. | 1 |
 | Q6 | ~~Procedimento, tipo e origem~~ **Respondida (14/10):** na validação, a Qualidade informa a **origem** (monitoria, auditoria, supervisão, indicador ou reclamação), **obrigatória**; quem abre a NC não informa. Procedimento e link da intranet são **opcionais**. A Qualidade marca **cobrança** ou **orientativa**; a orientativa não conta para reincidência nem medida. | 2 |
 | Q7 | ~~Individual ou sistêmica~~ **Respondida (14/10):** não vira regra nem campo. Só se identifica depois de investigação e conversa; fica como observação no feedback. | 2 |
-| Q8 | Prazo de feedback: conta a partir da validação (5 dias úteis) e, na crítica, a partir da marcação (1 dia útil)? Vencido, quem é avisado: a Qualidade e o líder? | 3 |
-| Q9 | Contenção da NC crítica: a Qualidade registra o que foi feito (texto) em até 24 h corridas da marcação? Vencida, quem é avisado? | 3 |
+| Q8 | ~~Prazo de feedback~~ **Adiada (14/10):** sem prazo de feedback por enquanto. | 3 |
+| Q9 | ~~Contenção da NC crítica~~ **Adiada (14/10):** sem contenção em 24 h por enquanto. | 3 |
 | Q10 | Participantes do feedback: obrigatório escolher a Qualidade e o líder do colaborador, ou basta informar? | 4 |
 | Q11 | A verificação de 30 dias vale só para a NC crítica (com plano de ação), já que as demais encerram no aceite? Na verificação não eficaz, a NC volta para "Reaberta" (novo plano) ou é "Escalada" para o responsável do departamento (gestor da área)? Quem decide entre as duas? | 5 |
 
@@ -99,6 +99,8 @@ O servidor deixou de recalcular a medida em TypeScript: o painel de feedback e o
 - a validação gera uma entrada no histórico.
 
 ### Fase 3: prazos por criticidade (P2)
+
+**Adiada (14/10):** o responsável decidiu deixar sem o prazo de feedback e sem a contenção por enquanto. Os itens abaixo ficam como referência para um próximo ciclo; a Fase 6 não mede "feedback no prazo" enquanto esta fase estiver adiada.
 
 - [ ] 3.1 Prazo de feedback em horas de expediente: 5 dias úteis, e 1 dia útil na NC crítica, conforme Q8. Etapa e "Aguardando" mostram o prazo.
 - [ ] 3.2 Contenção da NC crítica em até 24 h, conforme Q9: registro, prazo e aviso.
