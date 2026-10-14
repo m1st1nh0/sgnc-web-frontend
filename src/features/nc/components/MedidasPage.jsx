@@ -33,15 +33,12 @@ function CartaoMedida({ medida, aoAlterar }) {
   const [dias, setDias] = useState("");
   const [observacao, setObservacao] = useState("");
   const [arquivo, setArquivo] = useState(null);
-  const [previa, setPrevia] = useState("");
-  useEffect(() => () => { if (previa) URL.revokeObjectURL(previa); }, [previa]);
 
   function selecionarArquivo(event) {
     const foto = event.target.files?.[0] ?? null;
     const mensagem = erroComprovante(foto);
     setErrosCampo((anteriores) => ({ ...anteriores, arquivo: mensagem }));
     setArquivo(mensagem ? null : foto);
-    setPrevia(mensagem ? "" : URL.createObjectURL(foto));
     event.target.value = "";
   }
   const [errosCampo, setErrosCampo] = useState({});
@@ -248,10 +245,10 @@ function CartaoMedida({ medida, aoAlterar }) {
                 aria-describedby={`comprovante-ajuda-${medida.id} comprovante-erro-${medida.id}`} />
               <Form.Text id={`comprovante-ajuda-${medida.id}`}>Anexe uma foto legível do documento assinado. JPG, PNG ou WebP, até 4 MB.</Form.Text>
               <Form.Control.Feedback type="invalid" id={`comprovante-erro-${medida.id}`} role="alert">{errosCampo.arquivo}</Form.Control.Feedback>
-              {previa && (
-                <div className="mt-2">
-                  <img src={previa} alt="Prévia da medida assinada selecionada" style={{ display: "block", maxWidth: "100%", maxHeight: 240, objectFit: "contain", borderRadius: 8 }} />
-                  <Botao variante="secundario" tamanho="sm" disabled={enviando} onClick={() => { setArquivo(null); setPrevia(""); }}>Remover foto</Botao>
+              {arquivo && (
+                <div className="mt-2 d-flex flex-wrap align-items-center gap-2">
+                  <span className="texto-xs texto-secundario">Foto selecionada para envio.</span>
+                  <Botao variante="secundario" tamanho="sm" disabled={enviando} onClick={() => setArquivo(null)}>Remover foto</Botao>
                 </div>
               )}
             </Form.Group>
