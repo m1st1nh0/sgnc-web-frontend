@@ -21,5 +21,6 @@ export function nomeArquivoRelatorio(tipo, filtros = {}) {
   const inicio = filtros.inicio || "inicio-padrao";
   const fim = filtros.fim || "hoje";
   if (tipo === "pdf") return `sgnc-resumo-${inicio}-${fim}.pdf`;
+  if (tipo === "xlsx") return `sgnc-ncs-${inicio}-${fim}.xlsx`;
   return `sgnc-ncs-${inicio}-${fim}.csv`;
 }

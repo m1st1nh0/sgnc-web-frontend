@@ -3,13 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
-import Table from "react-bootstrap/Table";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
-import CardMetrica from "../../../components/ui/CardMetrica.jsx";
 import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
 import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
@@ -28,11 +25,12 @@ import ModalNcsIndicador from "../../insights/components/ModalNcsIndicador.jsx";
 import {
   baixarCsvNcs,
   baixarPdfResumo,
+  baixarXlsxNcs,
   nomeArquivoRelatorio,
 } from "../client/relatoriosService.js";
 import { salvarArquivoLocal } from "../../../lib/utils/arquivoLocal.js";
 import { periodoPadraoRelatorio } from "../client/period.js";
-import { prepararLinhaMensal } from "../../insights/client/insightsUx.js";
+import { formatarDuracao, prepararLinhaMensal } from "../../insights/client/insightsUx.js";
 import { formatarPeriodo } from "../../../lib/utils/formato.js";
 import { comRetorno, urlComFiltros } from "../../../lib/utils/retorno.js";
 
@@ -122,6 +120,7 @@ export default function RelatoriosPage() {
   const [baixando, setBaixando] = useState("");
   const [erro, setErro] = useState("");
   const [detalheIndicador, setDetalheIndicador] = useState(null);
+  const [aba, setAba] = useState("geral");
 
   useEffect(() => {
     let ativo = true;
@@ -239,10 +238,12 @@ export default function RelatoriosPage() {
     setErro("");
     setBaixando(tipo);
     try {
-      const blob = tipo === "pdf" ? await baixarPdfResumo(aplicados) : await baixarCsvNcs(aplicados);
+      const baixar = { pdf: baixarPdfResumo, xlsx: baixarXlsxNcs, csv: baixarCsvNcs }[tipo];
+      const blob = await baixar(aplicados);
       salvarArquivoLocal(blob, nomeArquivoRelatorio(tipo, aplicados));
     } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : `Não foi possível gerar o arquivo ${tipo.toUpperCase()}.`);
+      const nome = { pdf: "do relatório em PDF", xlsx: "da planilha Excel", csv: "do CSV" }[tipo];
+      setErro(e instanceof ErroApi ? e.message : `Não foi possível gerar o arquivo ${nome}. Tente de novo em instantes.`);
     } finally {
       setBaixando("");
     }
@@ -253,196 +254,240 @@ export default function RelatoriosPage() {
     setPagina(proxima);
   }
 
-  const card = (titulo, filtro, props) => (
-    <button type="button" className="sg-metrica-interativa" onClick={() => abrirDetalhe(titulo, filtro)} aria-label={`Ver NCs: ${titulo}`}>
-      <CardMetrica {...props} />
-      <span className="sg-metrica-interativa__acao">Ver NCs</span>
+  const numero = (titulo, filtro, rotulo, valor, detalhe) => (
+    <button type="button" className="sg-numero" onClick={() => abrirDetalhe(titulo, filtro)} aria-label={`Ver NCs: ${titulo}, ${valor}`}>
+      <span className="sg-numero__rotulo">{rotulo}</span>
+      <span className="sg-numero__valor">{valor}{detalhe && <small>{detalhe}</small>}</span>
     </button>
   );
+  const percentual = (taxa) => taxa == null ? "—" : `${(taxa * 100).toFixed(1).replace(".", ",")}%`;
+  const totalStatus = statusData.reduce((soma, item) => soma + (item.quantidade || 0), 0);
+  const ABAS = [
+    { chave: "geral", rotulo: "Visão geral" },
+    { chave: "setor", rotulo: "Por setor" },
+    { chave: "colaborador", rotulo: "Por colaborador" },
+    { chave: "prazos", rotulo: "Prazos e aceites" },
+  ];
+  const ocupado = carregando || Boolean(baixando);
 
   return (
     <div>
-      <Container className="sg-container" style={{ maxWidth: "1280px" }}>
-        <CabecalhoPagina
-          titulo="Relatório operacional"
-          subtitulo={`Visão na tela · ${escopo} · ${formatarPeriodo(aplicados.inicio, aplicados.fim)}`}
-        />
-
-        {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
-
-        <section className="sg-card mb-4" aria-labelledby="filtros-relatorio">
-          <div className="sg-card-body p-3 p-md-4">
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <div>
-                <h2 id="filtros-relatorio" className="h6 mb-1">Período e filtros</h2>
-                <p className="texto-sm texto-suave mb-0">O relatório começa nos últimos 30 dias. Os atalhos aplicam o período na hora; os demais filtros valem ao clicar em Aplicar.</p>
-              </div>
-              <div className="d-flex gap-2">
-                <Botao variante="secundario" tamanho="sm" type="button" disabled={carregando || Boolean(baixando)} onClick={() => aplicarPeriodo(periodoPadraoRelatorio())}>Últimos 30 dias</Botao>
-                <Botao variante="secundario" tamanho="sm" type="button" disabled={carregando || Boolean(baixando)} onClick={() => aplicarPeriodo(periodoDozeMeses())}>Últimos 12 meses</Botao>
-              </div>
+      <Container className="sg-container sg-relatorio">
+        <div className="sg-relatorio__grade">
+          <aside className="sg-cartao sg-relatorio__filtros" aria-labelledby="filtros-relatorio">
+            <div className="sg-relatorio__filtros-topo">
+              <h2 id="filtros-relatorio" className="sg-secao-titulo mb-0">Filtros</h2>
+              <button type="button" className="sg-link-botao" disabled={ocupado}
+                onClick={() => aplicarPeriodo({ ...periodoPadraoRelatorio(), status: "", colaboradorId: "", setor: "" })}>Limpar</button>
             </div>
-
-            <Form onSubmit={aplicarFiltros}>
-              <div className="sg-filtros-relatorio">
+            <Form onSubmit={aplicarFiltros} className="sg-relatorio__form">
+              <fieldset className="sg-relatorio__periodo">
+                <legend className="sg-label">Período</legend>
+                <div className="sg-abas" role="group" aria-label="Atalhos de período">
+                  <button type="button" className="sg-abas__item" disabled={ocupado} onClick={() => aplicarPeriodo(periodoPadraoRelatorio())}>Últimos 30 dias</button>
+                  <button type="button" className="sg-abas__item" disabled={ocupado} onClick={() => aplicarPeriodo(periodoDozeMeses())}>Últimos 12 meses</button>
+                </div>
                 <Form.Group controlId="relatorio-inicio">
                   <Form.Label className="sg-label">Início</Form.Label>
-                  <Form.Control type="date" className="sg-input" value={filtros.inicio} onChange={(e) => alterar("inicio", e.target.value)} disabled={carregando || Boolean(baixando)} />
+                  <Form.Control type="date" className="sg-input" value={filtros.inicio} onChange={(e) => alterar("inicio", e.target.value)} disabled={ocupado} />
                 </Form.Group>
                 <Form.Group controlId="relatorio-fim">
                   <Form.Label className="sg-label">Fim</Form.Label>
-                  <Form.Control type="date" className="sg-input" value={filtros.fim} onChange={(e) => alterar("fim", e.target.value)} disabled={carregando || Boolean(baixando)} />
+                  <Form.Control type="date" className="sg-input" value={filtros.fim} onChange={(e) => alterar("fim", e.target.value)} disabled={ocupado} />
                 </Form.Group>
-                <Form.Group controlId="relatorio-status">
-                  <Form.Label className="sg-label">Status</Form.Label>
-                  <Form.Select className="sg-input" value={filtros.status} onChange={(e) => alterar("status", e.target.value)} disabled={carregando || Boolean(baixando)}>
-                    {STATUS.map(([value, label]) => <option value={value} key={value || "todos"}>{label}</option>)}
-                  </Form.Select>
-                </Form.Group>
-                <Form.Group controlId="relatorio-colaborador">
-                  <Form.Label className="sg-label">Colaborador</Form.Label>
-                  <Form.Select className="sg-input" value={filtros.colaboradorId} onChange={(e) => alterar("colaboradorId", e.target.value)} disabled={carregando || Boolean(baixando)}>
-                    <option value="">Todos os colaboradores</option>
-                    {pessoas.map((pessoa) => <option value={pessoa.id} key={pessoa.id}>{pessoa.nome}</option>)}
-                  </Form.Select>
-                </Form.Group>
-                <Form.Group controlId="relatorio-setor">
-                  <Form.Label className="sg-label">Setor</Form.Label>
-                  <Form.Select className="sg-input" value={filtros.setor} onChange={(e) => alterar("setor", e.target.value)} disabled={carregando || Boolean(baixando)}>
-                    <option value="">Todos os setores</option>
-                    {setores.map((setor) => <option value={setor} key={setor}>{setor}</option>)}
-                  </Form.Select>
-                </Form.Group>
-                <div className="sg-filtros-relatorio__acao">
-                  <Botao type="submit" variante="primario" carregando={carregando} disabled={Boolean(baixando)}>Aplicar</Botao>
-                </div>
-              </div>
+              </fieldset>
+              <Form.Group controlId="relatorio-status">
+                <Form.Label className="sg-label">Status</Form.Label>
+                <Form.Select className="sg-input" value={filtros.status} onChange={(e) => alterar("status", e.target.value)} disabled={ocupado}>
+                  {STATUS.map(([value, label]) => <option value={value} key={value || "todos"}>{label}</option>)}
+                </Form.Select>
+              </Form.Group>
+              <Form.Group controlId="relatorio-setor">
+                <Form.Label className="sg-label">Setor</Form.Label>
+                <Form.Select className="sg-input" value={filtros.setor} onChange={(e) => alterar("setor", e.target.value)} disabled={ocupado}>
+                  <option value="">Todos os setores</option>
+                  {setores.map((setor) => <option value={setor} key={setor}>{setor}</option>)}
+                </Form.Select>
+              </Form.Group>
+              <Form.Group controlId="relatorio-colaborador">
+                <Form.Label className="sg-label">Colaborador</Form.Label>
+                <Form.Select className="sg-input" value={filtros.colaboradorId} onChange={(e) => alterar("colaboradorId", e.target.value)} disabled={ocupado}>
+                  <option value="">Todos os colaboradores</option>
+                  {pessoas.map((pessoa) => <option value={pessoa.id} key={pessoa.id}>{pessoa.nome}</option>)}
+                </Form.Select>
+              </Form.Group>
+              <Botao type="submit" variante="primario" className="w-100" carregando={carregando} disabled={Boolean(baixando)}>Aplicar filtros</Botao>
+              <p className="sg-texto-apoio mb-0">Os atalhos aplicam o período na hora; os demais filtros valem ao clicar em Aplicar.</p>
             </Form>
-          </div>
-        </section>
+          </aside>
 
-        {carregando && !dados ? <EstadoCarregamento mensagem="Montando o relatório..." /> : null}
-        {!carregando && !dados && erro ? (
-          <Botao variante="secundario" onClick={() => { setCarregando(true); setAplicados((atual) => ({ ...atual })); }}>Tentar novamente</Botao>
-        ) : null}
-        <p className="visually-hidden" role="status">{carregando && dados ? "Atualizando relatório…" : ""}</p>
+          <div className="sg-relatorio__conteudo">
+            <header className="sg-pagina-cabecalho">
+              <div className="sg-pagina-cabecalho__texto">
+                <h1>Relatório operacional</h1>
+                <p>Visão na tela · {escopo} · {formatarPeriodo(aplicados.inicio, aplicados.fim)}</p>
+              </div>
+              <div className="sg-pagina-cabecalho__acoes">
+                <Botao variante="secundario" type="button" carregando={baixando === "csv"} disabled={ocupado} onClick={() => gerar("csv")}
+                  title="Uma linha por NC, 15 colunas, para abrir em qualquer programa">CSV simples</Botao>
+                <Botao variante="secundario" type="button" carregando={baixando === "pdf"} disabled={ocupado} onClick={() => gerar("pdf")}
+                  title="Relatório gerencial: resumo na primeira página e detalhe nas seguintes">Baixar PDF</Botao>
+                <Botao variante="primario" type="button" carregando={baixando === "xlsx"} disabled={ocupado} onClick={() => gerar("xlsx")}
+                  title="Planilha com abas: NCs, Causas, Feedback, Linha do tempo, Indicadores e Leia-me">Baixar Excel</Botao>
+              </div>
+            </header>
 
-        {dados && (
-          <>
-            <div className="sg-analiticos-layout sg-relatorios-layout" aria-busy={carregando}>
-              <div className="sg-analiticos-conteudo">
-                <div className="mb-3">
-                  <h2 className="h5 mb-1">Resumo do período</h2>
-                  <p className="texto-sm texto-suave mb-0">Indicadores e registros atualizados para os filtros aplicados.</p>
+            {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
+            {carregando && !dados ? <EstadoCarregamento mensagem="Montando o relatório..." /> : null}
+            {!carregando && !dados && erro ? (
+              <Botao variante="secundario" onClick={() => { setCarregando(true); setAplicados((atual) => ({ ...atual })); }}>Tentar novamente</Botao>
+            ) : null}
+            <p className="visually-hidden" role="status">{carregando && dados ? "Atualizando relatório…" : ""}</p>
+
+            {dados && (
+              <div className="sg-relatorio__secoes" aria-busy={carregando}>
+                <div className="sg-relatorio__abas" role="tablist" aria-label="Seções do relatório">
+                  {ABAS.map((item) => (
+                    <button key={item.chave} type="button" role="tab" id={`aba-relatorio-${item.chave}`} aria-selected={aba === item.chave}
+                      aria-controls={`painel-relatorio-${item.chave}`} tabIndex={aba === item.chave ? 0 : -1} className="sg-relatorio__aba"
+                      onClick={() => setAba(item.chave)}
+                      onKeyDown={(evento) => {
+                        if (!["ArrowRight", "ArrowLeft"].includes(evento.key)) return;
+                        const indice = ABAS.findIndex((x) => x.chave === aba);
+                        const proximo = ABAS[(indice + (evento.key === "ArrowRight" ? 1 : ABAS.length - 1)) % ABAS.length];
+                        setAba(proximo.chave);
+                        document.getElementById(`aba-relatorio-${proximo.chave}`)?.focus();
+                      }}>{item.rotulo}</button>
+                  ))}
                 </div>
 
-            <div className="row g-3 mb-4">
-              <div className="col-sm-6 col-xl-3">{card("NCs registradas", { tipo: "period" }, { rotulo: "NCs registradas", valor: kpis.total_ncs ?? 0, descricao: "Abertas no período", cor: "azul" })}</div>
-              <div className="col-sm-6 col-xl-3">{card("Backlog ativo", { tipo: "backlog" }, { rotulo: "Backlog ativo", valor: kpis.backlog_ativo_atual ?? 0, descricao: "Aguardam alguma ação", cor: "laranja" })}</div>
-              <div className="col-sm-6 col-xl-3">{card("NCs concluídas", { tipo: "concluded" }, { rotulo: "Concluídas", valor: kpis.concluidas_no_periodo ?? 0, descricao: "Aceites no período", cor: "verde" })}</div>
-              <div className="col-sm-6 col-xl-3">{card("NCs invalidadas", { tipo: "invalidated" }, { rotulo: "Invalidadas", valor: kpis.invalidadas_no_periodo ?? 0, descricao: `${((kpis.taxa_invalidacao || 0) * 100).toFixed(1).replace(".", ",")}% do total`, cor: "vermelha" })}</div>
-            </div>
-
-            <div className="row g-3 mb-4">
-              <div className="col-lg-6">
-                <PainelGrafico titulo="NCs por status" descricao="Selecione um status para filtrar a lista de NCs" vazio={!statusData.length}>
-                  <GraficoBarrasHorizontais dados={statusData} categoriaChave="rotulo" corChave="cor" series={[{ chave: "quantidade", cor: CORES_GRAFICO.azul, nome: "NCs" }]} altura={250} onCategoryClick={(row) => abrirDetalhe(`NCs: ${row.rotulo}`, { tipo: "period", filtro_status: row.status })} />
-                </PainelGrafico>
-              </div>
-              <div className="col-lg-6">
-                <PainelGrafico titulo="NCs por setor" descricao="Selecione um setor para ver as NCs correspondentes" vazio={!setoresData.length}>
-                  <GraficoBarrasHorizontais dados={setoresData} categoriaChave="setor" corChave="cor" series={[{ chave: "total", cor: CORES_GRAFICO.ciano, nome: "NCs" }]} altura={250} onCategoryClick={(row) => abrirDetalhe(`NCs do setor ${row.setor}`, { tipo: "dimension", dimensao: "setor", setor: row.setor })} />
-                </PainelGrafico>
-              </div>
-              <div className="col-lg-6">
-                <PainelGrafico titulo="NCs por colaborador" descricao="Selecione um colaborador para abrir suas NCs" vazio={!colaboradoresData.length}>
-                  <GraficoBarrasHorizontais dados={colaboradoresData} categoriaChave="colaborador" corChave="cor" series={[{ chave: "total", cor: CORES_GRAFICO.azul, nome: "NCs" }]} altura={280} onCategoryClick={(row) => row.colaborador_id && abrirDetalhe(`NCs de ${row.colaborador}`, { tipo: "dimension", dimensao: "colaborador", colaborador_id: row.colaborador_id })} />
-                </PainelGrafico>
-              </div>
-              <div className="col-lg-6">
-                <PainelGrafico titulo="NCs por criticidade" descricao="Selecione uma criticidade para abrir as NCs" vazio={!criticidadeData.length}>
-                  <GraficoDonut dados={criticidadeData} onCategoryClick={(row) => abrirDetalhe(`NCs de criticidade ${row.nome}`, { tipo: "dimension", dimensao: "criticidade", criticidade: row.nome })} />
-                </PainelGrafico>
-              </div>
-              <div className="col-12">
-                <PainelGrafico titulo="Movimento mensal" descricao="Selecione um ponto para abrir as NCs daquele mês" vazio={!mesesData.length}>
-                  <GraficoLinha dados={mesesData} eixoChave="rotuloMes" series={[{ chave: "total", cor: CORES_GRAFICO.azul, nome: "Registradas" }, { chave: "concluidas", cor: CORES_GRAFICO.verde, nome: "Concluídas" }, { chave: "invalidadas", cor: CORES_GRAFICO.vermelho, nome: "Invalidadas" }]} onPointClick={(row) => abrirDetalhe(`NCs de ${row.rotuloMes}`, { tipo: "mensal", mes: row.mes, serie: "total" })} />
-                </PainelGrafico>
-              </div>
-            </div>
-
-            <section className="sg-card mb-5" aria-labelledby="lista-ncs-relatorio">
-              <div className="sg-card-body p-3 p-md-4">
-                <div className="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
-                  <div>
-                    <h2 id="lista-ncs-relatorio" className="h5 mb-1">NCs do período</h2>
-                    <p className="texto-sm texto-suave mb-0">{ncs.total} resultado(s). Abra uma linha para consultar o registro completo.</p>
-                  </div>
-                  <span className="texto-sm texto-suave">Página {pagina + 1} de {totalPaginas}</span>
-                </div>
-                {ncs.items?.length ? (
-                  <div className="table-responsive">
-                    <Table hover className="align-middle mb-3">
-                      <thead><tr><th scope="col">NC</th><th scope="col">Data</th><th scope="col">Colaborador</th><th scope="col">Setor</th><th scope="col">Status</th><th scope="col">Criticidade</th><th scope="col"><span className="visually-hidden">Abrir</span></th></tr></thead>
-                      <tbody>{ncs.items.map((nc) => (
-                        <tr key={nc.id}>
-                          <th scope="row">#{nc.id}</th>
-                          <td>{DATA(nc.data || nc.criado_em)}</td>
-                          <td>{nc.colaborador || "—"}</td>
-                          <td>{nc.setor || "—"}</td>
-                          <td><BadgeStatus status={nc.status} /></td>
-                          <td><BadgePrioridade criticidade={nc.criticidade} /></td>
-                          <td><Link className="sg-btn sg-btn--secundario sg-btn--sm" href={comRetorno(`/nc/${nc.id}`, urlAtual)} aria-label={`Abrir NC ${nc.id}`}>Abrir</Link></td>
-                        </tr>
-                      ))}</tbody>
-                    </Table>
-                  </div>
-                ) : !carregando ? <EstadoVazio titulo="Sem NCs neste recorte" descricao="Altere o período ou remova filtros para ampliar os resultados." /> : null}
-                {totalPaginas > 1 && <nav className="d-flex justify-content-end gap-2" aria-label="Paginação das NCs do período">
-                  <Botao variante="secundario" type="button" disabled={pagina === 0 || carregando} onClick={() => atualizarPagina(pagina - 1)}>Anterior</Botao>
-                  <Botao variante="secundario" type="button" disabled={pagina + 1 >= totalPaginas || carregando} onClick={() => atualizarPagina(pagina + 1)}>Próxima</Botao>
-                </nav>}
-              </div>
-            </section>
-              </div>
-
-              <aside className="sg-analiticos-aside" aria-label="Ações do relatório">
-                <section className="sg-card sg-proxima-acao">
-                  <div className="sg-card-body">
-                    <span className="sg-proxima-acao__rotulo">Próxima ação</span>
-                    <h2 className="h6 mt-2 mb-2">Consultar registros do período</h2>
-                    <p className="texto-sm mb-3">Os gráficos e indicadores levam às NCs que formam cada resultado.</p>
-                    <a className="sg-btn sg-btn--primario sg-proxima-acao__botao" href="#lista-ncs-relatorio">Ver lista de NCs</a>
-                  </div>
-                </section>
-
-                <section className="sg-card sg-exportar-relatorio" aria-labelledby="exportar-relatorio">
-                  <div className="sg-card-body">
-                    <h2 id="exportar-relatorio" className="h6 mb-1">Exportar relatório</h2>
-                    <p className="texto-xs texto-suave mb-3">Arquivos gerados com o mesmo período e filtros aplicados.</p>
-                    <div className="sg-exportar-relatorio__acoes">
-                      <Botao variante="secundario" type="button" carregando={baixando === "pdf"} disabled={carregando || Boolean(baixando)} onClick={() => gerar("pdf")}>Baixar PDF</Botao>
-                      <Botao variante="secundario" type="button" carregando={baixando === "csv"} disabled={carregando || Boolean(baixando)} onClick={() => gerar("csv")}>Baixar CSV</Botao>
+                <div role="tabpanel" id={`painel-relatorio-${aba}`} aria-labelledby={`aba-relatorio-${aba}`} className="sg-relatorio__painel">
+                  {aba === "geral" && <>
+                    <section className="sg-numeros" aria-label="Números do período">
+                      {numero("NCs registradas", { tipo: "period" }, "Registradas", kpis.total_ncs ?? 0)}
+                      {numero("Backlog ativo", { tipo: "backlog" }, "Backlog ativo", kpis.backlog_ativo_atual ?? 0)}
+                      {numero("Não respondidas", { tipo: "backlog", status: "nao_respondida" }, "Não respondidas", kpis.nao_respondidas_atual ?? 0)}
+                      {numero("NCs concluídas", { tipo: "concluded" }, "Concluídas", kpis.concluidas_no_periodo ?? 0)}
+                      {numero("NCs invalidadas", { tipo: "invalidated" }, "Invalidadas", kpis.invalidadas_no_periodo ?? 0, percentual(kpis.taxa_invalidacao))}
+                    </section>
+                    <section className="sg-cartao" aria-labelledby="distribuicao-status">
+                      <h2 id="distribuicao-status" className="sg-secao-titulo">Onde estão as {totalStatus} NCs</h2>
+                      {statusData.length ? <>
+                        <div className="sg-distribuicao" role="img" aria-label={statusData.map((item) => `${item.rotulo} ${item.quantidade}`).join(", ")}>
+                          {statusData.map((item) => <span key={item.status} style={{ flexGrow: item.quantidade, background: item.cor }} />)}
+                        </div>
+                        <ul className="sg-distribuicao__legenda">
+                          {statusData.map((item) => (
+                            <li key={item.status}>
+                              <button type="button" onClick={() => abrirDetalhe(`NCs: ${item.rotulo}`, { tipo: "period", filtro_status: item.status })}>
+                                <span className="sg-distribuicao__cor" style={{ background: item.cor }} aria-hidden="true" />
+                                <span>{item.rotulo}</span>
+                                <strong>{item.quantidade}</strong>
+                                <span className="sg-texto-apoio">{totalStatus ? Math.round(item.quantidade / totalStatus * 100) : 0}%</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </> : <p className="sg-texto-apoio mb-0">Sem NCs neste recorte.</p>}
+                    </section>
+                    <div className="sg-relatorio__graficos">
+                      <PainelGrafico titulo="NCs por criticidade" descricao="Selecione uma criticidade para abrir as NCs" vazio={!criticidadeData.length}>
+                        <GraficoDonut dados={criticidadeData} onCategoryClick={(row) => abrirDetalhe(`NCs de criticidade ${row.nome}`, { tipo: "dimension", dimensao: "criticidade", criticidade: row.nome })} />
+                      </PainelGrafico>
+                      <PainelGrafico titulo="Movimento mensal" descricao="Selecione um ponto para abrir as NCs daquele mês" vazio={!mesesData.length}>
+                        <GraficoLinha dados={mesesData} eixoChave="rotuloMes" series={[{ chave: "total", cor: CORES_GRAFICO.azul, nome: "Registradas" }, { chave: "concluidas", cor: CORES_GRAFICO.verde, nome: "Concluídas" }, { chave: "invalidadas", cor: CORES_GRAFICO.vermelho, nome: "Invalidadas" }]} onPointClick={(row) => abrirDetalhe(`NCs de ${row.rotuloMes}`, { tipo: "mensal", mes: row.mes, serie: "total" })} />
+                      </PainelGrafico>
                     </div>
-                  </div>
-                </section>
+                  </>}
 
-                <section className="sg-card sg-filtros-aplicados" aria-labelledby="filtros-aplicados-relatorio">
-                  <div className="sg-card-body">
-                    <h2 id="filtros-aplicados-relatorio" className="h6 mb-3">Filtros aplicados</h2>
-                    <dl>
-                      <div><dt>Período</dt><dd>{formatarPeriodo(aplicados.inicio, aplicados.fim)}</dd></div>
-                      <div><dt>Status</dt><dd>{STATUS_LABEL[aplicados.status] || "Todos os status"}</dd></div>
-                      <div><dt>Colaborador</dt><dd>{pessoas.find((pessoa) => pessoa.id === aplicados.colaboradorId)?.nome || "Todos"}</dd></div>
-                      <div><dt>Setor</dt><dd>{aplicados.setor || "Todos"}</dd></div>
-                    </dl>
-                    <p className="texto-xs texto-suave mb-0">Escopo: {escopo}.</p>
+                  {aba === "setor" && <>
+                    <PainelGrafico titulo="NCs por setor" descricao="Selecione um setor para ver as NCs correspondentes" vazio={!setoresData.length}>
+                      <GraficoBarrasHorizontais dados={setoresData} categoriaChave="setor" corChave="cor" series={[{ chave: "total", cor: CORES_GRAFICO.ciano, nome: "NCs" }]} altura={Math.max(220, setoresData.length * 44)} onCategoryClick={(row) => abrirDetalhe(`NCs do setor ${row.setor}`, { tipo: "dimension", dimensao: "setor", setor: row.setor })} />
+                    </PainelGrafico>
+                    {setoresData.length > 0 && <div className="sg-tabela-caixa">
+                      <table className="sg-tabela">
+                        <caption className="visually-hidden">NCs por setor no período</caption>
+                        <thead><tr><th scope="col">Setor</th><th scope="col">NCs no período</th><th scope="col">Invalidadas</th><th scope="col">Backlog ativo</th><th scope="col">Não respondidas</th></tr></thead>
+                        <tbody>{(dados.ncs_por_setor || []).map((item) => (
+                          <tr key={item.setor}><th scope="row">{item.setor}</th><td>{item.total ?? 0}</td><td>{item.invalidadas ?? 0}</td><td>{item.backlog_ativo ?? 0}</td><td>{item.nao_respondidas ?? 0}</td></tr>
+                        ))}</tbody>
+                      </table>
+                    </div>}
+                  </>}
+
+                  {aba === "colaborador" && <>
+                    <PainelGrafico titulo="NCs por colaborador" descricao="Selecione um colaborador para abrir suas NCs" vazio={!colaboradoresData.length}>
+                      <GraficoBarrasHorizontais dados={colaboradoresData} categoriaChave="colaborador" corChave="cor" series={[{ chave: "total", cor: CORES_GRAFICO.azul, nome: "NCs" }]} altura={Math.max(240, colaboradoresData.length * 44)} onCategoryClick={(row) => row.colaborador_id && abrirDetalhe(`NCs de ${row.colaborador}`, { tipo: "dimension", dimensao: "colaborador", colaborador_id: row.colaborador_id })} />
+                    </PainelGrafico>
+                    {colaboradoresData.length > 0 && <div className="sg-tabela-caixa">
+                      <table className="sg-tabela">
+                        <caption className="visually-hidden">NCs por colaborador no período</caption>
+                        <thead><tr><th scope="col">Colaborador</th><th scope="col">Setor</th><th scope="col">NCs no período</th><th scope="col">Reincidências (12 meses)</th><th scope="col">Backlog ativo</th></tr></thead>
+                        <tbody>{(dados.ncs_por_colaborador || []).map((item) => (
+                          <tr key={item.colaborador_id || item.colaborador}><th scope="row">{item.colaborador}</th><td>{item.setor || "—"}</td><td>{item.total ?? 0}</td><td>{item.reincidencias_12m ?? 0}</td><td>{item.backlog_ativo ?? 0}</td></tr>
+                        ))}</tbody>
+                      </table>
+                    </div>}
+                  </>}
+
+                  {aba === "prazos" && <>
+                    <section className="sg-numeros" aria-label="Prazos e aceites">
+                      {numero("Aguardando aceite", { tipo: "backlog", status: "aguardando_aceite" }, "Aguardando aceite", kpis.aguardando_aceite_atual ?? 0)}
+                      {numero("Não respondidas", { tipo: "backlog", status: "nao_respondida" }, "Não respondidas", kpis.nao_respondidas_atual ?? 0)}
+                      {numero("NCs concluídas", { tipo: "concluded" }, "Aceites no período", kpis.aceites_no_periodo ?? 0)}
+                      <div className="sg-numero sg-numero--estatico">
+                        <span className="sg-numero__rotulo">Aceites no prazo</span>
+                        <span className="sg-numero__valor">{kpis.aceites_no_prazo ?? 0}<small>{percentual(kpis.taxa_aceite_no_prazo)}</small></span>
+                      </div>
+                    </section>
+                    <section className="sg-cartao" aria-labelledby="tempos-aceite">
+                      <h2 id="tempos-aceite" className="sg-secao-titulo">Tempos do fluxo no período</h2>
+                      <dl className="sg-dados">
+                        <div><dt>Abertura → avaliação</dt><dd>{formatarDuracao(dados.tempos?.criacao_ate_validacao?.mediana_segundos)}</dd></div>
+                        <div><dt>Avaliação → feedback</dt><dd>{formatarDuracao(dados.tempos?.validacao_ate_feedback?.mediana_segundos)}</dd></div>
+                        <div><dt>Feedback → aceite</dt><dd>{formatarDuracao(dados.tempos?.feedback_ate_aceite?.mediana_segundos)}</dd></div>
+                        <div><dt>Ciclo total</dt><dd>{formatarDuracao(dados.tempos?.ciclo_total?.mediana_segundos)}</dd></div>
+                      </dl>
+                      <p className="sg-texto-apoio mt-3 mb-0">Medianas das transições concluídas no período. O prazo do aceite é de 2 dias úteis, contados só no expediente.</p>
+                    </section>
+                  </>}
+                </div>
+
+                <section className="sg-cartao sg-relatorio__lista" aria-labelledby="lista-ncs-relatorio">
+                  <div className="sg-relatorio__lista-topo">
+                    <div>
+                      <h2 id="lista-ncs-relatorio" className="sg-secao-titulo mb-1">NCs do período</h2>
+                      <p className="sg-texto-apoio mb-0">{ncs.total} resultado(s). Abra uma linha para consultar o registro completo.</p>
+                    </div>
+                    <span className="sg-texto-apoio">Página {pagina + 1} de {totalPaginas}</span>
                   </div>
+                  {ncs.items?.length ? (
+                    <div className="sg-tabela-caixa">
+                      <table className="sg-tabela">
+                        <thead><tr><th scope="col">NC</th><th scope="col">Data</th><th scope="col">Colaborador</th><th scope="col">Setor</th><th scope="col">Status</th><th scope="col">Criticidade</th><th scope="col"><span className="visually-hidden">Abrir</span></th></tr></thead>
+                        <tbody>{ncs.items.map((nc) => (
+                          <tr key={nc.id}>
+                            <th scope="row" className="sg-mono">#{nc.id}</th>
+                            <td>{DATA(nc.data || nc.criado_em)}</td>
+                            <td>{nc.colaborador || "—"}</td>
+                            <td>{nc.setor || "—"}</td>
+                            <td><BadgeStatus status={nc.status} /></td>
+                            <td><BadgePrioridade criticidade={nc.criticidade} /></td>
+                            <td className="text-end"><Link className="sg-tabela__link" href={comRetorno(`/nc/${nc.id}`, urlAtual)} aria-label={`Abrir NC ${nc.id}`}>Abrir</Link></td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                  ) : !carregando ? <EstadoVazio titulo="Sem NCs neste recorte" descricao="Altere o período ou remova filtros para ampliar os resultados." /> : null}
+                  {totalPaginas > 1 && <nav className="d-flex justify-content-end gap-2 mt-3" aria-label="Paginação das NCs do período">
+                    <Botao variante="secundario" type="button" disabled={pagina === 0 || carregando} onClick={() => atualizarPagina(pagina - 1)}>Anterior</Botao>
+                    <Botao variante="secundario" type="button" disabled={pagina + 1 >= totalPaginas || carregando} onClick={() => atualizarPagina(pagina + 1)}>Próxima</Botao>
+                  </nav>}
                 </section>
-              </aside>
-            </div>
-          </>
-        )}
+              </div>
+            )}
+          </div>
+        </div>
       </Container>
       {detalheIndicador && <ModalNcsIndicador titulo={detalheIndicador.titulo} filtro={detalheIndicador.filtro} retorno={urlAtual} aoFechar={() => setDetalheIndicador(null)} />}
     </div>

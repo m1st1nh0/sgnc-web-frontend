@@ -47,6 +47,12 @@ Processo de Gestão de NCs da Qualidade (decisões de 13/10/2026, plano em [`doc
 - Não há papel RH no sistema: o SGNC registra a situação da medida (passível, aplicada, alterada); a aplicação é feita pelo RH, presencialmente.
 - Qualquer perfil abre NC; a Qualidade valida. A NC sem plano encerra no aceite. O supervisor é avisado só na validação.
 
+Relatórios (decisões de 13/10/2026, plano em [`docs/plano-relatorios.md`](docs/plano-relatorios.md)):
+- Resumo em PDF: relatório completo com o resumo de uma página como página 1; os 4 números da página 1 comparam com o período anterior de mesmo tamanho.
+- Planilha: Excel com abas no botão principal; CSV mantido em versão simples.
+- Nomes de colaboradores nos relatórios: Qualidade e Adm veem toda a empresa; supervisor, só a própria cadeia.
+- Formatação dos relatórios passa por `src/lib/reports/formato.ts` (status com nome da tela, horário de Brasília, duração legível).
+
 Todas as decisões do plano estão respondidas. Decisão nova que surgir deve ser perguntada ao responsável, não assumida.
 
 ## Convenções

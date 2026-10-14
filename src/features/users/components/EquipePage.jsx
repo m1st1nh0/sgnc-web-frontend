@@ -4,9 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
-import Table from "react-bootstrap/Table";
 
-import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
@@ -74,22 +72,24 @@ export default function EquipePage({ abaInicial }) {
   return (
     <div>
       <Container className="sg-container">
-        <CabecalhoPagina
-          titulo={gestorEquipes ? "Pessoas e equipes" : "Minha equipe"}
-          subtitulo={gestorEquipes
-            ? "Organize as equipes por liderança e consulte as NCs e o histórico de cada pessoa."
-            : "Abra cada liderado para consultar suas NCs, indicadores e histórico autorizado."}
-        />
+        <header className="sg-pagina-cabecalho">
+          <div className="sg-pagina-cabecalho__texto">
+            <h1>{gestorEquipes ? "Pessoas e equipes" : "Minha equipe"}</h1>
+            <p>{gestorEquipes
+              ? "Organize as equipes por liderança e consulte as NCs e o histórico de cada pessoa."
+              : "Abra cada liderado para consultar suas NCs, indicadores e histórico autorizado."}</p>
+          </div>
+        </header>
 
         {gestorEquipes && (
-          <div className="d-flex gap-2 mb-3" role="tablist" aria-label="Pessoas e equipes">
+          <div className="sg-relatorio__abas mb-4" role="tablist" aria-label="Pessoas e equipes">
             {abas.map(([valor, rotulo]) => (
               <button
                 key={valor}
                 type="button"
                 role="tab"
                 aria-selected={visao === valor}
-                className={`sg-btn sg-btn--sm ${visao === valor ? "sg-btn--primario" : "sg-btn--secundario"}`}
+                className="sg-relatorio__aba"
                 onClick={() => trocarAba(valor)}
               >
                 {rotulo}
@@ -101,11 +101,11 @@ export default function EquipePage({ abaInicial }) {
         {gestorEquipes && visao === "acessos" ? <UsuariosPage /> : gestorEquipes && visao === "estrutura" ? <EstruturaOrganizacional /> : gestorEquipes && visao === "equipes" ? <GestaoEquipes /> : (<>
 
         {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
-        <div className="sg-card mb-3">
-          <div className="sg-card-body d-flex flex-wrap align-items-end gap-3">
+        <div className="sg-cartao sg-equipe-lista__filtros mb-3">
+          <div className="d-flex flex-wrap align-items-end gap-3">
             <Form.Group className="flex-grow-1" controlId="busca-equipe">
-              <Form.Label>Buscar pessoa, setor ou liderança</Form.Label>
-              <Form.Control value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Digite para filtrar a equipe" />
+              <Form.Label className="sg-label">Buscar pessoa, setor ou liderança</Form.Label>
+              <Form.Control className="sg-input" type="search" value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Digite para filtrar a equipe" />
             </Form.Group>
             <Form.Check
               type="switch"
@@ -123,9 +123,9 @@ export default function EquipePage({ abaInicial }) {
             descricao={pessoas.length ? "Ajuste a busca ou os filtros para ver outros resultados." : "Quando houver pessoas associadas à sua hierarquia, elas aparecerão aqui."}
           />
         ) : (
-          <div className="sg-tabela-wrap">
-            <Table hover responsive className="align-middle">
-              <thead><tr><th>Pessoa</th><th>Setor</th><th>Liderança</th><th>Nível</th><th>Situação</th><th>Acesso</th></tr></thead>
+          <div className="sg-tabela-caixa">
+            <table className="sg-tabela">
+              <thead><tr><th scope="col">Pessoa</th><th scope="col">Setor</th><th scope="col">Liderança</th><th scope="col">Nível</th><th scope="col">Situação</th><th scope="col"><span className="visually-hidden">Acesso</span></th></tr></thead>
               <tbody>{visiveis.map((pessoa) => (
                 <tr key={pessoa.id}>
                   <th scope="row">{pessoa.nome}<div className="texto-xs texto-suave fw-normal">{ROTULOS_PAPEL[pessoa.papel] ?? pessoa.papel}</div></th>
@@ -133,10 +133,10 @@ export default function EquipePage({ abaInicial }) {
                   <td>{pessoa.supervisor_id === usuario?.id ? usuario.nome : porId.get(pessoa.supervisor_id)?.nome || (pessoa.diretoria ? "Diretoria (topo)" : gestorEquipes ? "Sem liderança atribuída" : "—")}</td>
                   <td>{pessoa.nivel ? `Nível ${pessoa.nivel}` : "Organização"}</td>
                   <td><span className={`sg-badge ${pessoa.ativo ? "sg-badge--verde" : "sg-badge--cinza"}`}>{pessoa.ativo ? "Ativa" : "Inativa · histórico"}</span></td>
-                  <td><Link className="sg-btn sg-btn--secundario sg-btn--sm" href={`/equipe/${pessoa.id}`}>Ver NCs e indicadores</Link></td>
+                  <td className="text-end"><Link className="sg-tabela__link" href={`/equipe/${pessoa.id}`}>Ver NCs e indicadores</Link></td>
                 </tr>
               ))}</tbody>
-            </Table>
+            </table>
           </div>
         )}
         <p className="texto-xs texto-suave mt-3 mb-0">Exibindo {visiveis.length} de {pessoas.length} pessoa(s). O acesso segue a liderança atual; após uma transferência, o histórico acompanha a nova cadeia.</p>

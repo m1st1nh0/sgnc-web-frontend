@@ -34,11 +34,11 @@ test("supervisor read scope includes the full history of their current hierarchy
 
 test("privileged analytics and exports enforce the same supervisor scope", () => {
   const analytics = readFileSync("src/lib/analytics/service.ts", "utf8");
-  const reports = readFileSync("src/lib/reports/service.ts", "utf8");
+  const reports = readFileSync("src/lib/reports/dados.ts", "utf8");
   const drilldown = readFileSync("src/lib/analytics/drilldown.ts", "utf8");
   const ncService = readFileSync("src/lib/nc/service.ts", "utf8");
   expect(analytics).toContain("buildNcTeamScopeFilter(user, teamIds)");
-  expect(reports).toContain("buildNcTeamScopeFilter(requester,teamIds)");
+  expect(reports).toContain("buildNcTeamScopeFilter(requester, teamIds)");
   expect(drilldown).toContain("buildNcTeamScopeFilter(user, teamIds)");
   expect(analytics).toContain('.in("nc_id", all.map((nc) => nc.id))');
   expect(ncService).toContain("buildNcReadScopeFilter(user, teamIds)");

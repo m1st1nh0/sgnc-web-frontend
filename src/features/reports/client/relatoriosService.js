@@ -4,9 +4,11 @@ import { montarQueryRelatorio } from "./relatoriosQuery.js";
 export { montarQueryRelatorio, nomeArquivoRelatorio } from "./relatoriosQuery.js";
 
 export function baixarCsvNcs(filtros = {}) {
-  return baixarArquivoApi(
-    `/relatorios/ncs.csv${montarQueryRelatorio(filtros, { detalhado: true })}`
-  );
+  return baixarArquivoApi(`/relatorios/ncs.csv${montarQueryRelatorio(filtros)}`);
+}
+
+export function baixarXlsxNcs(filtros = {}) {
+  return baixarArquivoApi(`/relatorios/ncs.xlsx${montarQueryRelatorio(filtros)}`);
 }
 
 export function baixarPdfResumo(filtros = {}) {

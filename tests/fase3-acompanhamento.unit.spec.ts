@@ -87,7 +87,8 @@ test("3.2–3.5: detalhe com etapas e histórico, confirmação após abrir e co
   expect(read("src/features/nc/components/HistoricoNc.jsx")).toContain("obterTimeline(ncId)");
   expect(read("src/features/nc/client/ncService.js")).toContain("/nc/${id}/timeline");
   const home = read("src/features/nc/components/HomePage.jsx");
-  expect(home).toContain('"Status", "Aguardando"]');
-  expect(home).toContain('colSpan={8}');
-  expect(read("src/features/nc/components/MinhasNcsPage.jsx")).toContain("Aguardando:");
+  // Redesign 10/2026 (proposta B): lista com painel; "Com quem está" substitui "Aguardando".
+  expect(home).toContain("Com quem está: <strong>{pendente.responsavel}</strong>");
+  expect(home).toContain("<EtapasNc nc={nc} visualizadorId={usuario?.id} compacta />");
+  expect(read("src/features/nc/components/MinhasNcsPage.jsx")).toContain("Com quem está: <strong>{pendente.responsavel}</strong>");
 });

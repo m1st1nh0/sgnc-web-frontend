@@ -1,12 +1,8 @@
 "use client";
 
-import "./dashboard.css";
-
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import Container from "react-bootstrap/Container";
-import Nav from "react-bootstrap/Nav";
 
 import { listarNcs } from "../client/ncService.js";
 import { listarEquipe, listarOpcoesNc } from "../../users/client/usuarioService.js";
@@ -19,13 +15,12 @@ import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
-import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
-import CardMetrica from "../../../components/ui/CardMetrica.jsx";
-import NcCard from "../../../components/ui/NcCard.jsx";
 import { acaoPendente } from "../client/statusNc.js";
 import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
 import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
 import { formatarData } from "../../../lib/utils/formato.js";
+import EtapasNc from "./EtapasNc.jsx";
+import HistoricoNc from "./HistoricoNc.jsx";
 
 const STATUS_EM_ANDAMENTO = [
   "aguardando_feedback",
@@ -35,17 +30,24 @@ const STATUS_EM_ANDAMENTO = [
   "aguardando_analise",
 ];
 
+// "comigo" usa as prioridades da visão do papel (o que exige a atenção de quem está vendo).
 const ABAS_FILTRO = [
   { chave: "todas", rotulo: "Todas", status: null },
+  { chave: "comigo", rotulo: "Comigo", status: null },
   { chave: "aberta", rotulo: "Abertas", status: "aberta" },
   { chave: "em_andamento", rotulo: "Em andamento", status: STATUS_EM_ANDAMENTO },
   { chave: "nao_respondida", rotulo: "Não respondidas", status: "nao_respondida" },
-  { chave: "concluida", rotulo: "Concluídas", status: "concluida" },
-  { chave: "invalidada", rotulo: "Invalidadas", status: "invalidada" },
+  { chave: "encerradas", rotulo: "Encerradas", status: ["concluida", "invalidada"] },
 ];
 
+// Abaixo desta largura a lista ocupa a tela toda e cada item abre a NC completa.
+const MEDIA_PAINEL = "(min-width: 1100px)";
+
+function normalizar(texto) {
+  return String(texto).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+}
+
 export default function HomePage() {
-  const router = useRouter();
   const { usuario } = useAuth();
   const { concluirEtapa } = useOnboarding();
   const [ncs, setNcs] = useState([]);
@@ -57,6 +59,7 @@ export default function HomePage() {
   const [abaAtiva, setAbaAtiva] = useState("todas");
   const [filtroCardAtivo, setFiltroCardAtivo] = useState(null);
   const [termoBusca, setTermoBusca] = useState("");
+  const [selecionadaId, setSelecionadaId] = useState(null);
 
   async function carregar() {
     try {
@@ -126,11 +129,14 @@ export default function HomePage() {
     () => criarVisaoHome(usuario, ncs, equipeIds),
     [usuario, ncs, equipeIds]
   );
+  const idsPrioritarios = useMemo(() => new Set(visao.prioridades.map((nc) => nc.id)), [visao.prioridades]);
 
   const ncsFiltradas = useMemo(() => {
     let resultado;
     if (filtroCardAtivo) {
       resultado = filtrarNcsPorCardHome(ncs, filtroCardAtivo, usuario?.id);
+    } else if (abaAtiva === "comigo") {
+      resultado = ncs.filter((nc) => idsPrioritarios.has(nc.id));
     } else {
       const filtro = ABAS_FILTRO.find((a) => a.chave === abaAtiva);
       if (!filtro || !filtro.status) resultado = ncs;
@@ -139,31 +145,31 @@ export default function HomePage() {
         resultado = ncs.filter((nc) => statusAlvo.includes(nc.status));
       }
     }
-    const termo = termoBusca.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+    const termo = normalizar(termoBusca.trim());
     if (termo) {
-      resultado = resultado.filter((nc) => [
+      resultado = resultado.filter((nc) => normalizar([
         nc.id, nc.colaborador, nc.setor, nc.chamado, nc.assunto, nc.descricao, nc.status,
-      ].filter((valor) => valor != null).join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").includes(termo));
+      ].filter((valor) => valor != null).join(" ")).includes(termo));
     }
     return ordenarNcsHome(resultado, visao.prioridades);
-  }, [ncs, abaAtiva, filtroCardAtivo, termoBusca, usuario?.id, visao.prioridades]);
+  }, [ncs, abaAtiva, filtroCardAtivo, termoBusca, usuario?.id, visao.prioridades, idsPrioritarios]);
 
   const contagemPorAba = useMemo(() => {
     const contagem = {};
     for (const aba of ABAS_FILTRO) {
+      if (aba.chave === "comigo") {
+        contagem[aba.chave] = ncs.filter((nc) => idsPrioritarios.has(nc.id)).length;
+        continue;
+      }
       if (!aba.status) {
         contagem[aba.chave] = ncs.length;
         continue;
       }
-      const statusAlvo = Array.isArray(aba.status)
-        ? aba.status
-        : [aba.status];
-      contagem[aba.chave] = ncs.filter((nc) =>
-        statusAlvo.includes(nc.status)
-      ).length;
+      const statusAlvo = Array.isArray(aba.status) ? aba.status : [aba.status];
+      contagem[aba.chave] = ncs.filter((nc) => statusAlvo.includes(nc.status)).length;
     }
     return contagem;
-  }, [ncs]);
+  }, [ncs, idsPrioritarios]);
 
   function obterNomeAbertoPor(nc) {
     if (!nc.aberto_por) return null;
@@ -180,110 +186,162 @@ export default function HomePage() {
     });
   }
 
-  const idsPrioritarios = new Set(visao.prioridades.map((nc) => nc.id));
+  function selecionarNaLista(evento, nc) {
+    // Em telas largas o item abre no painel ao lado; nas estreitas o link segue para a NC completa.
+    if (evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.button !== 0) return;
+    if (!window.matchMedia(MEDIA_PAINEL).matches) return;
+    evento.preventDefault();
+    setSelecionadaId(nc.id);
+  }
+
   const ncsPrioritarias = ncsFiltradas.filter((nc) => idsPrioritarios.has(nc.id));
   const demaisNcs = ncsFiltradas.filter((nc) => !idsPrioritarios.has(nc.id));
-
-
   const grupos = [
-    { titulo: "Exigem atenção", registros: ncsPrioritarias },
+    { titulo: "Exigem sua atenção", registros: ncsPrioritarias, destaque: true },
     { titulo: ncsPrioritarias.length ? "Demais registros" : "Registros", registros: demaisNcs },
   ].filter((grupo) => grupo.registros.length > 0);
+  const selecionada = ncsFiltradas.find((nc) => nc.id === selecionadaId) ?? ncsFiltradas[0] ?? null;
+  const rotuloFiltro = filtroCardAtivo || ABAS_FILTRO.find((aba) => aba.chave === abaAtiva)?.rotulo;
+  const destaque = visao.destaque;
 
   return (
-    <Container className="sg-container sg-dashboard">
+    <Container className="sg-container sg-gestao">
       <OnboardingChecklist />
       {usuario?.papel === "supervisor" && <DicaContextual chave="dica_equipe_direta" className="mb-4" />}
       {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
-      <div className="sg-dashboard__layout">
-        <div className="sg-dashboard__main">
-          <CabecalhoPagina
-            titulo={visao.titulo}
-            subtitulo={visao.subtitulo}
-            acoes={<Link href="/abrir-nc" className="sg-btn sg-btn--sucesso">+ Abrir NC</Link>}
-          />
-          {carregando ? <EstadoCarregamento mensagem="Carregando não conformidades..." /> : <>
-            <section className="sg-dashboard__metrics" aria-label="Indicadores e filtros da fila" style={{ "--metricas": visao.cards.length }}>
-              {visao.cards.map((card, index) => (
-                <button key={card.rotulo} type="button" className="sg-metrica-interativa"
-                  onClick={() => filtrarPeloCard(card.rotulo)} aria-pressed={filtroCardAtivo === card.rotulo}
-                  aria-controls="lista-ncs-home" aria-label={`Filtrar lista de NCs: ${card.rotulo}, ${card.valor}`}>
-                  <CardMetrica rotulo={`${index + 1} · ${card.rotulo}`} valor={card.valor} descricao={card.descricao} cor={card.cor} />
-                  <span className="sg-dashboard__metric-state">{filtroCardAtivo === card.rotulo ? "Filtro ativo · limpar" : "Filtrar registros"}</span>
-                </button>
-              ))}
-            </section>
-            <section id="lista-ncs-home" className="sg-dashboard__queue sg-ancora-secao" aria-labelledby="lista-ncs-home-titulo">
-              <h2 id="lista-ncs-home-titulo" className="visually-hidden">{visao.tituloLista}</h2>
-              <div className="sg-dashboard__controls">
-                <Nav variant="tabs" activeKey={filtroCardAtivo ? null : abaAtiva}
-                  onSelect={(chave) => { if (chave) { setFiltroCardAtivo(null); setAbaAtiva(chave); } }}
-                  aria-label="Filtrar não conformidades por status">
-                  {ABAS_FILTRO.map((aba) => <Nav.Item key={aba.chave}>
-                    <Nav.Link eventKey={aba.chave}>{aba.rotulo} <span>{contagemPorAba[aba.chave] ?? 0}</span></Nav.Link>
-                  </Nav.Item>)}
-                </Nav>
-                <div className="sg-dashboard__search">
-                  <label htmlFor="buscar-nc-home" className="visually-hidden">Buscar não conformidade</label>
-                  <input id="buscar-nc-home" className="form-control form-control-sm" type="search"
-                    placeholder="Buscar NC, pessoa ou chamado" value={termoBusca} onChange={(event) => setTermoBusca(event.target.value)} />
-                </div>
+
+      <header className="sg-pagina-cabecalho">
+        <div className="sg-pagina-cabecalho__texto">
+          <h1>{visao.titulo}</h1>
+          <p>{visao.subtitulo}</p>
+        </div>
+        <div className="sg-pagina-cabecalho__acoes">
+          <button type="button" className="sg-btn sg-btn--secundario" onClick={atualizar} disabled={atualizando || carregando}>
+            {atualizando ? "Atualizando..." : "Atualizar"}
+          </button>
+          <Link href="/abrir-nc" className="sg-btn sg-btn--sucesso">+ Abrir NC</Link>
+        </div>
+      </header>
+
+      {carregando ? <EstadoCarregamento mensagem="Carregando não conformidades..." /> : <>
+        <section className="sg-proxima-faixa" aria-labelledby="proxima-acao-titulo">
+          <span className="sg-proxima-faixa__rotulo">Próxima ação</span>
+          <p className="sg-proxima-faixa__texto">
+            <strong id="proxima-acao-titulo">{destaque.titulo}.</strong> <span>{destaque.descricao}</span>
+          </p>
+          {destaque.acao.filtro
+            ? <button type="button" className="sg-proxima-faixa__botao" aria-controls="lista-ncs-home" aria-pressed={filtroCardAtivo === destaque.acao.filtro}
+                onClick={() => { if (filtroCardAtivo !== destaque.acao.filtro) filtrarPeloCard(destaque.acao.filtro); }}>{destaque.acao.rotulo}</button>
+            : <Link href={destaque.acao.destino} className="sg-proxima-faixa__botao">{destaque.acao.rotulo}</Link>}
+        </section>
+
+        <nav className="sg-etapas-barra" aria-label="Etapas: filtre a lista pela etapa">
+          {visao.cards.map((card, index) => (
+            <button key={card.rotulo} type="button" className={`sg-etapas-barra__item sg-etapas-barra__item--${card.cor}`}
+              onClick={() => filtrarPeloCard(card.rotulo)} aria-pressed={filtroCardAtivo === card.rotulo}
+              aria-controls="lista-ncs-home" title={card.descricao}>
+              <span className="sg-etapas-barra__rotulo">{index + 1} · {card.rotulo}</span>
+              <span className="sg-etapas-barra__valor">{card.valor}</span>
+              <span className="visually-hidden">{filtroCardAtivo === card.rotulo ? "Filtro ativo, clique para limpar" : `Filtrar: ${card.descricao}`}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="sg-gestao__area">
+          <section id="lista-ncs-home" className="sg-gestao__lista sg-ancora-secao" aria-labelledby="lista-ncs-home-titulo">
+            <h2 id="lista-ncs-home-titulo" className="visually-hidden">{visao.tituloLista}</h2>
+            <div className="sg-gestao__ferramentas">
+              <label className="sg-campo-rotulo" htmlFor="buscar-nc-home">Buscar
+                <input id="buscar-nc-home" className="sg-input form-control" type="search"
+                  placeholder="NC, pessoa ou chamado" value={termoBusca} onChange={(event) => setTermoBusca(event.target.value)} />
+              </label>
+              <div className="sg-filtros-pilula" role="group" aria-label="Filtrar não conformidades por situação">
+                {ABAS_FILTRO.map((aba) => {
+                  const ativa = !filtroCardAtivo && abaAtiva === aba.chave;
+                  return <button key={aba.chave} type="button" className="sg-pilula" aria-pressed={ativa} aria-controls="lista-ncs-home"
+                    onClick={() => { setFiltroCardAtivo(null); setAbaAtiva(aba.chave); }}>
+                    {aba.rotulo} <span>{contagemPorAba[aba.chave] ?? 0}</span>
+                  </button>;
+                })}
               </div>
-              <div className="sg-dashboard__filter-summary">
-                <span role="status" aria-live="polite">{ncsFiltradas.length} registro(s) · {filtroCardAtivo || ABAS_FILTRO.find((aba) => aba.chave === abaAtiva)?.rotulo}</span>
-                {(filtroCardAtivo || termoBusca || abaAtiva !== "todas") && <button type="button" className="sg-btn sg-btn--subtle sg-btn--sm"
+              <div className="sg-gestao__resumo-filtro">
+                <span role="status" aria-live="polite">{ncsFiltradas.length} registro(s) · {rotuloFiltro}</span>
+                {(filtroCardAtivo || termoBusca || abaAtiva !== "todas") && <button type="button" className="sg-link-botao"
                   onClick={() => { setFiltroCardAtivo(null); setTermoBusca(""); setAbaAtiva("todas"); }}>Limpar filtros</button>}
               </div>
-              {ncsFiltradas.length === 0 ? <EstadoVazio titulo="Nenhuma Não Conformidade encontrada" descricao="Revise a busca ou limpe os filtros para ver outros registros." /> : <>
-                <div className="sg-dashboard__table">
-                  <table>
-                    <caption className="visually-hidden">{visao.tituloLista}. Abra uma NC pelo seu número ou pelo nome da pessoa.</caption>
-                    <colgroup><col className="sg-dashboard__col-id" /><col className="sg-dashboard__col-person" /><col /><col /><col className="sg-dashboard__col-date" /><col className="sg-dashboard__col-priority" /><col className="sg-dashboard__col-status" /><col className="sg-dashboard__col-waiting" /></colgroup>
-                    <thead><tr>{["NC", "Pessoa", "Setor", "Aberto por", "Data", "Prioridade", "Status", "Aguardando"].map((label) => <th scope="col" key={label}>{label}</th>)}</tr></thead>
-                    {grupos.map((grupo) => <tbody key={grupo.titulo}>
-                      <tr className="sg-dashboard__group"><th colSpan={8} scope="rowgroup">{grupo.titulo} · {grupo.registros.length}</th></tr>
-                      {grupo.registros.map((nc) => <tr key={nc.id}>
-                        <td><Link href={`/nc/${nc.id}`} aria-label={`Abrir NC ${nc.id}`}>#{nc.id}</Link></td>
-                        <td><Link href={`/nc/${nc.id}`}>{nc.colaborador || "Colaborador não informado"}</Link>{nc.chamado && <small>Chamado {nc.chamado}</small>}</td>
-                        <td>{nc.setor || "—"}</td><td>{obterNomeAbertoPor(nc) || "—"}</td>
-                        <td><time dateTime={nc.data || undefined}>{formatarData(nc.data)}</time></td>
-                        <td><BadgePrioridade criticidade={nc.criticidade} /></td><td><BadgeStatus status={nc.status} /></td>
-                        <td>{acaoPendente(nc, usuario?.id)?.responsavel ?? "—"}</td>
-                      </tr>)}
-                    </tbody>)}
-                  </table>
-                </div>
-                <div className="sg-dashboard__cards">
-                  {grupos.map((grupo) => <section key={grupo.titulo} aria-label={grupo.titulo}>
-                    <h3 className="sg-home-fila__grupo-titulo">{grupo.titulo} <span>{grupo.registros.length}</span></h3>
-                    <div className="d-flex flex-column gap-2">{grupo.registros.map((nc) => <NcCard key={nc.id} nc={nc} abertoPorNome={obterNomeAbertoPor(nc)} aguardando={acaoPendente(nc, usuario?.id)?.responsavel} aoClicar={() => router.push(`/nc/${nc.id}`)} />)}</div>
-                  </section>)}
-                </div>
-              </>}
-            </section>
-          </>}
+            </div>
+            {ncsFiltradas.length === 0
+              ? <EstadoVazio titulo="Nenhuma Não Conformidade encontrada" descricao="Revise a busca ou limpe os filtros para ver outros registros." />
+              : grupos.map((grupo) => <div key={grupo.titulo} className="sg-gestao__grupo">
+                <h3 className={`sg-gestao__grupo-titulo${grupo.destaque ? " sg-gestao__grupo-titulo--destaque" : ""}`}>{grupo.titulo} · {grupo.registros.length}</h3>
+                <ul className="sg-gestao__itens">
+                  {grupo.registros.map((nc) => {
+                    const pendente = acaoPendente(nc, usuario?.id);
+                    const atual = selecionada?.id === nc.id;
+                    return <li key={nc.id}>
+                      <Link href={`/nc/${nc.id}`} className={`sg-gestao__item${atual ? " is-selecionada" : ""}`}
+                        aria-current={atual ? "true" : undefined} onClick={(evento) => selecionarNaLista(evento, nc)}>
+                        <span className="sg-gestao__item-topo">
+                          <span className="sg-mono">#{nc.id} · {formatarData(nc.data)}</span>
+                          <BadgeStatus status={nc.status} />
+                        </span>
+                        <span className="sg-gestao__item-nome">{nc.colaborador || "Colaborador não informado"}</span>
+                        <span className="sg-gestao__item-meta">
+                          {[nc.setor, nc.chamado && `Chamado ${nc.chamado}`, nc.criticidade && `prioridade ${String(nc.criticidade).toLocaleLowerCase("pt-BR")}`].filter(Boolean).join(" · ")}
+                        </span>
+                        <span className="sg-gestao__item-meta">Aberta por <strong>{nc.aberto_por === usuario?.id ? "você" : obterNomeAbertoPor(nc) || "—"}</strong></span>
+                        {pendente && <span className="sg-gestao__item-com">Com quem está: <strong>{pendente.responsavel}</strong></span>}
+                      </Link>
+                    </li>;
+                  })}
+                </ul>
+              </div>)}
+          </section>
+
+          {selecionada && <PainelNcGestao key={selecionada.id} nc={selecionada} usuario={usuario} abertoPor={obterNomeAbertoPor(selecionada)} />}
         </div>
-        {!carregando && <aside className="sg-dashboard__aside" aria-label="Próxima ação e atalhos">
-          <section className="sg-dashboard__next" aria-labelledby="proxima-acao-titulo">
-            <span className="sg-dashboard__eyebrow">Próxima ação</span>
-            <h2 id="proxima-acao-titulo">{visao.destaque.titulo}</h2>
-            <p>{visao.destaque.descricao}</p>
-            {visao.destaque.acao.filtro
-              ? <button type="button" className="sg-btn sg-btn--secundario" aria-controls="lista-ncs-home"
-                  onClick={() => { if (filtroCardAtivo !== visao.destaque.acao.filtro) filtrarPeloCard(visao.destaque.acao.filtro); }}>{visao.destaque.acao.rotulo}</button>
-              : <Link href={visao.destaque.acao.destino} className="sg-btn sg-btn--secundario">{visao.destaque.acao.rotulo}</Link>}
-          </section>
-          <section className="sg-dashboard__shortcuts" aria-labelledby="atalhos-do-papel">
-            <h2 id="atalhos-do-papel" className="sg-dashboard__eyebrow">Atalhos</h2>
-            <div className="sg-dashboard__shortcut-list">{visao.atalhos.map((atalho) => <Link href={atalho.destino} className="sg-dashboard__shortcut" key={atalho.rotulo}>
-              <strong>{atalho.rotulo}</strong><small>{atalho.descricao}</small>
-            </Link>)}</div>
-          </section>
-          <button type="button" className="sg-btn sg-btn--subtle sg-dashboard__refresh" onClick={atualizar} disabled={atualizando}>
-            {atualizando ? "Atualizando..." : "↻ Atualizar dados"}
-          </button>
-        </aside>}
-      </div>
+      </>}
     </Container>
+  );
+}
+
+/** Resumo da NC selecionada na lista: dados da ocorrência, etapas e linha do tempo, com link para a NC completa. */
+function PainelNcGestao({ nc, usuario, abertoPor }) {
+  return (
+    <article className="sg-gestao__painel" aria-labelledby={`painel-nc-${nc.id}`}>
+      <header className="sg-gestao__painel-cabecalho">
+        <div className="sg-gestao__painel-titulo">
+          <span className="sg-mono">NC #{nc.id}{nc.chamado ? ` · Chamado ${nc.chamado}` : ""}</span>
+          <h2 id={`painel-nc-${nc.id}`}>{nc.colaborador || "Colaborador não informado"}</h2>
+          <span className="sg-texto-apoio">
+            {[nc.setor, abertoPor && `aberta por ${abertoPor} em ${formatarData(nc.data)}`].filter(Boolean).join(" · ")}
+          </span>
+          <span className="sg-gestao__painel-selos">
+            <BadgeStatus status={nc.status} />
+            <BadgePrioridade criticidade={nc.criticidade} />
+            {nc.critica && <span className="sg-badge sg-badge--vermelho">NC crítica</span>}
+          </span>
+        </div>
+        <Link href={`/nc/${nc.id}`} className="sg-btn sg-btn--primario">Ver NC completa</Link>
+      </header>
+      <div className="sg-gestao__painel-etapas">
+        <EtapasNc nc={nc} visualizadorId={usuario?.id} compacta />
+      </div>
+      <div className="sg-gestao__painel-corpo">
+        <section className="sg-gestao__painel-dados" aria-labelledby={`ocorrencia-nc-${nc.id}`}>
+          <h3 id={`ocorrencia-nc-${nc.id}`} className="sg-secao-titulo">Ocorrência</h3>
+          {nc.descricao && <p className="sg-gestao__painel-descricao">{nc.descricao}</p>}
+          <dl className="sg-dados">
+            <div><dt>Data</dt><dd>{formatarData(nc.data)}</dd></div>
+            <div><dt>Causas</dt><dd>{nc.causas?.length ? nc.causas.join(", ") : "—"}</dd></div>
+            <div><dt>Reincidência</dt><dd>{nc.reincidencia ?? "—"}</dd></div>
+            <div><dt>Crítica</dt><dd>{nc.critica ? "Sim" : "Não"}</dd></div>
+          </dl>
+        </section>
+        <div className="sg-gestao__painel-historico">
+          <HistoricoNc ncId={nc.id} versao={`${nc.status}-${nc.atualizado_em ?? ""}`} compacta />
+        </div>
+      </div>
+    </article>
   );
 }

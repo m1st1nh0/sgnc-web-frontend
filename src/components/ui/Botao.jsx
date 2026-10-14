@@ -17,6 +17,7 @@ export default function Botao({
     carregando = false,
     children,
     disabled,
+    className = "",
     ...props
 }) {
     const classeVariante = {
@@ -35,7 +36,7 @@ export default function Botao({
 
     return (
         <Button
-            className={`sg-btn ${classeVariante} ${classeTamanho}`}
+            className={`sg-btn ${classeVariante} ${classeTamanho} ${className}`.trim()}
             disabled={disabled || carregando}
             {...props}
         >

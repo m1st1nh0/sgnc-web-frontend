@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Container from "react-bootstrap/Container";
+import Form from "react-bootstrap/Form";
 
 import { aplicarMedida, decidirMedida, listarMedidas } from "../client/ncService.js";
 import { ROTULO_TIPO_MEDIDA, situacaoDaMedida } from "../client/medidas.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
 import { formatarData, formatarDataHora } from "../../../lib/utils/formato.js";
-import CabecalhoPagina from "../../../components/ui/CabecalhoPagina.jsx";
 import Botao from "../../../components/ui/Botao.jsx";
 import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
@@ -87,7 +87,7 @@ function CartaoMedida({ medida, aoAlterar }) {
   }
 
   return (
-    <article className="sg-card">
+    <article className="sg-card sg-medida">
       <div className="sg-card-body p-3">
         <div className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
           <div>
@@ -227,54 +227,93 @@ function CartaoMedida({ medida, aoAlterar }) {
 }
 
 /** Medidas disciplinares em etapas (sugerida → aprovada/reprovada → aplicada), só para a Qualidade. */
+// Etapas da medida (4B): sugerida → aprovada/reprovada → aplicada. Reprovadas e canceladas ficam fora do quadro.
+const COLUNAS = [
+  { status: "sugerida", titulo: "1 · Passíveis de medida", apoio: "aguardam decisão", vazio: "Nenhuma medida aguardando decisão." },
+  { status: "aprovada", titulo: "2 · Aprovadas", apoio: "aguardam aplicação", vazio: "Nenhuma medida aprovada a aplicar." },
+  { status: "aplicada", titulo: "3 · Aplicadas", apoio: "mais recentes", vazio: "Nenhuma medida aplicada." },
+];
+
 export default function MedidasPage() {
-  const [situacao, setSituacao] = useState("pendentes");
   const [medidas, setMedidas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [colaborador, setColaborador] = useState("");
+  const [verEncerradas, setVerEncerradas] = useState(false);
 
   const carregar = useCallback(async () => {
     setErro("");
     try {
-      setMedidas(await listarMedidas(situacao));
+      // Pendentes (sugeridas e aprovadas) e histórico (aplicadas, reprovadas, canceladas) pelas consultas que já existem.
+      const [pendentes, historico] = await Promise.all([listarMedidas("pendentes"), listarMedidas("historico")]);
+      setMedidas([...pendentes, ...historico]);
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível carregar as medidas disciplinares.");
     } finally {
       setCarregando(false);
     }
-  }, [situacao]);
+  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     carregar();
   }, [carregar]);
 
+  const colaboradores = [...new Map(medidas.map((m) => [m.colaborador_id, m.colaborador_nome || "Colaborador"])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
+  const filtradas = medidas.filter((m) => !colaborador || m.colaborador_id === colaborador);
+  const encerradas = filtradas.filter((m) => ["reprovada", "cancelada"].includes(m.status));
+
   return (
     <div>
-      <Container className="sg-container" style={{ maxWidth: "900px" }}>
-        <CabecalhoPagina
-          titulo="Medidas disciplinares"
-          subtitulo="A validação sugere a medida quando a reincidência atinge o gatilho. A Qualidade aprova ou reprova e registra a aplicação."
-        />
-        <div className="d-flex gap-2 mb-3" role="tablist" aria-label="Situação das medidas">
-          {[["pendentes", "Pendentes"], ["historico", "Decididas e aplicadas"]].map(([chave, rotulo]) => (
-            <button key={chave} type="button" role="tab" aria-selected={situacao === chave}
-              className={`sg-btn sg-btn--sm ${situacao === chave ? "sg-btn--primario" : "sg-btn--secundario"}`}
-              onClick={() => { setCarregando(true); setSituacao(chave); }}>
-              {rotulo}
-            </button>
-          ))}
-        </div>
-        {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
-        {carregando ? <EstadoCarregamento mensagem="Carregando medidas..." /> : medidas.length === 0 ? (
-          <EstadoVazio
-            titulo={situacao === "pendentes" ? "Nenhuma medida pendente" : "Nenhuma medida decidida"}
-            descricao={situacao === "pendentes" ? "Os colaboradores passíveis de medida (a cada 3 NCs da mesma causa no ciclo, ou NC crítica) aparecem aqui para decisão." : "As medidas aprovadas, reprovadas e aplicadas aparecem aqui."}
-          />
-        ) : (
-          <div className="d-flex flex-column gap-3">
-            {medidas.map((medida) => <CartaoMedida key={medida.id} medida={medida} aoAlterar={carregar} />)}
+      <Container className="sg-container sg-medidas">
+        <header className="sg-pagina-cabecalho">
+          <div className="sg-pagina-cabecalho__texto">
+            <h1>Medidas disciplinares</h1>
+            <p>A cada 3 NCs da mesma causa no ciclo de 12 meses, ou numa NC crítica, o colaborador fica passível de medida. A Qualidade aprova ou reprova e registra a aplicação feita pelo RH.</p>
           </div>
+          <div className="sg-pagina-cabecalho__acoes">
+            <Form.Group controlId="medidas-colaborador" className="sg-medidas__filtro">
+              <Form.Label className="sg-label">Colaborador</Form.Label>
+              <Form.Select className="sg-input" value={colaborador} onChange={(e) => setColaborador(e.target.value)}>
+                <option value="">Todos</option>
+                {colaboradores.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
+              </Form.Select>
+            </Form.Group>
+            <button type="button" className="sg-btn sg-btn--secundario" aria-pressed={verEncerradas} onClick={() => setVerEncerradas((v) => !v)}>
+              {verEncerradas ? "Ocultar reprovadas" : `Reprovadas (${encerradas.length})`}
+            </button>
+          </div>
+        </header>
+        {erro && <MensagemErro mensagem={erro} onFechar={() => setErro("")} />}
+        {carregando ? <EstadoCarregamento mensagem="Carregando medidas..." /> : (
+          <>
+            <div className="sg-medidas__quadro">
+              {COLUNAS.map((coluna) => {
+                const itens = filtradas.filter((m) => m.status === coluna.status);
+                return (
+                  <section key={coluna.status} className="sg-medidas__coluna" aria-labelledby={`coluna-${coluna.status}`}>
+                    <h2 id={`coluna-${coluna.status}`} className="sg-medidas__coluna-titulo">
+                      <span>{coluna.titulo}</span>
+                      <span className="sg-texto-apoio">{coluna.apoio} · {itens.length}</span>
+                    </h2>
+                    {itens.length === 0
+                      ? <p className="sg-medidas__vazio">{coluna.vazio}</p>
+                      : itens.map((medida) => <CartaoMedida key={medida.id} medida={medida} aoAlterar={carregar} />)}
+                  </section>
+                );
+              })}
+            </div>
+            {verEncerradas && (
+              <section className="sg-medidas__encerradas" aria-labelledby="medidas-reprovadas">
+                <h2 id="medidas-reprovadas" className="sg-secao-titulo">Reprovadas e canceladas</h2>
+                {encerradas.length === 0
+                  ? <EstadoVazio titulo="Nenhuma medida reprovada" descricao="As medidas reprovadas pela Qualidade aparecem aqui." />
+                  : <div className="sg-medidas__grade">{encerradas.map((medida) => <CartaoMedida key={medida.id} medida={medida} aoAlterar={carregar} />)}</div>}
+              </section>
+            )}
+            <p className="sg-texto-apoio mt-4 mb-0">Só a Qualidade decide e aplica, e nunca em medida de NC em que ela própria é a colaboradora analisada.</p>
+          </>
         )}
       </Container>
     </div>
