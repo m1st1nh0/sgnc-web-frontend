@@ -1,4 +1,5 @@
 import { requireApiUser as requireUser } from "@/lib/auth/api";
+import { ORIGENS_NC, TIPOS_NC } from "@/lib/nc/classificacao.js";
 import "server-only";
 
 import { MARGEM, pdfWriter } from "./pdf";
@@ -27,6 +28,10 @@ export async function gerarPdfNc(id: number) {
   writer.heading("Resumo"); writer.line("Status", rotuloStatus(nc.status)); writer.line("Criticidade", nc.criticidade); writer.line("Data", dataBr(nc.data)); writer.line("Chamado", nc.chamado); writer.line("Colaborador", nc.colaborador); writer.line("Setor", nc.setor);
   writer.heading("Descrição"); writer.line("Registro", nc.descricao);
   writer.heading("Causas"); writer.line("Relacionadas", (nc.causas ?? []).join(" | ") || "Nenhuma");
+  if (nc.origem) {
+    writer.heading("Classificação"); writer.line("Origem", ORIGENS_NC[nc.origem as keyof typeof ORIGENS_NC] ?? nc.origem); writer.line("Tipo", TIPOS_NC[nc.tipo_nc as keyof typeof TIPOS_NC] ?? nc.tipo_nc);
+    writer.line("Procedimento", nc.procedimento || "Não informado"); if (nc.procedimento_url) writer.line("Link do procedimento", nc.procedimento_url);
+  }
   writer.heading("Feedback");
   const feedback = nc.feedback_estruturado as Row | null;
   if (feedback) {

@@ -13,6 +13,7 @@ import type { UsuarioAutenticado } from "@/lib/auth/types";
 import { eventosDaTimeline, type AutorTimeline } from "@/lib/nc/timeline";
 import { listaFiltroIn, chaveCatalogoCausa, resolverCausasDoCatalogo } from "@/lib/nc/causasCatalogo";
 import { erroDoFeedback, validarFeedback, type FeedbackInput } from "@/lib/nc/feedback";
+import { validarClassificacao } from "@/lib/nc/classificacao.js";
 import { STATUS_CONTAM_OCORRENCIA, inicioJanelaReincidencia, montarAnteriores } from "@/lib/nc/reincidencia";
 
 const TEXTO_ACEITE = "li e concordo com a não conformidade e com o feedback aplicado";
@@ -69,6 +70,10 @@ function transitionError(result: Record<string, unknown>): never {
   if (result.erro === "feedback_ausente") throw new ApiError("Informe o feedback.");
   const erroFeedback = erroDoFeedback(result);
   if (erroFeedback) throw erroFeedback;
+  if (result.erro === "origem_invalida") throw new ApiError("Informe a origem da NC.", 422, "origem");
+  if (result.erro === "tipo_invalido") throw new ApiError("Marque a NC como cobrança ou orientativa.", 422, "tipo_nc");
+  if (result.erro === "procedimento_invalido") throw new ApiError("Descreva o procedimento em até 300 caracteres.", 422, "procedimento");
+  if (result.erro === "procedimento_url_invalido") throw new ApiError("Informe um link começando com http:// ou https://.", 422, "procedimento_url");
   if (result.erro === "nc_nao_aberta" || result.erro === "status_invalido") {
     throw new ApiError("A NC já foi alterada por outro processo.", 409);
   }
@@ -519,7 +524,9 @@ async function rpcTransition(name: string, params: Record<string, unknown>) {
   return result;
 }
 
-export async function avaliarNc(id: number, input: { decisao?: unknown; motivo_invalidacao?: unknown }) {
+type AvaliacaoInput = { decisao?: unknown; motivo_invalidacao?: unknown; origem?: unknown; tipo_nc?: unknown; procedimento?: unknown; procedimento_url?: unknown };
+
+export async function avaliarNc(id: number, input: AvaliacaoInput) {
   const user = await requireQualidadeSemConflito(id);
   const decisao = String(input.decisao ?? "");
   if (!['validar', 'invalidar'].includes(decisao)) throw new ApiError("decisao deve ser 'validar' ou 'invalidar'.");
@@ -529,7 +536,14 @@ export async function avaliarNc(id: number, input: { decisao?: unknown; motivo_i
     await rpcTransition("invalidar_nc_v3", { p_nc_id: id, p_responsavel_id: user.id, p_motivo: motivo });
     return buscarNc(id, user);
   }
-  const result = await rpcTransition("validar_nc_com_workflow_v3", { p_nc_id: id, p_responsavel_id: user.id });
+  // Fase 2 do processo: origem (obrigatória), tipo e procedimento são gravados junto com a validação.
+  const classificacao = validarClassificacao(input);
+  if (classificacao.erro) throw new ApiError(classificacao.erro.mensagem, 422, classificacao.erro.campo);
+  const { origem, tipo_nc, procedimento, procedimento_url } = classificacao.valor;
+  const result = await rpcTransition("validar_nc_com_workflow_v4", {
+    p_nc_id: id, p_responsavel_id: user.id, p_origem: origem, p_tipo_nc: tipo_nc,
+    p_procedimento: procedimento, p_procedimento_url: procedimento_url,
+  });
   const response = await buscarNc(id, user);
   const ocorrencias = Array.isArray(result.ocorrencias)
     ? result.ocorrencias.map((item) => {

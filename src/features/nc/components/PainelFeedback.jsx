@@ -46,7 +46,7 @@ function validar(campos) {
 }
 
 /** Histórico do colaborador com as causas desta NC nos últimos 12 meses. */
-function HistoricoReincidencia({ ncId }) {
+function HistoricoReincidencia({ ncId, orientativa = false }) {
   const [dados, setDados] = useState(null);
   const [erro, setErro] = useState("");
 
@@ -69,7 +69,7 @@ function HistoricoReincidencia({ ncId }) {
             {dados.ocorrencias.map((item) => (
               <li key={item.causa}>
                 <strong>{item.causa}:</strong>{" "}
-                {item.ocorrencia_numero ? `${item.ocorrencia_numero}ª NC da causa no ciclo de 12 meses` : "ocorrência não calculada"}
+                {orientativa ? "não conta (NC orientativa)" : item.ocorrencia_numero ? `${item.ocorrencia_numero}ª NC da causa no ciclo de 12 meses` : "ocorrência não calculada"}
               </li>
             ))}
           </ul>
@@ -169,7 +169,7 @@ export default function PainelFeedback({ nc, aoConcluir }) {
         <h2 className="sg-painel__titulo">Registrar feedback</h2>
       </div>
       <div className="sg-painel__corpo">
-        <HistoricoReincidencia ncId={nc.id} />
+        <HistoricoReincidencia ncId={nc.id} orientativa={nc.tipo_nc === "orientativa"} />
 
         <p className="texto-secundario texto-sm mb-3">
           Registre o que foi tratado com o colaborador. Todos os campos são obrigatórios, exceto os anexos.

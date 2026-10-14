@@ -40,8 +40,8 @@ Precisam de resposta antes da fase indicada.
 | Q3 | ~~Medidas antigas~~ **Respondida (13/10):** recalcular; a base atual é de teste e será limpa antes da produção. | 1 |
 | Q4 | ~~Nomes~~ **Respondida (13/10):** "Sugerida" passa a se chamar "Passível de medida" na interface. A Qualidade continua aprovando ou reprovando; "Alterada" é a troca do tipo, já existente; o cancelamento continua. | 1 |
 | Q5 | ~~NC crítica~~ **Respondida (13/10):** fica passível de medida independentemente da contagem, ainda com aprovação ou reprovação pela Qualidade. | 1 |
-| Q6 | ~~Procedimento e tipo~~ **Respondida em parte (14/10):** na validação, a Qualidade pode informar o procedimento descumprido e o link da intranet, ambos **opcionais** (pode haver medida sem procedimento publicado). A Qualidade marca a NC como **cobrança** ou **orientativa**, como no documento; a orientativa não conta para reincidência nem para medida. **Falta:** se quem abre a NC informa a origem (monitoria, auditoria, supervisão, indicador ou reclamação). | 2 |
-| Q7 | Causa **individual** ou **sistêmica**: a Qualidade marca no feedback? A NC sistêmica deixa de contar para reincidência e medidas, mas segue com aceite e plano? | 2 |
+| Q6 | ~~Procedimento, tipo e origem~~ **Respondida (14/10):** na validação, a Qualidade informa a **origem** (monitoria, auditoria, supervisão, indicador ou reclamação), **obrigatória**; quem abre a NC não informa. Procedimento e link da intranet são **opcionais**. A Qualidade marca **cobrança** ou **orientativa**; a orientativa não conta para reincidência nem medida. | 2 |
+| Q7 | ~~Individual ou sistêmica~~ **Respondida (14/10):** não vira regra nem campo. Só se identifica depois de investigação e conversa; fica como observação no feedback. | 2 |
 | Q8 | Prazo de feedback: conta a partir da validação (5 dias úteis) e, na crítica, a partir da marcação (1 dia útil)? Vencido, quem é avisado: a Qualidade e o líder? | 3 |
 | Q9 | Contenção da NC crítica: a Qualidade registra o que foi feito (texto) em até 24 h corridas da marcação? Vencida, quem é avisado? | 3 |
 | Q10 | Participantes do feedback: obrigatório escolher a Qualidade e o líder do colaborador, ou basta informar? | 4 |
@@ -88,9 +88,15 @@ O servidor deixou de recalcular a medida em TypeScript: o painel de feedback e o
 
 ### Fase 2: procedimento, origem e tipo de causa (premissa, itens 2, 5.2 e 7 do documento)
 
-- [ ] 2.1 Campos na NC: `origem` (abertura), `procedimento` e `procedimento_url` (validação), `tipo_nc` (`cobranca`/`orientativa`, na validação) e `natureza_causa` (`individual`/`sistemica`, no feedback), conforme Q6 e Q7.
-- [ ] 2.2 Reincidência e medidas contam só NC de cobrança com causa individual. Antes de deixar o colaborador passível de medida, o sistema confere procedimento, evidência, causa individual e feedback registrado (item 7 do documento).
-- [ ] 2.3 Telas de abertura, validação, detalhe e relatórios; CSV e PDF com os campos novos.
+- [x] 2.1 Campos na NC: `origem` (obrigatória na validação), `tipo_nc` (`cobranca`/`orientativa`, padrão `cobranca`), `procedimento` e `procedimento_url` (opcionais, link só `http(s)://`), com CHECK no banco. Sem campo de causa individual × sistêmica (Q7).
+- [x] 2.2 `validar_nc_com_workflow_v4` grava a classificação e valida na mesma transação (só grava depois de conferir conflito de interesse, status e colaborador). NC orientativa não conta para reincidência (`ocorrencia_numero` nulo) nem gera medida, nem quando é crítica. A conferência pré-medida do item 7 do documento não entra, porque procedimento é opcional e individual × sistêmica não é regra.
+- [x] 2.3 Tela de validação com origem, tipo, procedimento e link; o detalhe e o PDF da NC mostram a classificação; o painel de feedback mostra "não conta (NC orientativa)". CSV e Excel ficam como estão (formato fechado no plano de relatórios).
+
+**Status (14/10):** implementada no PR da Fase 2. Migração `20261014120000_classificacao_na_validacao.sql` aguarda autorização para aplicar. Cenários conferidos no Postgres local:
+- cobrança conta e a orientativa é pulada (cobrança, orientativa, cobrança, cobrança → 1ª, —, 2ª, 3ª com medida);
+- orientativa crítica não gera medida;
+- validação sem origem, com tipo ou link inválido, ou pela Qualidade acusada é recusada sem gravar nada;
+- a validação gera uma entrada no histórico.
 
 ### Fase 3: prazos por criticidade (P2)
 
