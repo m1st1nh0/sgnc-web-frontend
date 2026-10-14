@@ -92,7 +92,7 @@ O servidor deixou de recalcular a medida em TypeScript: o painel de feedback e o
 - [x] 2.2 `validar_nc_com_workflow_v4` grava a classificação e valida na mesma transação (só grava depois de conferir conflito de interesse, status e colaborador). NC orientativa não conta para reincidência (`ocorrencia_numero` nulo) nem gera medida, nem quando é crítica. A conferência pré-medida do item 7 do documento não entra, porque procedimento é opcional e individual × sistêmica não é regra.
 - [x] 2.3 Tela de validação com origem, tipo, procedimento e link; o detalhe e o PDF da NC mostram a classificação; o painel de feedback mostra "não conta (NC orientativa)". CSV e Excel ficam como estão (formato fechado no plano de relatórios).
 
-**Status (14/10):** implementada no PR da Fase 2. Migração `20261014120000_classificacao_na_validacao.sql` aguarda autorização para aplicar. Cenários conferidos no Postgres local:
+**Status (14/10):** implementada no PR da Fase 2. Migração `20261014120000_classificacao_na_validacao.sql` aplicada no Supabase em 14/10, com autorização; os mesmos cenários foram repetidos lá em transação desfeita. Cenários conferidos no Postgres local:
 - cobrança conta e a orientativa é pulada (cobrança, orientativa, cobrança, cobrança → 1ª, —, 2ª, 3ª com medida);
 - orientativa crítica não gera medida;
 - validação sem origem, com tipo ou link inválido, ou pela Qualidade acusada é recusada sem gravar nada;
