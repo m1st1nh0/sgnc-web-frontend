@@ -35,7 +35,7 @@ test("R3: CSV simples tem 15 colunas, ordem de ação, líder, medida e link", (
   expect(linhas.slice(1).map((linha) => linha.split(";")[0])).toEqual(['"11"', '"12"', '"5"']);
   expect(linhas[1]).toBe('"11";"10/10/2026";"Aguardando aceite";"3";"teste funcionário";"Suporte";"Supervisor Suporte";"Baixa";"1232";"Apontamento de horas incoerente";"3ª";"13/10/2026 18:00";"Aguardando aceite";"";"https://sgnc.example/nc/11"');
   expect(linhas[2]).toContain('"\'=1+1"');
-  expect(linhas[2]).toContain('"Advertência (sugerida)"');
+  expect(linhas[2]).toContain('"Advertência (passível de medida)"');
   expect(linhas[3]).toContain('"Aceito no prazo"');
 });
 
@@ -47,7 +47,7 @@ test("R3: Excel tem as seis abas e valores tipados", () => {
   expect(nc[0]).toBe(11);
   expect(nc[coluna("Líder direto")]).toBe("Supervisor Suporte");
   expect(nc[coluna("Validação até feedback")]).toBe(21);
-  expect(abas[1].linhas.find((linha) => linha[0] === 12)).toEqual([12, "2026-10-10", "teste funcionário", "Suporte", "Apontamento de horas incoerente", 4, "Sim", "Advertência", "Sugerida"]);
+  expect(abas[1].linhas.find((linha) => linha[0] === 12)).toEqual([12, "2026-10-10", "teste funcionário", "Suporte", "Apontamento de horas incoerente", 4, "Sim", "Advertência", "Passível de medida"]);
   expect(abas[2].linhas.map((linha) => linha[0])).toEqual([11, 5]);
   expect(abas[3].linhas[0]).toEqual([5, "2026-10-10T14:10:15Z", "", "Aguardando avaliação", "Lucas", null]);
 });

@@ -69,7 +69,7 @@ function HistoricoReincidencia({ ncId }) {
             {dados.ocorrencias.map((item) => (
               <li key={item.causa}>
                 <strong>{item.causa}:</strong>{" "}
-                {item.ocorrencia_numero ? `${item.ocorrencia_numero}ª ocorrência em 12 meses` : "ocorrência não calculada"}
+                {item.ocorrencia_numero ? `${item.ocorrencia_numero}ª NC da causa no ciclo de 12 meses` : "ocorrência não calculada"}
               </li>
             ))}
           </ul>

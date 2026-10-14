@@ -101,8 +101,10 @@ function CartaoMedida({ medida, aoAlterar }) {
           <span className={`sg-badge ${situacao.classe}`}>{situacao.rotulo}</span>
         </div>
         <p className="texto-sm texto-secundario mb-2">
-          {medida.ocorrencia_gatilho}ª ocorrência de <strong>{medida.causa}</strong> em 12 meses ·{" "}
-          <Link href={`/nc/${medida.nc_id}`}>NC #{medida.nc_id}</Link> · sugerida em {formatarDataHora(medida.criado_em)}
+          {medida.origem === "nc_critica"
+            ? <>NC crítica, causa <strong>{medida.causa}</strong> ·{" "}</>
+            : <>{medida.ocorrencia_gatilho}ª NC de <strong>{medida.causa}</strong> no ciclo de 12 meses{medida.origem === "reincidencia_e_critica" ? " e NC crítica" : ""} ·{" "}</>}
+          <Link href={`/nc/${medida.nc_id}`}>NC #{medida.nc_id}</Link> · passível desde {formatarDataHora(medida.criado_em)}
         </p>
         {medida.decidida_em && (
           <p className="texto-xs texto-secundario mb-1">
@@ -149,7 +151,7 @@ function CartaoMedida({ medida, aoAlterar }) {
               value={tipo}
               onChange={(e) => setTipo(e.target.value)}
               erro={errosCampo.tipo}
-              helper={`Sugerida pelo sistema: ${ROTULO_TIPO_MEDIDA[tipoSugerido]}.`}
+              helper={`Indicada pela escada da causa: ${ROTULO_TIPO_MEDIDA[tipoSugerido]}. A aplicação é feita pelo RH, presencialmente.`}
             >
               {Object.entries(ROTULO_TIPO_MEDIDA).map(([valor, rotulo]) => (
                 <option key={valor} value={valor}>{rotulo}</option>
@@ -227,7 +229,7 @@ function CartaoMedida({ medida, aoAlterar }) {
 /** Medidas disciplinares em etapas (sugerida → aprovada/reprovada → aplicada), só para a Qualidade. */
 // Etapas da medida (4B): sugerida → aprovada/reprovada → aplicada. Reprovadas e canceladas ficam fora do quadro.
 const COLUNAS = [
-  { status: "sugerida", titulo: "1 · Sugeridas", apoio: "aguardam decisão", vazio: "Nenhuma medida aguardando decisão." },
+  { status: "sugerida", titulo: "1 · Passíveis de medida", apoio: "aguardam decisão", vazio: "Nenhuma medida aguardando decisão." },
   { status: "aprovada", titulo: "2 · Aprovadas", apoio: "aguardam aplicação", vazio: "Nenhuma medida aprovada a aplicar." },
   { status: "aplicada", titulo: "3 · Aplicadas", apoio: "mais recentes", vazio: "Nenhuma medida aplicada." },
 ];
@@ -268,7 +270,7 @@ export default function MedidasPage() {
         <header className="sg-pagina-cabecalho">
           <div className="sg-pagina-cabecalho__texto">
             <h1>Medidas disciplinares</h1>
-            <p>A validação sugere a medida quando a reincidência atinge o gatilho. A Qualidade aprova ou reprova e registra a aplicação.</p>
+            <p>A cada 3 NCs da mesma causa no ciclo de 12 meses, ou numa NC crítica, o colaborador fica passível de medida. A Qualidade aprova ou reprova e registra a aplicação feita pelo RH.</p>
           </div>
           <div className="sg-pagina-cabecalho__acoes">
             <Form.Group controlId="medidas-colaborador" className="sg-medidas__filtro">

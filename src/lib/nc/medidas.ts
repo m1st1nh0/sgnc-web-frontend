@@ -48,7 +48,7 @@ export async function listarMedidas(situacao: string | null) {
   const user = await requireQualidade();
   const admin = createAdminClient() as any;
   let query = admin.from("medidas_disciplinares")
-    .select("id, colaborador_id, causa_id, nc_id, ocorrencia_gatilho, tipo, tipo_sugerido, status, dias_suspensao, data_aplicacao, observacao, decidida_por, decidida_em, motivo_decisao, aplicada_por, aplicada_em, criado_em");
+    .select("id, colaborador_id, causa_id, nc_id, ocorrencia_gatilho, tipo, tipo_sugerido, status, origem, dias_suspensao, data_aplicacao, observacao, decidida_por, decidida_em, motivo_decisao, aplicada_por, aplicada_em, criado_em");
   if (situacao === "historico") query = query.not("status", "in", `(${STATUS_PENDENTES.join(",")})`).order("criado_em", { ascending: false }).limit(50);
   else query = query.in("status", STATUS_PENDENTES).order("criado_em", { ascending: true });
   const { data, error } = await query;

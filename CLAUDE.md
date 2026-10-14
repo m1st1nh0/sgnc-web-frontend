@@ -40,6 +40,13 @@ Estrutura organizacional (decisões de 11/10/2026, plano em [`docs/plano-estrutu
 - O diretor (CEO) tem perfil Supervisor no topo. NC crítica avisa toda a cadeia até a Diretoria; as demais, só o líder direto.
 - Troca de liderança só pela aba Equipes. Departamentos, cargos e lideranças são mantidos pela tela (a empresa está em expansão).
 
+Processo de Gestão de NCs da Qualidade (decisões de 13/10/2026, plano em [`docs/plano-processo-gestao-nc.md`](docs/plano-processo-gestao-nc.md)):
+- Criticidade continua Baixa/Média/Alta; "crítica" é marcação separada, feita só depois da validação.
+- Adotar prazo de feedback (5 dias úteis; 1 dia útil na NC crítica) e contenção em 24 h na NC crítica; o aceite continua com 2 dias úteis.
+- A cada 3 NCs da mesma causa o colaborador fica "passível de medida" (valor interno `sugerida`). Ciclo de 12 meses por colaborador e causa, contado a partir da 1ª NC da causa; fechada a janela, tudo zera. Escada por causa no ciclo: medidas 1–3 advertência, 4–6 suspensão, 7ª em diante avaliação de justa causa; só sobem a escada as medidas aprovadas pela Qualidade (aprovadas ou aplicadas). NC com mais de uma causa conta +1 em cada causa, e cada uma pode gerar a sua medida. NC crítica fica passível de medida independentemente da contagem, em cada causa; se a contagem já gerou medida para a causa naquela NC, é uma só, com as duas origens. A Qualidade continua aprovando ou reprovando.
+- Não há papel RH no sistema: o SGNC registra a situação da medida (passível, aplicada, alterada); a aplicação é feita pelo RH, presencialmente.
+- Qualquer perfil abre NC; a Qualidade valida. A NC sem plano encerra no aceite. O supervisor é avisado só na validação.
+
 Relatórios (decisões de 13/10/2026, plano em [`docs/plano-relatorios.md`](docs/plano-relatorios.md)):
 - Resumo em PDF: relatório completo com o resumo de uma página como página 1; os 4 números da página 1 comparam com o período anterior de mesmo tamanho.
 - Planilha: Excel com abas no botão principal; CSV mantido em versão simples.

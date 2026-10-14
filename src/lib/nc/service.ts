@@ -534,21 +534,10 @@ export async function avaliarNc(id: number, input: { decisao?: unknown; motivo_i
   const ocorrencias = Array.isArray(result.ocorrencias)
     ? result.ocorrencias.map((item) => {
         const occurrence = item as Record<string, unknown>;
-        const number = Number(occurrence.ocorrencia_numero ?? 0);
-        return { ...occurrence, medida_sugerida: suggestedMeasure(number) };
+        return { ...occurrence, medida_sugerida: occurrence.medida_sugerida ?? null };
       })
     : [];
   return { ...response, ocorrencias };
-}
-
-function suggestedMeasure(occurrence: number) {
-  if (occurrence <= 3) return null;
-  const cyclePosition = occurrence - 3;
-  if ((cyclePosition - 1) % 3 !== 0) return null;
-  const measureNumber = Math.floor((cyclePosition - 1) / 3) + 1;
-  if (measureNumber <= 3) return "advertencia";
-  if (measureNumber <= 6) return "suspensao";
-  return "avaliar_justa_causa";
 }
 
 export async function obterTimeline(id: number) {

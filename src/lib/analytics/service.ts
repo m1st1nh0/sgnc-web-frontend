@@ -29,11 +29,6 @@ const seconds = (start: unknown, end: unknown) => {
   const result = Math.floor((Date.parse(String(end)) - Date.parse(String(start))) / 1000);
   return Number.isFinite(result) && result >= 0 ? result : null;
 };
-const suggestedMeasure = (occurrence: number) => {
-  if (occurrence <= 3 || (occurrence - 4) % 3 !== 0) return null;
-  const measure = Math.floor((occurrence - 4) / 3) + 1;
-  return measure <= 3 ? "advertencia" : measure <= 6 ? "suspensao" : "avaliar_justa_causa";
-};
 const inc = (map: Map<string, number>, key: unknown) => map.set(String(key), (map.get(String(key)) ?? 0) + 1);
 const count = (map: Map<string, number>, key: unknown) => map.get(String(key)) ?? 0;
 
@@ -100,15 +95,17 @@ export async function obterEstatisticasUsuario(userId: string) {
   let measures: Row[] = [];
   if (ids.length) {
     const { data, error: measuresError } = await admin.from("medidas_disciplinares")
-      .select("id, causa_id, nc_id, ocorrencia_gatilho, tipo, status, dias_suspensao, data_aplicacao, observacao")
+      .select("id, causa_id, nc_id, ocorrencia_gatilho, tipo, tipo_sugerido, status, origem, dias_suspensao, data_aplicacao, observacao, criado_em")
       .in("nc_id", ids).order("data_aplicacao", { ascending: false });
     if (measuresError) throw new ApiError("Não foi possível carregar as medidas disciplinares.", 500);
     measures = data ?? [];
   }
   const result = [...grouped.values()].map((item) => {
     delete item._last;
-    if (ehQualidade(requester.papel) && item.ultima_ocorrencia_numero != null) item.medida_sugerida = suggestedMeasure(Number(item.ultima_ocorrencia_numero));
     item.medidas = (measures ?? []).filter((measure) => measure.causa_id === item.causa_id);
+    // Passível de medida: a medida pendente de decisão gerada pelo banco (a cada 3 NCs no ciclo ou NC crítica).
+    const passivel = item.medidas.find((measure: Row) => measure.status === "sugerida");
+    if (ehQualidade(requester.papel) && passivel) item.medida_sugerida = passivel.tipo_sugerido ?? passivel.tipo;
     return item;
   }).sort((a, b) => b.ocorrencias_12m - a.ocorrencias_12m);
   return { usuario_id: employee.id, nome: employee.nome, setor: employee.setor, total_nc_12m: ids.length, causas: result };
@@ -177,7 +174,7 @@ export async function obterInsights(
   const causes = await causeMap(periodIds);
   let measures: Row[] = [];
   if (teamIds === null || all.length) {
-    let measuresQuery = admin.from("medidas_disciplinares").select("causa_id, colaborador_id, nc_id, ocorrencia_gatilho, tipo, status, data_aplicacao, criado_em");
+    let measuresQuery = admin.from("medidas_disciplinares").select("causa_id, colaborador_id, nc_id, ocorrencia_gatilho, tipo, tipo_sugerido, status, data_aplicacao, criado_em");
     if (teamIds || selectedStatuses || collaboratorId || sector) {
       measuresQuery = measuresQuery.in("nc_id", all.map((nc) => nc.id));
     }
@@ -207,7 +204,9 @@ export async function obterInsights(
   for(const nc of active){const key=nc.colaborador_id||nc.colaborador||'Não informado';const person=collaborators.get(key)??{colaborador_id:nc.colaborador_id,colaborador:nc.colaborador||'Não informado',setor:nc.setor,total:0,invalidadas:0,reincidencias:0,reincidencias_12m:0,backlog_ativo:0};person.backlog_ativo++;collaborators.set(key,person);const sector=nc.setor||'Não informado';const si=sectors.get(sector)??{setor:sector,total:0,invalidadas:0,backlog_ativo:0,nao_respondidas:0};si.backlog_ativo++;if(nc.status==='nao_respondida')si.nao_respondidas++;sectors.set(sector,si);}
   const disciplineApplied=new Map<string,number>(), disciplineSuggested=new Map<string,number>(), suggestions=new Map<number,Row>(), measuresByCause=new Map<number,Row>();
   for(const measure of measures??[]){if(measure.status!=='aplicada')continue;const date=isoDate(measure.data_aplicacao)||isoDate(measure.criado_em);if(!date||date<start||date>end)continue;inc(disciplineApplied,measure.tipo);const ci=measuresByCause.get(measure.causa_id)??{causa_id:measure.causa_id,causa:causeTotals.get(measure.causa_id)?.causa||`Causa ${measure.causa_id}`,advertencias:0,suspensoes:0,avaliacoes_justa_causa:0,total:0};ci.total++;if(measure.tipo==='advertencia')ci.advertencias++;else if(measure.tipo==='suspensao')ci.suspensoes++;else ci.avaliacoes_justa_causa++;measuresByCause.set(measure.causa_id,ci);}
-  for(const nc of period.filter((item)=>COUNTABLE.has(item.status)))for(const cause of causes.get(nc.id)??[]){const suggestion=suggestedMeasure(Number(cause.ocorrencia_numero));if(!suggestion)continue;inc(disciplineSuggested,suggestion);const si=suggestions.get(cause.causa_id)??{causa_id:cause.causa_id,causa:cause.descricao||`Causa ${cause.causa_id}`,advertencias_sugeridas:0,suspensoes_sugeridas:0,avaliacoes_justa_causa_sugeridas:0,total_sugestoes:0};si.total_sugestoes++;if(suggestion==='advertencia')si.advertencias_sugeridas++;else if(suggestion==='suspensao')si.suspensoes_sugeridas++;else si.avaliacoes_justa_causa_sugeridas++;suggestions.set(cause.causa_id,si);}
+  // Passíveis de medida no período: medidas geradas pelo banco, exceto as recalculadas/canceladas.
+  const causeNames=new Map<number,string>();for(const list of causes.values())for(const cause of list)causeNames.set(cause.causa_id,cause.descricao);
+  for(const measure of measures??[]){if(measure.status==='cancelada')continue;const date=isoDate(measure.criado_em);if(!date||date<start||date>end)continue;const suggestion=String(measure.tipo_sugerido??measure.tipo);const cause={causa_id:measure.causa_id,descricao:causeNames.get(measure.causa_id)||causeTotals.get(measure.causa_id)?.causa};inc(disciplineSuggested,suggestion);const si=suggestions.get(cause.causa_id)??{causa_id:cause.causa_id,causa:cause.descricao||`Causa ${cause.causa_id}`,advertencias_sugeridas:0,suspensoes_sugeridas:0,avaliacoes_justa_causa_sugeridas:0,total_sugestoes:0};si.total_sugestoes++;if(suggestion==='advertencia')si.advertencias_sugeridas++;else if(suggestion==='suspensao')si.suspensoes_sugeridas++;else si.avaliacoes_justa_causa_sugeridas++;suggestions.set(cause.causa_id,si);}
   const criticities=new Map<string,number>();period.forEach((nc)=>inc(criticities,nc.criticidade||'Não informada'));
   return {
     versao_contrato: "insights-v2",
