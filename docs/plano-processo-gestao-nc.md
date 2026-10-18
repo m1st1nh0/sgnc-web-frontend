@@ -124,7 +124,11 @@ O servidor deixou de recalcular a medida em TypeScript: o painel de feedback e o
 - [ ] 6.2 Redução das ocorrências contra o período anterior, por causa.
 - [ ] 6.3 Efetividade do feedback: feedbacks sem nova NC da mesma causa em 30 dias ÷ feedbacks aplicados.
 - [ ] 6.4 Feedback no prazo da criticidade; planos de ação concluídos no prazo e eficazes.
-- [ ] 6.5 NCs por natureza da causa (individual × sistêmica) e auditoria de completude dos registros (evidência, procedimento, feedback e verificação).
+- [ ] 6.5 Auditoria de completude dos registros (evidência, procedimento, feedback e verificação). O corte individual × sistêmica sai, porque não é campo (Q7).
+
+## Revisão de aderência (18/10)
+
+A [análise](analise-processo-gestao-nc.md) foi refeita depois das Fases 1 e 2: 37 de 65 itens atendidos (57%), contra 22 em 13/10. Ficaram as perguntas novas N1 a N5 (plano na NC leve, prazo de análise de causa, evidência obrigatória, desligamento e conferência antes da medida), além da Q10 e da Q11.
 
 ### Fase 7: UAT e revisão do documento
 
