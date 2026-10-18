@@ -169,6 +169,7 @@ Itens do documento que o plano ainda não cobre:
 - N1: separar a abertura do plano de ação da marcação de crítica. Qualquer NC validada pode ter plano; a crítica continua exigindo plano.
 - N3: evidência obrigatória na validação.
 - N5: a aprovação da medida exige o feedback da NC já aplicado.
-- N2 e N4: em esclarecimento.
+- N2: os prazos entram (Fase 3 retomada).
+- N4: registrar também o desfecho (desligado ou não).
 
 Q10 e Q11 foram respondidas e estão no plano.
