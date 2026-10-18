@@ -165,4 +165,10 @@ Itens do documento que o plano ainda não cobre:
 | N4 | Desligamento: basta o sistema registrar a medida de "avaliação de justa causa" (aplicação pelo RH com a Diretoria, fora do sistema), ou é preciso registrar o desfecho (desligado ou não)? | 5 |
 | N5 | Conferência antes da medida: a aprovação da medida deve exigir que o feedback da NC já tenha sido aplicado? | 4 |
 
-Também continuam em aberto a Q10 (participantes do feedback, Fase 4) e a Q11 (verificação de 30 dias, Fase 5) do plano.
+**Respostas (18/10):**
+- N1: separar a abertura do plano de ação da marcação de crítica. Qualquer NC validada pode ter plano; a crítica continua exigindo plano.
+- N3: evidência obrigatória na validação.
+- N5: a aprovação da medida exige o feedback da NC já aplicado.
+- N2 e N4: em esclarecimento.
+
+Q10 e Q11 foram respondidas e estão no plano.

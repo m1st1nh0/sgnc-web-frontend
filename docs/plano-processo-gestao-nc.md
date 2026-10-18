@@ -44,8 +44,8 @@ Precisam de resposta antes da fase indicada.
 | Q7 | ~~Individual ou sistêmica~~ **Respondida (14/10):** não vira regra nem campo. Só se identifica depois de investigação e conversa; fica como observação no feedback. | 2 |
 | Q8 | ~~Prazo de feedback~~ **Adiada (14/10):** sem prazo de feedback por enquanto. | 3 |
 | Q9 | ~~Contenção da NC crítica~~ **Adiada (14/10):** sem contenção em 24 h por enquanto. | 3 |
-| Q10 | Participantes do feedback: obrigatório escolher a Qualidade e o líder do colaborador, ou basta informar? | 4 |
-| Q11 | A verificação de 30 dias vale só para a NC crítica (com plano de ação), já que as demais encerram no aceite? Na verificação não eficaz, a NC volta para "Reaberta" (novo plano) ou é "Escalada" para o responsável do departamento (gestor da área)? Quem decide entre as duas? | 5 |
+| Q10 | ~~Participantes do feedback~~ **Respondida (18/10):** escolhidos de uma lista limitada a quem tem relação com a NC (perfis da Qualidade, envolvidos e os gestores deles). A Qualidade e o líder do colaborador são obrigatórios. Posicionamento do colaborador opcional; resumo da conversa obrigatório. | 4 |
+| Q11 | ~~Verificação de 30 dias~~ **Respondida (18/10):** vale só para NC com plano de ação. O resultado "não eficaz" leva a NC a um status próprio, e a Qualidade decide se ela segue como **Reaberta** (novo plano) ou **Escalada** (gestor da área). | 5 |
 
 ## Fases
 
