@@ -13,6 +13,10 @@ const STATUS_ATIVOS = new Set([
   "aguardando_aceite",
   "nao_respondida",
   "em_plano_acao",
+  "reaberta",
+  "em_verificacao",
+  "nao_eficaz",
+  "escalada",
 ]);
 
 export function normalizarStatusHome(status) {
@@ -27,7 +31,7 @@ export function filtrarNcsPorCardHome(ncs, rotulo, usuarioId) {
   // O colaborador ainda pode aceitar depois do prazo (D11): "Não respondida" segue pendente para ele.
   if (rotulo === "Aguardando meu aceite") return ncs.filter((nc) => ["aguardando_aceite", "nao_respondida"].includes(nc.status));
   if (rotulo === "Não respondidas") return ncs.filter((nc) => nc.status === "nao_respondida");
-  if (rotulo === "Em plano de ação") return ncs.filter((nc) => nc.status === "em_plano_acao");
+  if (rotulo === "Em plano de ação") return ncs.filter((nc) => ["em_plano_acao", "reaberta"].includes(nc.status));
   if (rotulo === "Concluídas") return ncs.filter((nc) => nc.status === "concluida");
   if (rotulo === "Abertas por mim") return ncs.filter((nc) => nc.aberto_por === usuarioId);
   if (rotulo === "Minhas NCs ativas") {
@@ -45,6 +49,10 @@ function porPrioridade(a, b) {
     nao_respondida: 0,
     aguardando_aceite: 0,
     em_plano_acao: 1,
+    reaberta: 1,
+    nao_eficaz: 1,
+    escalada: 1,
+    em_verificacao: 2,
     aberta: 1,
     aguardando_feedback: 2,
     validada: 2,

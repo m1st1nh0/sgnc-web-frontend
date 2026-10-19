@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import Form from "react-bootstrap/Form";
 
 import {
+  abrirPlanoAcao,
   concluirPlanoAcao,
+  decidirEscalonamento,
+  decidirNaoEficaz,
   definirCritica,
+  registrarVerificacao,
   obterPlanoAcao,
   registrarAcompanhamentoPlano,
   salvarPlanoAcao,
@@ -69,6 +73,14 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
   const [form, setForm] = useState(formularioDoPlano(null));
   const [registro, setRegistro] = useState("");
   const [verificacao, setVerificacao] = useState("");
+  // Fase 5 do processo: plano em NC não crítica, verificação de eficácia e escalonamento.
+  const [motivoPlano, setMotivoPlano] = useState("");
+  const [abrindoPlano, setAbrindoPlano] = useState(false);
+  const [resultado, setResultado] = useState("");
+  const [observacao, setObservacao] = useState("");
+  const [decisao, setDecisao] = useState("");
+  const [motivoDecisao, setMotivoDecisao] = useState("");
+  const [parecer, setParecer] = useState("");
   const [pessoas, setPessoas] = useState([]);
 
   function aplicar(resposta) {
@@ -121,7 +133,8 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
     const ok = await executar(
       "critica",
       () => definirCritica(nc.id, critica, motivoCritica),
-      critica ? "NC marcada como crítica. O plano de ação foi aberto." : "Criticidade removida e plano cancelado.",
+      critica ? "NC marcada como crítica. O plano de ação foi aberto."
+        : dados?.plano_acao_aberto ? "Criticidade removida. O plano de ação continua." : "Criticidade removida e plano cancelado.",
       true,
     );
     if (ok) {
@@ -140,7 +153,10 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
   if (!dados) return erro ? <MensagemErro mensagem={erro} /> : null;
 
   const { plano, permissoes } = dados;
-  if (!dados.critica && !plano && !permissoes.marcar_critica) return null;
+  const comPlano = dados.critica || dados.plano_acao_aberto;
+  const etapaVerificacao = ["em_verificacao", "nao_eficaz", "escalada"].includes(dados.status_nc)
+    || !!dados.verificacao?.resultado || !!dados.escalonamento;
+  if (!comPlano && !plano && !permissoes.marcar_critica && !permissoes.abrir_plano && !etapaVerificacao) return null;
   const encerrado = plano && ["concluido", "cancelado"].includes(plano.status);
   const ocupado = !!enviando;
   const campo = (chave) => ({
@@ -152,7 +168,9 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
   return (
     <section className="sg-painel" aria-label="NC crítica e plano de ação">
       <div className="sg-painel__cabecalho d-flex justify-content-between align-items-center gap-2 flex-wrap">
-        <h2 className="sg-painel__titulo">{dados.critica ? "NC crítica · Plano de ação" : "Criticidade da NC"}</h2>
+        <h2 className="sg-painel__titulo">
+          {dados.critica ? "NC crítica · Plano de ação" : comPlano ? "Plano de ação" : "Criticidade e plano de ação"}
+        </h2>
         {plano && (
           <span className={`sg-badge ${plano.status === "concluido" ? "sg-badge--verde" : plano.status === "cancelado" ? "sg-badge--cinza" : "sg-badge--vermelho"}`}>
             Plano: {ROTULO_ETAPA[plano.status] ?? plano.status}
@@ -177,6 +195,41 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
               Uma NC crítica recebe um plano de ação. Após o aceite do colaborador, ela fica em
               &quot;Em plano de ação&quot; até a Qualidade verificar a eficácia.
             </p>
+          </div>
+        )}
+
+        {permissoes.abrir_plano && !abrindoPlano && (
+          <div>
+            <Botao variante="secundario" tamanho="sm" disabled={ocupado} onClick={() => setAbrindoPlano(true)}>
+              Abrir plano de ação
+            </Botao>
+            <p className="texto-xs texto-suave mt-1 mb-0">
+              Opcional na NC não crítica. Depois do aceite, a NC fica em &quot;Em plano de ação&quot; e, ao concluir o
+              plano, passa pela verificação de eficácia em 30 dias.
+            </p>
+          </div>
+        )}
+        {abrindoPlano && (
+          <div>
+            <Form.Group className="mb-2" controlId={`nc-${nc.id}-motivo-plano`}>
+              <Form.Label className="sg-label">Por que abrir um plano de ação nesta NC? *</Form.Label>
+              <Form.Control as="textarea" rows={2} className="sg-textarea" maxLength={1000} value={motivoPlano}
+                disabled={ocupado} onChange={(e) => setMotivoPlano(e.target.value)} />
+            </Form.Group>
+            <div className="d-flex gap-2">
+              <Botao variante="primario" tamanho="sm" carregando={enviando === "abrir"} disabled={ocupado || motivoPlano.trim().length < 10}
+                onClick={async () => {
+                  if (await executar("abrir", () => abrirPlanoAcao(nc.id, motivoPlano), "Plano de ação aberto.", true)) {
+                    setAbrindoPlano(false);
+                    setMotivoPlano("");
+                  }
+                }}>
+                Confirmar plano de ação
+              </Botao>
+              <Botao variante="secundario" tamanho="sm" disabled={ocupado} onClick={() => { setAbrindoPlano(false); setMotivoPlano(""); }}>
+                Cancelar
+              </Botao>
+            </div>
           </div>
         )}
 
@@ -214,7 +267,9 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
               />
               {dados.critica && (
                 <Form.Text className="texto-xs">
-                  O plano será cancelado (não apagado) e a justificativa ficará no histórico.
+                  {dados.plano_acao_aberto
+                    ? "O plano de ação continua; a justificativa ficará no histórico."
+                    : "O plano será cancelado (não apagado) e a justificativa ficará no histórico."}
                 </Form.Text>
               )}
             </Form.Group>
@@ -300,7 +355,7 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
             <Detalhe rotulo="Prazo">{plano.prazo ? formatarData(plano.prazo) : null}</Detalhe>
             <Detalhe rotulo="Execução">{plano.execucao}</Detalhe>
             {plano.verificacao_eficacia && (
-              <Detalhe rotulo="Verificação de eficácia">
+              <Detalhe rotulo="Conclusão do plano">
                 {plano.verificacao_eficacia}
                 {plano.concluido_por_nome ? `\n— ${plano.concluido_por_nome}, ${formatarDataHora(plano.concluido_em)}` : ""}
               </Detalhe>
@@ -360,9 +415,9 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
 
         {permissoes.concluir_plano && (
           <div>
-            <h3 className="h6">Verificação de eficácia</h3>
+            <h3 className="h6">Concluir o plano</h3>
             <Form.Group className="mb-2">
-              <Form.Label className="sg-label">Como a eficácia foi verificada *</Form.Label>
+              <Form.Label className="sg-label">O que foi entregue pelo plano *</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={3}
@@ -377,14 +432,111 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
               variante="sucesso"
               carregando={enviando === "concluir"}
               disabled={ocupado || verificacao.trim().length < 10}
-              onClick={() => executar("concluir", () => concluirPlanoAcao(nc.id, verificacao), "Plano concluído e NC encerrada.", true)}
+              onClick={() => executar("concluir", () => concluirPlanoAcao(nc.id, verificacao), "Plano concluído. A verificação de eficácia vai até daqui a 30 dias.", true)}
             >
-              Verificar eficácia e concluir
+              Concluir plano e iniciar a verificação
             </Botao>
+            <p className="texto-xs texto-suave mt-1 mb-0">
+              A NC fica &quot;Em verificação&quot; por 30 dias; depois a Qualidade registra se o plano foi eficaz.
+            </p>
           </div>
         )}
 
-        {dados.critica && !encerrado && !podeAlimentar && !permissoes.concluir_plano && (
+        {etapaVerificacao && (
+          <div>
+            <h3 className="h6">Verificação de eficácia</h3>
+            <dl className="mb-2">
+              {dados.verificacao?.inicio && (
+                <Detalhe rotulo="Janela de verificação">
+                  {`${formatarData(dados.verificacao.inicio)} a ${formatarData(dados.verificacao.ate)}`}
+                </Detalhe>
+              )}
+              {dados.verificacao?.resultado && (
+                <Detalhe rotulo="Resultado">
+                  {dados.verificacao.resultado === "eficaz" ? "Eficaz" : "Não eficaz"}
+                  {dados.verificacao.observacao ? `: ${dados.verificacao.observacao}` : ""}
+                  {dados.verificacao.registrada_por_nome ? `\n— ${dados.verificacao.registrada_por_nome}, ${formatarDataHora(dados.verificacao.registrada_em)}` : ""}
+                </Detalhe>
+              )}
+              {dados.escalonamento && (
+                <>
+                  <Detalhe rotulo="Escalada para">
+                    {`${dados.escalonamento.gestor_nome} (gestor do departamento)`}
+                    {dados.escalonamento.motivo ? `\nMotivo: ${dados.escalonamento.motivo}` : ""}
+                  </Detalhe>
+                  {dados.escalonamento.parecer && (
+                    <Detalhe rotulo="Parecer do gestor">
+                      {dados.escalonamento.parecer}
+                      {dados.escalonamento.decidido_em ? `\n— ${formatarDataHora(dados.escalonamento.decidido_em)}` : ""}
+                    </Detalhe>
+                  )}
+                </>
+              )}
+            </dl>
+
+            {permissoes.registrar_verificacao && (
+              <div>
+                <Form.Group className="mb-2">
+                  <Form.Label className="sg-label d-block">O plano foi eficaz? *</Form.Label>
+                  <Form.Check inline type="radio" id={`nc-${nc.id}-eficaz`} name={`nc-${nc.id}-resultado`} label="Eficaz (concluir a NC)"
+                    checked={resultado === "eficaz"} disabled={ocupado} onChange={() => setResultado("eficaz")} />
+                  <Form.Check inline type="radio" id={`nc-${nc.id}-nao-eficaz`} name={`nc-${nc.id}-resultado`} label="Não eficaz"
+                    checked={resultado === "nao_eficaz"} disabled={ocupado} onChange={() => setResultado("nao_eficaz")} />
+                </Form.Group>
+                <Form.Group className="mb-2" controlId={`nc-${nc.id}-obs-verificacao`}>
+                  <Form.Label className="sg-label">{resultado === "nao_eficaz" ? "Por que não foi eficaz? *" : "Observação (opcional)"}</Form.Label>
+                  <Form.Control as="textarea" rows={2} className="sg-textarea" maxLength={4000} value={observacao}
+                    disabled={ocupado} onChange={(e) => setObservacao(e.target.value)} />
+                </Form.Group>
+                <Botao variante="primario" tamanho="sm" carregando={enviando === "verificacao"}
+                  disabled={ocupado || !resultado || (resultado === "nao_eficaz" && observacao.trim().length < 10)}
+                  onClick={() => executar("verificacao", () => registrarVerificacao(nc.id, resultado, observacao),
+                    resultado === "eficaz" ? "Plano eficaz. NC concluída." : "Plano não eficaz. Decida se a NC será reaberta ou escalada.", true)}>
+                  Registrar verificação
+                </Botao>
+              </div>
+            )}
+
+            {permissoes.decidir_nao_eficaz && (
+              <div>
+                <Form.Group className="mb-2">
+                  <Form.Label className="sg-label d-block">O que fazer com a NC não eficaz? *</Form.Label>
+                  <Form.Check type="radio" id={`nc-${nc.id}-reabrir`} name={`nc-${nc.id}-decisao`} label="Reabrir: nova rodada do plano de ação"
+                    checked={decisao === "reabrir"} disabled={ocupado} onChange={() => setDecisao("reabrir")} />
+                  <Form.Check type="radio" id={`nc-${nc.id}-escalar`} name={`nc-${nc.id}-decisao`} label="Escalar ao gestor do departamento do colaborador"
+                    checked={decisao === "escalar"} disabled={ocupado} onChange={() => setDecisao("escalar")} />
+                </Form.Group>
+                <Form.Group className="mb-2" controlId={`nc-${nc.id}-motivo-decisao`}>
+                  <Form.Label className="sg-label">Motivo *</Form.Label>
+                  <Form.Control as="textarea" rows={2} className="sg-textarea" maxLength={4000} value={motivoDecisao}
+                    disabled={ocupado} onChange={(e) => setMotivoDecisao(e.target.value)} />
+                </Form.Group>
+                <Botao variante="primario" tamanho="sm" carregando={enviando === "decisao"}
+                  disabled={ocupado || !decisao || motivoDecisao.trim().length < 10}
+                  onClick={() => executar("decisao", () => decidirNaoEficaz(nc.id, decisao, motivoDecisao),
+                    decisao === "reabrir" ? "NC reaberta para uma nova rodada do plano." : "NC escalada ao gestor do departamento.", true)}>
+                  Confirmar decisão
+                </Botao>
+              </div>
+            )}
+
+            {permissoes.decidir_escalonamento && (
+              <div>
+                <Form.Group className="mb-2" controlId={`nc-${nc.id}-parecer`}>
+                  <Form.Label className="sg-label">Seu parecer (encerra a NC) *</Form.Label>
+                  <Form.Control as="textarea" rows={3} className="sg-textarea" maxLength={4000} value={parecer}
+                    disabled={ocupado} onChange={(e) => setParecer(e.target.value)} />
+                </Form.Group>
+                <Botao variante="primario" tamanho="sm" carregando={enviando === "parecer"} disabled={ocupado || parecer.trim().length < 10}
+                  onClick={() => executar("parecer", () => decidirEscalonamento(nc.id, parecer), "Parecer registrado. NC encerrada.", true)}>
+                  Registrar parecer
+                </Botao>
+              </div>
+            )}
+          </div>
+        )}
+
+        {comPlano && !encerrado && !podeAlimentar && !permissoes.concluir_plano && (
           <p className="texto-xs texto-suave mb-0">
             Você acompanha este plano em modo de consulta. Ele é alimentado pela Qualidade e pela
             liderança do colaborador analisado.

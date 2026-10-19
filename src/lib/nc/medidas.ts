@@ -28,6 +28,8 @@ function erroDaMedida(result: Record<string, unknown>): never {
   if (result.erro === "motivo_ausente") throw new ApiError("Informe o motivo da reprovação (mínimo de 10 caracteres).", 422, "motivo");
   if (result.erro === "motivo_longo") throw new ApiError("O motivo deve ter no máximo 1.000 caracteres.", 422, "motivo");
   if (result.erro === "justificativa_tipo") throw new ApiError("Justifique a troca do tipo sugerido (mínimo de 10 caracteres).", 422, "motivo");
+  if (result.erro === "desfecho_registrado") throw new ApiError("O desfecho desta medida já foi registrado.", 409);
+  if (result.erro === "desfecho_invalido") throw new ApiError("Escolha desligado ou mantido.", 422, "desfecho");
   if (result.erro === "feedback_pendente") throw new ApiError("Registre o feedback da NC antes de aprovar a medida.", 409);
   if (result.erro === "tipo_invalido") throw new ApiError("Tipo de medida inválido.", 422, "tipo");
   if (result.erro === "anexo_ausente") throw new ApiError("Anexe a foto da medida disciplinar assinada.", 422, "arquivo");
@@ -53,7 +55,7 @@ export async function listarMedidas(situacao: string | null) {
   const user = await requireQualidade();
   const admin = createAdminClient() as any;
   let query = admin.from("medidas_disciplinares")
-    .select("id, colaborador_id, causa_id, nc_id, ocorrencia_gatilho, tipo, tipo_sugerido, status, origem, dias_suspensao, data_aplicacao, observacao, decidida_por, decidida_em, motivo_decisao, aplicada_por, aplicada_em, criado_em, comprovante_nome");
+    .select("id, colaborador_id, causa_id, nc_id, ocorrencia_gatilho, tipo, tipo_sugerido, status, origem, dias_suspensao, data_aplicacao, observacao, decidida_por, decidida_em, motivo_decisao, aplicada_por, aplicada_em, criado_em, comprovante_nome, desfecho, desfecho_observacao, desfecho_em");
   if (situacao === "historico") query = query.not("status", "in", `(${STATUS_PENDENTES.join(",")})`).order("criado_em", { ascending: false }).limit(50);
   else query = query.in("status", STATUS_PENDENTES).order("criado_em", { ascending: true });
   const { data, error } = await query;
@@ -77,7 +79,13 @@ export async function listarMedidas(situacao: string | null) {
     decidida_por_nome: (nomes.get(medida.decidida_por) as any)?.nome ?? null,
     aplicada_por_nome: (nomes.get(medida.aplicada_por) as any)?.nome ?? null,
     causa: descricoes.get(medida.causa_id) ?? `Causa ${medida.causa_id}`,
-    permissoes: { decidir: podeDecidirMedida(medida, user), aplicar: podeAplicarMedida(medida, user) },
+    permissoes: {
+      decidir: podeDecidirMedida(medida, user),
+      aplicar: podeAplicarMedida(medida, user),
+      // N4: só a avaliação de justa causa aprovada ou aplicada registra o desfecho, uma vez, pela Qualidade sem conflito.
+      registrar_desfecho: medida.tipo === "avaliar_justa_causa" && ["aprovada", "aplicada"].includes(String(medida.status))
+        && !medida.desfecho && medida.colaborador_id !== user.id,
+    },
   }));
 }
 
@@ -107,6 +115,21 @@ export async function decidirMedida(id: number, input: { decisao?: unknown; moti
     throw new ApiError("Justifique a troca do tipo sugerido (mínimo de 10 caracteres).", 422, "motivo");
   }
   return medidaRpc("decidir_medida_v2", { p_medida_id: id, p_usuario_id: user.id, p_decisao: decisao, p_motivo: motivo || null, p_tipo: tipo });
+}
+
+/** N4: desfecho da avaliação de justa causa (desligado ou mantido), com observação. */
+export async function registrarDesfechoMedida(id: number, input: { desfecho?: unknown; observacao?: unknown }) {
+  const user = await requireQualidade();
+  const medida = await carregarMedida(id);
+  if (medida.colaborador_id === user.id) throw new ApiError(MENSAGEM_CONFLITO, 403);
+  if (medida.tipo !== "avaliar_justa_causa") throw new ApiError("Só a avaliação de justa causa registra desfecho.", 422);
+  const desfecho = String(input.desfecho ?? "");
+  if (!["desligado", "mantido"].includes(desfecho)) throw new ApiError("Escolha desligado ou mantido.", 422, "desfecho");
+  const observacao = String(input.observacao ?? "").trim();
+  if (observacao.length < 10 || observacao.length > 2000) {
+    throw new ApiError("Descreva o desfecho (entre 10 e 2.000 caracteres).", 422, "observacao");
+  }
+  return medidaRpc("registrar_desfecho_medida_v1", { p_medida_id: id, p_usuario_id: user.id, p_desfecho: desfecho, p_observacao: observacao });
 }
 
 export async function aplicarMedida(id: number, form: FormData) {

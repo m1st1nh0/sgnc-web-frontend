@@ -161,6 +161,27 @@ export function concluirPlanoAcao(ncId, verificacaoEficacia) {
   });
 }
 
+/** Fase 5 do processo: plano em NC não crítica, verificação de eficácia, não eficaz e escalonamento. */
+export function abrirPlanoAcao(ncId, motivo) {
+  return chamarApi(`/nc/${ncId}/plano-acao/abrir`, { method: "POST", body: { motivo } });
+}
+
+export function registrarVerificacao(ncId, resultado, observacao) {
+  return chamarApi(`/nc/${ncId}/plano-acao/verificacao`, { method: "POST", body: { resultado, observacao } });
+}
+
+export function decidirNaoEficaz(ncId, decisao, motivo) {
+  return chamarApi(`/nc/${ncId}/plano-acao/nao-eficaz`, { method: "POST", body: { decisao, motivo } });
+}
+
+export function decidirEscalonamento(ncId, parecer) {
+  return chamarApi(`/nc/${ncId}/plano-acao/escalonamento`, { method: "POST", body: { parecer } });
+}
+
+export function registrarDesfechoMedida(medidaId, desfecho, observacao) {
+  return chamarApi(`/nc/medidas-disciplinares/${medidaId}/desfecho`, { method: "POST", body: { desfecho, observacao } });
+}
+
 /** Fase 3 do processo: análise de causa (etapa antes do feedback). */
 export function registrarAnaliseCausa(id, analiseCausa) {
   return chamarApi(`/nc/${id}/analise`, { method: "POST", body: { analise_causa: analiseCausa } });

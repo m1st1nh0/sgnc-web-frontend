@@ -15,6 +15,11 @@ export const SUPERVISOR_VISIBLE_NC_STATUSES = [
   "em_plano_acao",
   "concluida",
   "invalidada",
+  // Fase 5 do processo: verificação de eficácia, reabertura e escalonamento.
+  "em_verificacao",
+  "nao_eficaz",
+  "reaberta",
+  "escalada",
 ] as const;
 
 export function buildNcReadScopeFilter(user: UsuarioAutenticado, teamIds: string[]) {
@@ -22,6 +27,8 @@ export function buildNcReadScopeFilter(user: UsuarioAutenticado, teamIds: string
   const collaboratorIds = [...new Set([user.id, ...teamIds])];
   return [
     `aberto_por.eq.${user.id}`,
+    // Gestor do departamento que recebeu a NC escalada (Fase 5 do processo).
+    `escalada_para.eq.${user.id}`,
     `and(status.in.(${SUPERVISOR_VISIBLE_NC_STATUSES.join(",")}),colaborador_id.in.(${collaboratorIds.join(",")}))`,
   ].join(",");
 }

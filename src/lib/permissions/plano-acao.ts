@@ -21,7 +21,17 @@ export type NcPlano = {
   colaborador_id?: unknown;
   aberto_por?: unknown;
   responsavel_id?: unknown;
+  plano_acao_aberto?: unknown;
+  escalada_para?: unknown;
 };
+
+/** NC com plano de ação: a crítica (obrigatório) ou a que teve plano aberto pela Qualidade (Fase 5). */
+export function temPlano(nc: NcPlano) {
+  return nc.critica === true || nc.plano_acao_aberto === true;
+}
+
+/** Status de NC validada e ainda não concluída em que a Qualidade pode abrir o plano (N1). */
+export const STATUS_PERMITEM_ABRIR_PLANO = ["aguardando_feedback", "aguardando_analise", "aguardando_aceite", "nao_respondida"] as const;
 
 export type PlanoAcao = {
   status?: unknown;
@@ -69,15 +79,15 @@ export function podeAlimentarPlano(
   user: UsuarioAutenticado,
   lideraColaborador: boolean,
 ) {
-  if (nc.critica !== true || !plano || planoEncerrado(plano)) return false;
+  if (!temPlano(nc) || !plano || planoEncerrado(plano)) return false;
   if (ehObjetoDaNc(nc, user)) return false;
   return ehQualidade(user.papel) || (user.papel === "supervisor" && lideraColaborador);
 }
 
 export function podeConcluirPlano(nc: NcPlano, plano: PlanoAcao, user: UsuarioAutenticado) {
   return podeAtuarComoQualidade(nc, user)
-    && nc.critica === true
-    && nc.status === "em_plano_acao"
+    && temPlano(nc)
+    && (nc.status === "em_plano_acao" || nc.status === "reaberta")
     && plano?.status === "em_acompanhamento"
     && plano.responsavel_execucao_id !== user.id;
 }
@@ -95,7 +105,27 @@ export function podeVerPlano(
   if (ehQualidade(user.papel)) return true;
   if (ehObjetoDaNc(nc, user)) return true;
   if (user.papel === "supervisor" && lideraColaborador) return true;
+  if (!!nc.escalada_para && nc.escalada_para === user.id) return true;
   return !!plano && plano.responsavel_execucao_id === user.id;
+}
+
+export function podeAbrirPlano(nc: NcPlano, user: UsuarioAutenticado) {
+  return podeAtuarComoQualidade(nc, user) && !temPlano(nc)
+    && (STATUS_PERMITEM_ABRIR_PLANO as readonly unknown[]).includes(nc.status);
+}
+
+/** Verificação de eficácia: Qualidade sem conflito, e nunca quem executou o plano. */
+export function podeRegistrarVerificacao(nc: NcPlano, plano: PlanoAcao, user: UsuarioAutenticado) {
+  return podeAtuarComoQualidade(nc, user) && nc.status === "em_verificacao" && plano?.responsavel_execucao_id !== user.id;
+}
+
+export function podeDecidirNaoEficaz(nc: NcPlano, user: UsuarioAutenticado) {
+  return podeAtuarComoQualidade(nc, user) && nc.status === "nao_eficaz";
+}
+
+/** Só o gestor do departamento que recebeu a NC escalada registra o parecer. */
+export function podeDecidirEscalonamento(nc: NcPlano, user: UsuarioAutenticado) {
+  return nc.status === "escalada" && !ehObjetoDaNc(nc, user) && !!nc.escalada_para && nc.escalada_para === user.id;
 }
 
 export function permissoesPlano(
@@ -109,5 +139,9 @@ export function permissoesPlano(
     desmarcar_critica: podeDesmarcarCritica(nc, plano, user),
     alimentar_plano: podeAlimentarPlano(nc, plano, user, lideraColaborador),
     concluir_plano: podeConcluirPlano(nc, plano, user),
+    abrir_plano: podeAbrirPlano(nc, user),
+    registrar_verificacao: podeRegistrarVerificacao(nc, plano, user),
+    decidir_nao_eficaz: podeDecidirNaoEficaz(nc, user),
+    decidir_escalonamento: podeDecidirEscalonamento(nc, user),
   };
 }

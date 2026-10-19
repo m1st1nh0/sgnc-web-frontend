@@ -5,7 +5,7 @@ import Link from "next/link";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 
-import { aplicarMedida, decidirMedida, listarMedidas } from "../client/ncService.js";
+import { aplicarMedida, decidirMedida, listarMedidas, registrarDesfechoMedida } from "../client/ncService.js";
 import { ROTULO_TIPO_MEDIDA, situacaoDaMedida } from "../client/medidas.js";
 import { erroComprovante } from "../../../lib/nc/comprovante";
 import { ErroApi } from "../../../lib/api/client/api.js";
@@ -42,6 +42,9 @@ function CartaoMedida({ medida, aoAlterar }) {
     event.target.value = "";
   }
   const [errosCampo, setErrosCampo] = useState({});
+  // N4 (Fase 5 do processo): desfecho da avaliação de justa causa.
+  const [desfecho, setDesfecho] = useState("");
+  const [obsDesfecho, setObsDesfecho] = useState("");
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
   const situacao = situacaoDaMedida(medida.status);
@@ -79,6 +82,12 @@ function CartaoMedida({ medida, aoAlterar }) {
       return;
     }
     executar(() => decidirMedida(medida.id, "reprovar", motivo.trim()));
+  }
+
+  function registrarDesfecho() {
+    if (!desfecho) { setErrosCampo({ desfecho: "Escolha desligado ou mantido." }); return; }
+    if (obsDesfecho.trim().length < 10) { setErrosCampo({ observacao: "Descreva o desfecho (mínimo de 10 caracteres)." }); return; }
+    executar(() => registrarDesfechoMedida(medida.id, desfecho, obsDesfecho.trim()));
   }
 
   function aplicar() {
@@ -212,6 +221,35 @@ function CartaoMedida({ medida, aoAlterar }) {
             />
             <div className="d-flex gap-2">
               <Botao variante="perigo" tamanho="sm" carregando={enviando} onClick={reprovar}>Confirmar reprovação</Botao>
+              <Botao variante="secundario" tamanho="sm" disabled={enviando} onClick={() => setModo(null)}>Cancelar</Botao>
+            </div>
+          </div>
+        )}
+
+        {medida.desfecho && (
+          <p className="texto-sm mt-2 mb-0">
+            <strong>Desfecho: {medida.desfecho === "desligado" ? "desligado" : "mantido (não desligado)"}.</strong>{" "}
+            {medida.desfecho_observacao}
+            {medida.desfecho_em && <span className="texto-xs texto-secundario"> · {formatarDataHora(medida.desfecho_em)}</span>}
+          </p>
+        )}
+        {medida.permissoes?.registrar_desfecho && modo !== "desfecho" && (
+          <div className="mt-2">
+            <Botao variante="secundario" tamanho="sm" onClick={() => setModo("desfecho")}>Registrar desfecho</Botao>
+          </div>
+        )}
+        {medida.permissoes?.registrar_desfecho && modo === "desfecho" && (
+          <div className="mt-2">
+            <CampoSelecao rotulo="Desfecho da avaliação de justa causa" obrigatorio value={desfecho}
+              onChange={(e) => setDesfecho(e.target.value)} erro={errosCampo.desfecho}>
+              <option value="">Selecione</option>
+              <option value="desligado">Desligado</option>
+              <option value="mantido">Mantido (não desligado)</option>
+            </CampoSelecao>
+            <CampoTextoArea rotulo="Observação" obrigatorio rows={2} value={obsDesfecho} onChange={(e) => setObsDesfecho(e.target.value)}
+              erro={errosCampo.observacao} helper="Como a decisão foi tomada (RH e Diretoria, fora do sistema)." maxLength={2000} />
+            <div className="d-flex gap-2">
+              <Botao variante="primario" tamanho="sm" carregando={enviando} onClick={registrarDesfecho}>Confirmar desfecho</Botao>
               <Botao variante="secundario" tamanho="sm" disabled={enviando} onClick={() => setModo(null)}>Cancelar</Botao>
             </div>
           </div>

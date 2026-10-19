@@ -71,7 +71,9 @@ test("4B.4: tela de medidas esconde as ações da própria pessoa e o registro m
   expect(pagina).toContain("medida.permissoes?.decidir");
   expect(pagina).toContain("medida.permissoes?.aplicar");
   expect(pagina).toContain("Você é o colaborador desta medida");
-  expect(read("src/lib/nc/medidas.ts")).toContain("permissoes: { decidir: podeDecidirMedida(medida, user), aplicar: podeAplicarMedida(medida, user) }");
+  const medidas = read("src/lib/nc/medidas.ts");
+  expect(medidas).toContain("decidir: podeDecidirMedida(medida, user),");
+  expect(medidas).toContain("aplicar: podeAplicarMedida(medida, user),");
   const estatisticas = read("src/features/users/components/EstatisticasUsuarioPage.jsx");
   expect(estatisticas).toContain("ehAdm && !ehPropriaEstatistica");
   expect(estatisticas).not.toContain("Registrar medida");

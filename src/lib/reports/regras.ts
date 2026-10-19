@@ -4,7 +4,7 @@ import { dataBr, dataHoraBr, plural, rotuloStatus, rotuloTipoMedida } from "./fo
 type Row = Record<string, any>;
 const DIA = 86_400_000;
 
-export const STATUS_ATIVOS = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "validada", "aguardando_analise"]);
+export const STATUS_ATIVOS = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "validada", "aguardando_analise", "em_verificacao", "nao_eficaz", "reaberta", "escalada"]);
 
 /** Período anterior com o mesmo número de dias, terminando na véspera do início (R-D3). */
 export function periodoAnterior(inicio: string, fim: string) {
@@ -34,7 +34,10 @@ export function inicioDaEtapa(nc: Row): string | null {
   if (!STATUS_ATIVOS.has(nc.status)) return null;
   if (nc.status === "aberta") return nc.criado_em ?? null;
   if (nc.status === "aguardando_aceite" || nc.status === "nao_respondida") return nc.feedback_aplicado_em || nc.validado_em || nc.criado_em || null;
-  if (nc.status === "em_plano_acao") return nc.aceito_em || nc.validado_em || nc.criado_em || null;
+  if (nc.status === "em_verificacao") return nc.verificacao_inicio || nc.aceito_em || nc.criado_em || null;
+  if (nc.status === "nao_eficaz") return nc.verificacao_registrada_em || nc.criado_em || null;
+  if (nc.status === "escalada") return nc.escalada_em || nc.criado_em || null;
+  if (nc.status === "em_plano_acao" || nc.status === "reaberta") return nc.aceito_em || nc.validado_em || nc.criado_em || null;
   return nc.validado_em || nc.enviado_em || nc.criado_em || null;
 }
 
@@ -44,7 +47,7 @@ export function diasNaEtapa(nc: Row, agora = new Date()) {
 }
 
 /** Ordem da lista de NCs: o que pede ação primeiro, depois as mais recentes. */
-const PRIORIDADE: Record<string, number> = { nao_respondida: 0, aguardando_aceite: 1, aberta: 2, aguardando_feedback: 3, validada: 3, aguardando_analise: 3, em_plano_acao: 4, concluida: 5, invalidada: 6 };
+const PRIORIDADE: Record<string, number> = { nao_respondida: 0, aguardando_aceite: 1, aberta: 2, aguardando_feedback: 3, validada: 3, aguardando_analise: 3, em_plano_acao: 4, reaberta: 4, nao_eficaz: 4, escalada: 4, em_verificacao: 4, concluida: 5, invalidada: 6 };
 export function ordenarParaAcao(a: Row, b: Row) {
   return (PRIORIDADE[a.status] ?? 9) - (PRIORIDADE[b.status] ?? 9)
     || String(b.data || b.criado_em).localeCompare(String(a.data || a.criado_em))

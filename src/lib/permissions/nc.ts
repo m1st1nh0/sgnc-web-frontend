@@ -14,6 +14,7 @@ export function temAcessoCompleto(
   return ehQualidade(user.papel)
     || nc.colaborador_id === user.id
     || nc.responsavel_id === user.id
+    || nc.escalada_para === user.id
     || (user.papel === "supervisor" && typeof nc.colaborador_id === "string" && equipeIds.has(nc.colaborador_id));
 }
 

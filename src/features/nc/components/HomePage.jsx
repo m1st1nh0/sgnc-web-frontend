@@ -28,6 +28,10 @@ const STATUS_EM_ANDAMENTO = [
   "em_plano_acao",
   "validada",
   "aguardando_analise",
+  "reaberta",
+  "em_verificacao",
+  "nao_eficaz",
+  "escalada",
 ];
 
 // "comigo" usa as prioridades da visão do papel (o que exige a atenção de quem está vendo).

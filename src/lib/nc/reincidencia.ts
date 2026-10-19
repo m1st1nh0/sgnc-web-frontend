@@ -11,6 +11,10 @@ export const STATUS_CONTAM_OCORRENCIA = [
   "nao_respondida",
   "em_plano_acao",
   "concluida",
+  "em_verificacao",
+  "nao_eficaz",
+  "reaberta",
+  "escalada",
 ] as const;
 
 /** Início da janela de 12 meses (igual a `data - interval '12 months'` no Postgres). */

@@ -23,9 +23,14 @@ test("supervisor read scope includes the full history of their current hierarchy
     "em_plano_acao",
     "concluida",
     "invalidada",
+    "em_verificacao",
+    "nao_eficaz",
+    "reaberta",
+    "escalada",
   ]);
+  // Processo, Fase 5: o gestor do departamento vê a NC escalada para ele.
   expect(buildNcReadScopeFilter(supervisor, ["colaborador-a", "colaborador-b"])).toBe(
-    "aberto_por.eq.supervisor-id,and(status.in.(aberta,aguardando_feedback,aguardando_analise,validada,aguardando_aceite,nao_respondida,em_plano_acao,concluida,invalidada),colaborador_id.in.(supervisor-id,colaborador-a,colaborador-b))",
+    "aberto_por.eq.supervisor-id,escalada_para.eq.supervisor-id,and(status.in.(aberta,aguardando_feedback,aguardando_analise,validada,aguardando_aceite,nao_respondida,em_plano_acao,concluida,invalidada,em_verificacao,nao_eficaz,reaberta,escalada),colaborador_id.in.(supervisor-id,colaborador-a,colaborador-b))",
   );
   expect(buildNcReadScopeFilter({ ...supervisor, papel: "adm" }, [])).toBeNull();
   expect(buildNcTeamScopeFilter(supervisor, ["colaborador-a"])).toBe("colaborador_id.in.(supervisor-id,colaborador-a)");
