@@ -57,6 +57,14 @@ test("processo 4 (N3/N5): validação exige evidência; medida só é aprovada c
   }
 });
 
+test("processo 4 (N3): a tela de validação avisa quando falta evidência e mostra o erro do servidor", () => {
+  const painel = read("src/features/nc/components/PainelAvaliar.jsx");
+  expect(painel).toContain("Falta a evidência.");
+  // Erro com campo fora da classificação (ex.: evidencias) aparece no topo, não some.
+  expect(painel).toContain("CAMPOS_CLASSIFICACAO.has(e.campo)");
+  expect(read("src/features/nc/components/DetalhesNcPage.jsx")).toContain("semEvidencia={!carregandoEvidencias && !erroEvidencias && evidenciasAbertura.length === 0}");
+});
+
 test("processo 4: telas mostram resumo, participantes e posicionamento", () => {
   const painel = read("src/features/nc/components/PainelFeedback.jsx");
   expect(painel).toContain('rotulo="Resumo da conversa"');
