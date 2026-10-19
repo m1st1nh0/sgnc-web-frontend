@@ -118,7 +118,7 @@ O servidor deixou de recalcular a medida em TypeScript: o painel de feedback e o
 - [x] 4.3 Evidência obrigatória na validação (N3).
 - [x] 4.4 Medida só é aprovada com o feedback da NC aplicado (N5); a reprovação continua possível.
 
-**Status (19/10):** implementada no PR da Fase 4. Migração `20261019140000_feedback_completo.sql` (aditiva): colunas de resumo e posicionamento em `nc_feedbacks`, tabela `nc_feedback_participantes` e as RPCs `registrar_feedback_v6`, `aceitar_nc_v5`, `validar_nc_com_workflow_v5` e `decidir_medida_v2`, todas delegando às versões anteriores. Cenários conferidos no Postgres local: validação recusada sem evidência; feedback recusado sem resumo ou com participante inválido; posicionamento gravado no aceite só quando liberado (sem liberação, o aceite é recusado e a NC não muda); medida da 3ª NC recusada antes do feedback e aprovada depois. **Falta aplicar no Supabase.**
+**Status (19/10):** implementada no PR da Fase 4. Migração `20261019140000_feedback_completo.sql` (aditiva): colunas de resumo e posicionamento em `nc_feedbacks`, tabela `nc_feedback_participantes` e as RPCs `registrar_feedback_v6`, `aceitar_nc_v5`, `validar_nc_com_workflow_v5` e `decidir_medida_v2`, todas delegando às versões anteriores. Cenários conferidos no Postgres local: validação recusada sem evidência; feedback recusado sem resumo ou com participante inválido; posicionamento gravado no aceite só quando liberado (sem liberação, o aceite é recusado e a NC não muda); medida da 3ª NC recusada antes do feedback e aprovada depois. **Aplicada no Supabase em 19/10**, com autorização; os mesmos cenários foram repetidos lá em transação desfeita, sem deixar dados.
 
 ### Fase 5: verificação de eficácia (etapas 8 e 9 do documento)
 
