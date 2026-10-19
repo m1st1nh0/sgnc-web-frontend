@@ -18,6 +18,9 @@ export default function PainelAceite({ nc, aoConcluir }) {
   const prazo = nc.feedback_estruturado?.prazo_aceite;
   const naoRespondida = nc.status === "nao_respondida";
   const [texto, setTexto] = useState("");
+  // Fase 4 do processo: a Qualidade pode liberar o posicionamento do colaborador (opcional para ele).
+  const posicionamentoLiberado = nc.feedback_estruturado?.posicionamento_liberado === true;
+  const [posicionamento, setPosicionamento] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -25,7 +28,7 @@ export default function PainelAceite({ nc, aoConcluir }) {
     setErro("");
     setEnviando(true);
     try {
-      const atualizada = await aceitarNc(nc.id, texto);
+      const atualizada = await aceitarNc(nc.id, texto, posicionamentoLiberado ? posicionamento : "");
       aoConcluir(atualizada);
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível registrar o aceite.");
@@ -61,6 +64,21 @@ export default function PainelAceite({ nc, aoConcluir }) {
         </p>
 
         {erro && <MensagemErro mensagem={erro} />}
+
+        {posicionamentoLiberado && (
+          <Form.Group className="mb-3" controlId="aceite-posicionamento">
+            <Form.Label className="sg-label">Seu posicionamento (opcional)</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              maxLength={4000}
+              className="sg-input"
+              value={posicionamento}
+              onChange={(e) => setPosicionamento(e.target.value)}
+              placeholder="Se quiser, registre o que você pensa sobre a não conformidade e o feedback."
+            />
+          </Form.Group>
+        )}
 
         <Form.Group className="mb-3">
           <Form.Label className="sg-label">Frase de confirmação</Form.Label>

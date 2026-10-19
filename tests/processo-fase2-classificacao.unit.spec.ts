@@ -45,7 +45,10 @@ test("processo 2: NC orientativa não conta para reincidência nem para medida, 
 
 test("processo 2: a API usa a v4 e a tela pede a classificação na validação", () => {
   const servico = read("src/lib/nc/service.ts");
-  expect(servico).toContain('rpcTransition("validar_nc_com_workflow_v4"');
+  // Fase 4 do processo: a v5 exige evidência e delega à v4, que grava a classificação.
+  expect(servico).toContain('rpcTransition("validar_nc_com_workflow_v5"');
+  expect(read("supabase/migrations/20261019140000_feedback_completo.sql"))
+    .toContain("RETURN public.validar_nc_com_workflow_v4(p_nc_id, p_responsavel_id, p_origem, p_tipo_nc, p_procedimento, p_procedimento_url);");
   expect(servico).not.toContain('rpcTransition("validar_nc_com_workflow_v3"');
   expect(servico).toContain("validarClassificacao(input)");
   const painel = read("src/features/nc/components/PainelAvaliar.jsx");

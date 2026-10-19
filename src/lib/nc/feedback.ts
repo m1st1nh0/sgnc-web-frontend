@@ -7,6 +7,7 @@ export const CAMPOS_FEEDBACK = {
   responsavel_acao: "Responsável pela ação",
   prazo_acao: "Prazo da ação",
   combinado: "Combinado",
+  resumo_conversa: "Resumo da conversa",
 } as const;
 
 export type CampoFeedback = keyof typeof CAMPOS_FEEDBACK;
@@ -17,6 +18,9 @@ export type FeedbackInput = {
   responsavel_acao_id?: unknown;
   prazo_acao?: unknown;
   combinado?: unknown;
+  resumo_conversa?: unknown;
+  participantes?: unknown;
+  liberar_posicionamento?: unknown;
 };
 
 const LIMITE_TEXTO = 4000;
@@ -61,8 +65,18 @@ export function validarFeedback(input: FeedbackInput, agora = new Date()) {
   if (prazo_acao < hojeEmSaoPaulo(agora)) throw erroDoFeedback({ erro: "prazo_invalido" });
   if (!combinado) throw obrigatorio("combinado");
   if (combinado.length > LIMITE_TEXTO) throw longo("combinado");
+  // Fase 4 do processo: resumo obrigatório; participantes opcionais (decisão de 19/10).
+  const resumo_conversa = texto(input.resumo_conversa);
+  if (!resumo_conversa) throw obrigatorio("resumo_conversa");
+  if (resumo_conversa.length > LIMITE_TEXTO) throw longo("resumo_conversa");
+  const lista = input.participantes == null ? [] : input.participantes;
+  if (!Array.isArray(lista) || lista.length > 20 || lista.some((id) => !UUID.test(String(id)))) {
+    throw new ApiError("Escolha os participantes na lista (até 20 pessoas).", 422, "participantes");
+  }
+  const participantes = [...new Set(lista.map(String))];
+  const liberar_posicionamento = input.liberar_posicionamento === true;
 
-  return { causa_raiz, acao_combinada, responsavel_acao_id, prazo_acao, combinado };
+  return { causa_raiz, acao_combinada, responsavel_acao_id, prazo_acao, combinado, resumo_conversa, participantes, liberar_posicionamento };
 }
 
 /** Traduz os códigos de erro de registrar_feedback_v4 para mensagens com o campo do formulário. */
@@ -74,6 +88,9 @@ export function erroDoFeedback(result: Record<string, unknown>): ApiError | null
   }
   if (result.erro === "prazo_invalido") {
     return new ApiError("O prazo da ação não pode ser anterior a hoje.", 422, "prazo_acao");
+  }
+  if (result.erro === "participantes_invalidos") {
+    return new ApiError("Escolha participantes ativos na lista (até 20 pessoas).", 422, "participantes");
   }
   if (result.erro === "responsavel_invalido") {
     return new ApiError("Escolha um usuário ativo como responsável pela ação.", 422, "responsavel_acao");

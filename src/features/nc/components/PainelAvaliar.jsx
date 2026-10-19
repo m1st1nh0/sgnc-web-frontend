@@ -79,8 +79,9 @@ export default function PainelAvaliar({ nc, aoConcluir, bloqueado = false }) {
           Esta NC ainda não foi avaliada. Ela é procedente?
         </p>
         <p className="texto-xs texto-suave mb-3">
-          Ao validar, ela seguirá diretamente para feedback e ficará disponível
-          ao colaborador analisado e ao supervisor direto.
+          Ao validar, ela seguirá para a análise de causa e o feedback e ficará disponível
+          ao colaborador analisado e ao supervisor direto. Para validar, é preciso ter ao
+          menos uma evidência anexada em "Evidências da abertura".
         </p>
 
         {bloqueado && (

@@ -46,6 +46,26 @@ export default function FeedbackNc({ nc, anexos = [], aoVisualizarAnexo }) {
             <dt className="sg-detalhe__rotulo">Combinado</dt>
             <dd className="sg-detalhe__valor sg-texto-livre">{feedback.combinado}</dd>
           </div>
+          {feedback.resumo_conversa && (
+            <div className="sg-detalhe">
+              <dt className="sg-detalhe__rotulo">Resumo da conversa</dt>
+              <dd className="sg-detalhe__valor sg-texto-livre">{feedback.resumo_conversa}</dd>
+            </div>
+          )}
+          {feedback.participantes?.length > 0 && (
+            <div className="sg-detalhe">
+              <dt className="sg-detalhe__rotulo">Participantes</dt>
+              <dd className="sg-detalhe__valor">{feedback.participantes.map((pessoa) => pessoa.nome).join(", ")}</dd>
+            </div>
+          )}
+          {feedback.posicionamento_liberado && (
+            <div className="sg-detalhe">
+              <dt className="sg-detalhe__rotulo">Posicionamento do colaborador</dt>
+              <dd className="sg-detalhe__valor sg-texto-livre">
+                {feedback.posicionamento_colaborador || <span className="texto-secundario">Liberado; o colaborador não registrou.</span>}
+              </dd>
+            </div>
+          )}
           <div className="sg-detalhe">
             <dt className="sg-detalhe__rotulo">Prazo do aceite</dt>
             <dd className="sg-detalhe__valor">

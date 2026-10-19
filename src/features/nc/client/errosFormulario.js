@@ -16,6 +16,8 @@ export const ROTULOS_CAMPO_FEEDBACK = {
   responsavel_acao: "Responsável pela ação",
   prazo_acao: "Prazo da ação",
   combinado: "Combinado",
+  resumo_conversa: "Resumo da conversa",
+  participantes: "Participantes",
 };
 
 /** `rotulos` define os campos e a ordem do formulário (padrão: abertura e edição de NC). */

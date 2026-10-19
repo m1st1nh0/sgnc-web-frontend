@@ -28,6 +28,7 @@ function erroDaMedida(result: Record<string, unknown>): never {
   if (result.erro === "motivo_ausente") throw new ApiError("Informe o motivo da reprovação (mínimo de 10 caracteres).", 422, "motivo");
   if (result.erro === "motivo_longo") throw new ApiError("O motivo deve ter no máximo 1.000 caracteres.", 422, "motivo");
   if (result.erro === "justificativa_tipo") throw new ApiError("Justifique a troca do tipo sugerido (mínimo de 10 caracteres).", 422, "motivo");
+  if (result.erro === "feedback_pendente") throw new ApiError("Registre o feedback da NC antes de aprovar a medida.", 409);
   if (result.erro === "tipo_invalido") throw new ApiError("Tipo de medida inválido.", 422, "tipo");
   if (result.erro === "anexo_ausente") throw new ApiError("Anexe a foto da medida disciplinar assinada.", 422, "arquivo");
   if (result.erro === "data_futura") throw new ApiError("A data da aplicação não pode ser futura.", 422, "data");
@@ -105,7 +106,7 @@ export async function decidirMedida(id: number, input: { decisao?: unknown; moti
   if (tipo && tipo !== (medida.tipo_sugerido ?? medida.tipo) && motivo.length < 10) {
     throw new ApiError("Justifique a troca do tipo sugerido (mínimo de 10 caracteres).", 422, "motivo");
   }
-  return medidaRpc("decidir_medida_v1", { p_medida_id: id, p_usuario_id: user.id, p_decisao: decisao, p_motivo: motivo || null, p_tipo: tipo });
+  return medidaRpc("decidir_medida_v2", { p_medida_id: id, p_usuario_id: user.id, p_decisao: decisao, p_motivo: motivo || null, p_tipo: tipo });
 }
 
 export async function aplicarMedida(id: number, form: FormData) {

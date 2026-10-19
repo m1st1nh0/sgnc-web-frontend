@@ -48,10 +48,11 @@ export function obterReincidencia(id) {
   return chamarApi(`/nc/${id}/reincidencia`);
 }
 
-export function aceitarNc(id, textoAceite) {
+/** `posicionamento` é opcional e só vale quando a Qualidade o liberou no feedback. */
+export function aceitarNc(id, textoAceite, posicionamento = "") {
   return chamarApi(`/nc/${id}/aceitar`, {
     method: "POST",
-    body: { texto_aceite: textoAceite },
+    body: { texto_aceite: textoAceite, posicionamento },
   });
 }
 

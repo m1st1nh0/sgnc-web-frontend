@@ -20,6 +20,7 @@ const valido = {
   responsavel_acao_id: "00000000-0000-4000-8000-000000000001",
   prazo_acao: "2026-10-20",
   combinado: "Revisar o checklist toda manhã",
+  resumo_conversa: "Conversa tranquila; o colaborador entendeu o ponto",
 };
 const usuario = (id: string, papel: "adm" | "qualidade" | "supervisor" | "funcionario") =>
   ({ id, nome: id, email: `${id}@x`, papel, ativo: true, senha_provisoria: false });
@@ -30,8 +31,9 @@ function campoDoErro(fn: () => unknown) {
 }
 
 test("4.16: feedback exige os cinco campos e aponta o primeiro que falta", () => {
-  expect(validarFeedback(valido, quarta)).toEqual(valido);
-  for (const [campo, chave] of [["causa_raiz", "causa_raiz"], ["acao_combinada", "acao_combinada"], ["responsavel_acao_id", "responsavel_acao"], ["prazo_acao", "prazo_acao"], ["combinado", "combinado"]] as const) {
+  // Fase 4 do processo: resumo da conversa obrigatório; participantes e posicionamento opcionais.
+  expect(validarFeedback(valido, quarta)).toEqual({ ...valido, participantes: [], liberar_posicionamento: false });
+  for (const [campo, chave] of [["causa_raiz", "causa_raiz"], ["acao_combinada", "acao_combinada"], ["responsavel_acao_id", "responsavel_acao"], ["prazo_acao", "prazo_acao"], ["combinado", "combinado"], ["resumo_conversa", "resumo_conversa"]] as const) {
     const erro = campoDoErro(() => validarFeedback({ ...valido, [campo]: "   " }, quarta));
     expect(erro).toMatchObject({ status: 422, campo: chave });
   }
@@ -54,11 +56,16 @@ test("4.10: códigos da RPC viram erro com campo para a interface", () => {
   expect(erroDoFeedback({ erro: "status_invalido" })).toBeNull();
   const service = read("src/lib/nc/service.ts");
   expect(service).toContain("erroDoFeedback(result)");
-  // Fase 3 do processo: o servidor chama a v5, que exige a análise de causa e delega à v4.
-  expect(service).toContain('rpcTransition("registrar_feedback_v5"');
+  // Processo, Fases 3 e 4: o servidor chama a v6, que delega à v5 (análise de causa), que delega à v4.
+  expect(service).toContain('rpcTransition("registrar_feedback_v6"');
+  expect(read("supabase/migrations/20261019140000_feedback_completo.sql"))
+    .toContain("v_resultado := public.registrar_feedback_v5(p_nc_id, p_responsavel_id, p_causa_raiz, p_acao,");
   expect(read("supabase/migrations/20261019120000_prazos_analise_feedback_contencao.sql"))
     .toContain("RETURN public.registrar_feedback_v4(p_nc_id, p_responsavel_id, coalesce(v_nc.analise_causa, p_causa_raiz),");
-  expect(service).toContain('rpcTransition("aceitar_nc_v4"');
+  // Aceite v5 = v4 (prazo, "Não respondida", fora do prazo) + posicionamento liberado.
+  expect(service).toContain('rpcTransition("aceitar_nc_v5"');
+  expect(read("supabase/migrations/20261019140000_feedback_completo.sql"))
+    .toContain("v_resultado := public.aceitar_nc_v4(p_nc_id, p_colaborador_id, p_texto_aceite);");
   expect(service).not.toContain("aplicar_feedback_nc_v3");
 });
 
