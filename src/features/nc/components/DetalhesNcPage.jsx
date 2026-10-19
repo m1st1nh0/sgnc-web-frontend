@@ -11,6 +11,8 @@ import PainelAvaliar from "./PainelAvaliar.jsx";
 import PainelFeedback from "./PainelFeedback.jsx";
 import PainelAceite from "./PainelAceite.jsx";
 import PainelPlanoAcao from "./PainelPlanoAcao.jsx";
+import PainelAnalise from "./PainelAnalise.jsx";
+import PainelContencao from "./PainelContencao.jsx";
 import EtapasNc from "./EtapasNc.jsx";
 import HistoricoNc from "./HistoricoNc.jsx";
 import FeedbackNc from "./FeedbackNc.jsx";
@@ -38,6 +40,7 @@ import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
 import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx";
 import { ehQualidade } from "../../../lib/auth/papeis.js";
 import { ORIGENS_NC, TIPOS_NC } from "../../../lib/nc/classificacao.js";
+import { analisePendente } from "../client/statusNc.js";
 
 const EXTENSOES_IMAGEM = new Set([
   "jpg",
@@ -314,6 +317,9 @@ export default function DetalhesNcPage({ retorno = "/" }) {
         : pessoas.find((pessoa) => pessoa.id === nc.aberto_por)?.nome || "usuário inativo";
   const aguardandoFeedback =
     nc && ["aguardando_feedback", "aguardando_analise"].includes(nc.status);
+  // Fase 3 do processo: análise de causa antes do feedback; contenção na NC crítica.
+  const comAnalise = aguardandoFeedback && (nc.prazo_analise || nc.analise_registrada_em);
+  const mostrarContencao = nc?.critica && nc.prazo_contencao && (podeVerDetalhesCompletos || nc.contencao_responsavel_id === usuario?.id);
   return (
     <div>
       <Container className="sg-container sg-detalhe-nc">
@@ -394,6 +400,11 @@ export default function DetalhesNcPage({ retorno = "/" }) {
               </div>
             )}
             <EtapasNc nc={nc} visualizadorId={usuario?.id} />
+            {nc.sua_contencao && (
+              <div className="sg-alerta sg-alerta--atencao mb-0" role="status">
+                <div><strong>Você é responsável pela contenção desta NC crítica.</strong> Registre o que foi feito no quadro "Contenção".</div>
+              </div>
+            )}
             {nc.sua_acao && (
               <div className="sg-alerta sg-alerta--atencao mb-0" role="status">
                 <div>
@@ -479,10 +490,16 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                   />
                 </>
               )}
-              {podeVerDetalhesCompletos && ehQualidadeSemConflito && aguardandoFeedback && (
+              {mostrarContencao && (
+                <PainelContencao nc={nc} usuario={usuario} podeConduzir={ehQualidadeSemConflito} aoConcluir={setNc} />
+              )}
+              {podeVerDetalhesCompletos && ehQualidadeSemConflito && comAnalise && (
+                <PainelAnalise key={nc.analise_registrada_em || "nova"} nc={nc} aoConcluir={setNc} />
+              )}
+              {podeVerDetalhesCompletos && ehQualidadeSemConflito && aguardandoFeedback && !analisePendente(nc) && (
                 <>
                   <DicaContextual chave="dica_nc_feedback" className="mb-3" />
-                  <PainelFeedback nc={nc} aoConcluir={aoConcluirFeedback} />
+                  <PainelFeedback key={nc.analise_registrada_em || "sem-analise"} nc={nc} aoConcluir={aoConcluirFeedback} />
                 </>
               )}
               {podeVerDetalhesCompletos &&
@@ -614,7 +631,11 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                     <dl className="sg-dados sg-dados--duas">
                       <div><dt>Criada em</dt><dd>{formatarDataHora(nc.criado_em)}</dd></div>
                       {nc.validado_em && <div><dt>Validada em</dt><dd>{formatarDataHora(nc.validado_em)}</dd></div>}
+                      {nc.prazo_analise && <div><dt>Prazo da análise</dt><dd>{formatarDataHora(nc.prazo_analise)}</dd></div>}
+                      {nc.analise_registrada_em && <div><dt>Análise registrada em</dt><dd>{formatarDataHora(nc.analise_registrada_em)}</dd></div>}
+                      {nc.prazo_feedback && <div><dt>Prazo do feedback</dt><dd>{formatarDataHora(nc.prazo_feedback)}</dd></div>}
                       {nc.feedback_aplicado_em && <div><dt>Feedback aplicado em</dt><dd>{formatarDataHora(nc.feedback_aplicado_em)}</dd></div>}
+                      {nc.prazo_contencao && <div><dt>Prazo da contenção</dt><dd>{formatarDataHora(nc.prazo_contencao)}</dd></div>}
                       {nc.aceito_em && <div><dt>Aceita em</dt><dd>{formatarDataHora(nc.aceito_em)}</dd></div>}
                       <div><dt>Atualizada em</dt><dd>{formatarDataHora(nc.atualizado_em)}</dd></div>
                       <div><dt>Crítica</dt><dd>{nc.critica ? "Sim" : "Não"}</dd></div>

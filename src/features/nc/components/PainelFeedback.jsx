@@ -7,7 +7,7 @@ import { infoDoStatus } from "../client/statusNc.js";
 import { ROTULOS_CAMPO_FEEDBACK, focarPrimeiroErro, resumoErros } from "../client/errosFormulario.js";
 import { listarOpcoesNc } from "../../users/client/usuarioService.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
-import { formatarData } from "../../../lib/utils/formato.js";
+import { formatarData, formatarPrazo } from "../../../lib/utils/formato.js";
 import Botao from "../../../components/ui/Botao.jsx";
 import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
@@ -102,8 +102,10 @@ function HistoricoReincidencia({ ncId, orientativa = false }) {
  * Todos os campos são obrigatórios, exceto os anexos (D3).
  */
 export default function PainelFeedback({ nc, aoConcluir }) {
+  // Com análise de causa registrada (Fase 3), a causa raiz vem dela e não é editada aqui.
+  const causaDaAnalise = nc.analise_causa || "";
   const [campos, setCampos] = useState({
-    causa_raiz: "", acao_combinada: "", responsavel_acao_id: "", prazo_acao: "", combinado: "",
+    causa_raiz: causaDaAnalise, acao_combinada: "", responsavel_acao_id: "", prazo_acao: "", combinado: "",
   });
   const [usuarios, setUsuarios] = useState([]);
   const [arquivos, setArquivos] = useState([]);
@@ -173,6 +175,7 @@ export default function PainelFeedback({ nc, aoConcluir }) {
 
         <p className="texto-secundario texto-sm mb-3">
           Registre o que foi tratado com o colaborador. Todos os campos são obrigatórios, exceto os anexos.
+          {nc.prazo_feedback && <> Prazo do feedback: <strong>{formatarPrazo(nc.prazo_feedback)}</strong>.</>}
           Depois do registro, <strong>o colaborador terá 2 dias úteis para registrar o aceite</strong>
           {" "}(contados só em horário de expediente, de segunda a sexta, das 9h às 18h).
         </p>
@@ -187,7 +190,8 @@ export default function PainelFeedback({ nc, aoConcluir }) {
           value={campos.causa_raiz}
           onChange={(e) => alterar("causa_raiz", e.target.value)}
           erro={errosCampo.causa_raiz}
-          helper="Por que a não conformidade aconteceu."
+          readOnly={!!causaDaAnalise}
+          helper={causaDaAnalise ? "Vem da análise de causa. Para mudar, revise a análise acima." : "Por que a não conformidade aconteceu."}
           maxLength={4000}
         />
         <CampoTextoArea

@@ -102,10 +102,14 @@ O servidor deixou de recalcular a medida em TypeScript: o painel de feedback e o
 
 **Retomada (18/10):** adiada em 14/10 e retomada em 18/10, com os três prazos (Q8, Q9 e N2).
 
-- [ ] 3.0 Prazo de análise de causa: 2 dias úteis; na NC crítica, no mesmo dia (N2).
-- [ ] 3.1 Prazo de feedback em horas de expediente: 5 dias úteis, e 1 dia útil na NC crítica, conforme Q8. Etapa e "Aguardando" mostram o prazo.
-- [ ] 3.2 Contenção da NC crítica em até 24 h, conforme Q9: registro, prazo e aviso.
-- [ ] 3.3 Notificações dos novos prazos pela matriz da Fase 5 do retorno da diretoria (lembretes só no expediente).
+- [x] 3.0 Análise de causa como etapa própria, antes do feedback (decisão de 19/10): a Qualidade registra a causa raiz, que o feedback reaproveita. Prazo de 2 dias úteis da validação; NC crítica, fim do dia útil da marcação.
+- [x] 3.1 Prazo de feedback em horas de expediente: 5 dias úteis da validação; 1 dia útil da marcação na NC crítica. A trilha de etapas e o "Com quem está" mostram o prazo e o atraso.
+- [x] 3.2 Contenção da NC crítica em até 24 h corridas da marcação. Responsável inicial: quem marcou; quem marcou (ou outra pessoa da Qualidade sem conflito) designa outra pessoa, que registra o que foi feito.
+- [x] 3.3 Avisos: contenção designada → responsável; faltando 4 h → "urgente" ao responsável; vencido → "crítica" ao responsável e ao líder direto dele. Job próprio (`sgnc-prazos-etapas`), só no expediente.
+
+**Decisões de 19/10:** análise de causa como etapa própria; prazos contados a partir da validação (NC crítica: da marcação), análise e feedback em horas de expediente e contenção em horas corridas; responsável pela análise e pelo feedback é quem validou; pela contenção, quem marcou ou quem ele designar.
+
+**Status (19/10):** implementada no PR da Fase 3. Migração `20261019120000_prazos_analise_feedback_contencao.sql` (aditiva): colunas de prazo, análise e contenção; trigger que calcula os prazos na validação e na marcação; RPCs `registrar_analise_causa_v1`, `registrar_feedback_v5` (exige a análise e delega à v4), `designar_contencao_v1` e `registrar_contencao_v1`; job `prazos_etapas_v1`. NCs validadas antes da migração ficam sem prazo. Cenários conferidos no Postgres local: prazos na validação e na crítica, fim do dia útil (inclusive sexta à noite e fim de semana), feedback recusado sem análise, contenção designada e registrada (com recusa ao colaborador e a quem não tem relação), avisos de vencido ao responsável e ao líder, desmarcar a crítica volta aos prazos normais e o job não repete avisos. **Falta aplicar no Supabase.**
 
 ### Fase 4: feedback completo (item 5.2 e etapa 4 do documento)
 

@@ -54,7 +54,10 @@ test("4.10: códigos da RPC viram erro com campo para a interface", () => {
   expect(erroDoFeedback({ erro: "status_invalido" })).toBeNull();
   const service = read("src/lib/nc/service.ts");
   expect(service).toContain("erroDoFeedback(result)");
-  expect(service).toContain('rpcTransition("registrar_feedback_v4"');
+  // Fase 3 do processo: o servidor chama a v5, que exige a análise de causa e delega à v4.
+  expect(service).toContain('rpcTransition("registrar_feedback_v5"');
+  expect(read("supabase/migrations/20261019120000_prazos_analise_feedback_contencao.sql"))
+    .toContain("RETURN public.registrar_feedback_v4(p_nc_id, p_responsavel_id, coalesce(v_nc.analise_causa, p_causa_raiz),");
   expect(service).toContain('rpcTransition("aceitar_nc_v4"');
   expect(service).not.toContain("aplicar_feedback_nc_v3");
 });
