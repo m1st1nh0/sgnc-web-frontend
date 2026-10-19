@@ -36,6 +36,8 @@ export function filterSensitive(
       aceito_fora_prazo: null,
       critica_motivo: null,
       critica_marcada_por: null,
+      analise_causa: null,
+      contencao_descricao: null,
     };
   }
   return { ...nc, acesso_completo: true };

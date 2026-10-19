@@ -70,6 +70,7 @@ function transitionError(result: Record<string, unknown>): never {
   if (result.erro === "feedback_ausente") throw new ApiError("Informe o feedback.");
   const erroFeedback = erroDoFeedback(result);
   if (erroFeedback) throw erroFeedback;
+  if (result.erro === "analise_pendente") throw new ApiError("Registre a análise de causa antes do feedback.", 422, "causa_raiz");
   if (result.erro === "origem_invalida") throw new ApiError("Informe a origem da NC.", 422, "origem");
   if (result.erro === "tipo_invalido") throw new ApiError("Marque a NC como cobrança ou orientativa.", 422, "tipo_nc");
   if (result.erro === "procedimento_invalido") throw new ApiError("Descreva o procedimento em até 300 caracteres.", 422, "procedimento");
@@ -217,7 +218,9 @@ export async function buscarNc(id: number, usuario?: UsuarioAutenticado) {
   let { data, error } = await query.maybeSingle();
   // Responsável pela ação combinada fora do escopo: abre a NC pelo aviso, com a visão resumida e só a própria ação.
   const acao = !error && !data && !ehQualidade(user.papel) ? await acaoSobResponsabilidade(id, user.id) : null;
-  if (acao) ({ data, error } = await admin.from("nao_conformidades").select("*").eq("id", id).maybeSingle());
+  // Responsável pela contenção (Fase 3) fora do escopo: mesma visão resumida, para registrar a contenção.
+  const contencao = !error && !data && !acao && !ehQualidade(user.papel) ? await contencaoSobResponsabilidade(id, user.id) : false;
+  if (acao || contencao) ({ data, error } = await admin.from("nao_conformidades").select("*").eq("id", id).maybeSingle());
   if (error || !data) throw new ApiError("NC não encontrada.", 404);
   const [withCauses] = await addCauses([data]);
   const filtered = filterSensitive(withCauses, user, new Set(teamIds));
@@ -226,7 +229,38 @@ export async function buscarNc(id: number, usuario?: UsuarioAutenticado) {
     ? await feedbackVigente(id)
     : null;
   const suaAcao = acao ?? (filtered.acesso_completo !== true ? await acaoSobResponsabilidade(id, user.id) : null);
-  return { ...filtered, feedback_estruturado: feedback, sua_acao: suaAcao, duracoes: durations(filtered) };
+  const etapas = await nomesDasEtapas(data);
+  return {
+    ...filtered,
+    ...etapas,
+    sua_contencao: data.contencao_responsavel_id === user.id && !data.contencao_registrada_em,
+    feedback_estruturado: feedback,
+    sua_acao: suaAcao,
+    duracoes: durations(filtered),
+  };
+}
+
+async function contencaoSobResponsabilidade(ncId: number, usuarioId: string) {
+  const { data, error } = await (createAdminClient() as any).from("nao_conformidades")
+    .select("id").eq("id", ncId).eq("contencao_responsavel_id", usuarioId).maybeSingle();
+  if (error) throw new ApiError("Não foi possível carregar a NC.", 500);
+  return !!data;
+}
+
+/** Nomes de quem registrou a análise e de quem responde pela contenção (Fase 3 do processo). */
+async function nomesDasEtapas(nc: Record<string, unknown>) {
+  const ids = [nc.analise_registrada_por, nc.contencao_responsavel_id, nc.contencao_registrada_por]
+    .filter((valor): valor is string => typeof valor === "string");
+  if (!ids.length) return { analise_registrada_por_nome: null, contencao_responsavel_nome: null, contencao_registrada_por_nome: null };
+  const { data, error } = await createAdminClient().from("usuarios").select("id, nome").in("id", [...new Set(ids)]);
+  if (error) throw new ApiError("Não foi possível carregar a NC.", 500);
+  const nomes = new Map((data ?? []).map((pessoa) => [pessoa.id, pessoa.nome as string]));
+  const nome = (id: unknown) => (typeof id === "string" ? nomes.get(id) ?? null : null);
+  return {
+    analise_registrada_por_nome: nome(nc.analise_registrada_por),
+    contencao_responsavel_nome: nome(nc.contencao_responsavel_id),
+    contencao_registrada_por_nome: nome(nc.contencao_registrada_por),
+  };
 }
 
 /** Ação combinada do feedback vigente quando `usuarioId` é o responsável por ela. */
@@ -584,7 +618,8 @@ export async function obterTimeline(id: number) {
 export async function aplicarFeedback(id: number, input: FeedbackInput) {
   const user = await requireQualidadeSemConflito(id);
   const campos = validarFeedback(input);
-  const result = await rpcTransition("registrar_feedback_v4", {
+  // v5: exige a análise de causa registrada (Fase 3 do processo) e usa a causa raiz dela.
+  const result = await rpcTransition("registrar_feedback_v5", {
     p_nc_id: id,
     p_responsavel_id: user.id,
     p_causa_raiz: campos.causa_raiz,

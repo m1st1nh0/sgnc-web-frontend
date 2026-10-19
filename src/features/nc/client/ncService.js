@@ -159,3 +159,13 @@ export function concluirPlanoAcao(ncId, verificacaoEficacia) {
     body: { verificacao_eficacia: verificacaoEficacia },
   });
 }
+
+/** Fase 3 do processo: análise de causa (etapa antes do feedback). */
+export function registrarAnaliseCausa(id, analiseCausa) {
+  return chamarApi(`/nc/${id}/analise`, { method: "POST", body: { analise_causa: analiseCausa } });
+}
+
+/** Contenção da NC crítica: `{ acao: "designar", responsavel_id }` ou `{ acao: "registrar", descricao }`. */
+export function atualizarContencao(id, dados) {
+  return chamarApi(`/nc/${id}/contencao`, { method: "POST", body: dados });
+}
