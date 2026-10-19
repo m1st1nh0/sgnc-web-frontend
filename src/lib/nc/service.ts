@@ -70,6 +70,9 @@ function transitionError(result: Record<string, unknown>): never {
   if (result.erro === "feedback_ausente") throw new ApiError("Informe o feedback.");
   const erroFeedback = erroDoFeedback(result);
   if (erroFeedback) throw erroFeedback;
+  if (result.erro === "evidencia_ausente") throw new ApiError("Anexe ao menos uma evidência antes de validar a NC.", 422, "evidencias");
+  if (result.erro === "posicionamento_nao_liberado") throw new ApiError("A Qualidade não liberou o posicionamento nesta NC.", 422, "posicionamento");
+  if (result.erro === "posicionamento_longo") throw new ApiError("O posicionamento deve ter no máximo 4.000 caracteres.", 422, "posicionamento");
   if (result.erro === "analise_pendente") throw new ApiError("Registre a análise de causa antes do feedback.", 422, "causa_raiz");
   if (result.erro === "origem_invalida") throw new ApiError("Informe a origem da NC.", 422, "origem");
   if (result.erro === "tipo_invalido") throw new ApiError("Marque a NC como cobrança ou orientativa.", 422, "tipo_nc");
@@ -278,11 +281,15 @@ async function acaoSobResponsabilidade(ncId: number, usuarioId: string) {
 async function feedbackVigente(ncId: number) {
   const admin = createAdminClient() as any;
   const { data, error } = await admin.from("nc_feedbacks")
-    .select("id, versao, causa_raiz, acao_combinada, responsavel_acao_id, prazo_acao, combinado, prazo_aceite, registrado_por, registrado_em, legado")
+    .select("id, versao, causa_raiz, acao_combinada, responsavel_acao_id, prazo_acao, combinado, prazo_aceite, registrado_por, registrado_em, legado, resumo_conversa, posicionamento_liberado, posicionamento_colaborador, posicionamento_em")
     .eq("nc_id", ncId).order("versao", { ascending: false }).limit(1).maybeSingle();
   if (error) throw new ApiError("Não foi possível carregar o feedback da NC.", 500);
   if (!data) return null;
-  const ids = [data.responsavel_acao_id, data.registrado_por].filter((valor): valor is string => !!valor);
+  const { data: participantes, error: participantesError } = await admin.from("nc_feedback_participantes")
+    .select("usuario_id").eq("feedback_id", data.id);
+  if (participantesError) throw new ApiError("Não foi possível carregar o feedback da NC.", 500);
+  const idsParticipantes = (participantes ?? []).map((item: { usuario_id: string }) => item.usuario_id);
+  const ids = [data.responsavel_acao_id, data.registrado_por, ...idsParticipantes].filter((valor): valor is string => !!valor);
   const { data: pessoas, error: pessoasError } = ids.length
     ? await admin.from("usuarios").select("id, nome").in("id", ids)
     : { data: [], error: null };
@@ -292,6 +299,7 @@ async function feedbackVigente(ncId: number) {
     ...data,
     responsavel_acao_nome: data.responsavel_acao_id ? nomes.get(data.responsavel_acao_id) ?? null : null,
     registrado_por_nome: data.registrado_por ? nomes.get(data.registrado_por) ?? null : null,
+    participantes: idsParticipantes.map((id: string) => ({ id, nome: nomes.get(id) ?? "Usuário" })),
   };
 }
 
@@ -574,7 +582,8 @@ export async function avaliarNc(id: number, input: AvaliacaoInput) {
   const classificacao = validarClassificacao(input);
   if (classificacao.erro) throw new ApiError(classificacao.erro.mensagem, 422, classificacao.erro.campo);
   const { origem, tipo_nc, procedimento, procedimento_url } = classificacao.valor;
-  const result = await rpcTransition("validar_nc_com_workflow_v4", {
+  // v5 (Fase 4 do processo): exige ao menos uma evidência anexada na abertura.
+  const result = await rpcTransition("validar_nc_com_workflow_v5", {
     p_nc_id: id, p_responsavel_id: user.id, p_origem: origem, p_tipo_nc: tipo_nc,
     p_procedimento: procedimento, p_procedimento_url: procedimento_url,
   });
@@ -618,8 +627,8 @@ export async function obterTimeline(id: number) {
 export async function aplicarFeedback(id: number, input: FeedbackInput) {
   const user = await requireQualidadeSemConflito(id);
   const campos = validarFeedback(input);
-  // v5: exige a análise de causa registrada (Fase 3 do processo) e usa a causa raiz dela.
-  const result = await rpcTransition("registrar_feedback_v5", {
+  // v6: v5 (análise de causa registrada, Fase 3) + resumo, participantes e liberação do posicionamento (Fase 4).
+  const result = await rpcTransition("registrar_feedback_v6", {
     p_nc_id: id,
     p_responsavel_id: user.id,
     p_causa_raiz: campos.causa_raiz,
@@ -627,11 +636,14 @@ export async function aplicarFeedback(id: number, input: FeedbackInput) {
     p_responsavel_acao_id: campos.responsavel_acao_id,
     p_prazo_acao: campos.prazo_acao,
     p_combinado: campos.combinado,
+    p_resumo_conversa: campos.resumo_conversa,
+    p_participantes: campos.participantes,
+    p_liberar_posicionamento: campos.liberar_posicionamento,
   });
   return { ...(await buscarNc(id, user)), feedback_id: Number(result.feedback_id) };
 }
 
-export async function aceitarNc(id: number, input: { texto_aceite?: unknown }) {
+export async function aceitarNc(id: number, input: { texto_aceite?: unknown; posicionamento?: unknown }) {
   const user = await requireUser();
   const texto = String(input.texto_aceite ?? "");
   if (texto.trim().toLowerCase().replace(/\s+/g, " ") !== TEXTO_ACEITE) {
@@ -641,8 +653,10 @@ export async function aceitarNc(id: number, input: { texto_aceite?: unknown }) {
   if (current.colaborador_id !== user.id) {
     throw new ApiError("Somente o colaborador analisado pode registrar o aceite.", 403);
   }
-  // v4 também aceita NC "Não respondida" (D11) e marca o aceite fora do prazo.
-  await rpcTransition("aceitar_nc_v4", { p_nc_id: id, p_colaborador_id: user.id, p_texto_aceite: texto });
+  // v5 = v4 (aceita NC "Não respondida", D11, marcando fora do prazo) + posicionamento opcional, se liberado.
+  const posicionamento = String(input.posicionamento ?? "").trim();
+  if (posicionamento.length > 4000) throw new ApiError("O posicionamento deve ter no máximo 4.000 caracteres.", 422, "posicionamento");
+  await rpcTransition("aceitar_nc_v5", { p_nc_id: id, p_colaborador_id: user.id, p_texto_aceite: texto, p_posicionamento: posicionamento || null });
   return buscarNc(id, user);
 }
 

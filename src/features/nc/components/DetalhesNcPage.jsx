@@ -487,6 +487,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                     nc={nc}
                     aoConcluir={aoConcluirAvaliacao}
                     bloqueado={enviandoArquivo}
+                    semEvidencia={!carregandoEvidencias && !erroEvidencias && evidenciasAbertura.length === 0}
                   />
                 </>
               )}

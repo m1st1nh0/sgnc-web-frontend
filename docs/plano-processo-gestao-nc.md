@@ -44,7 +44,7 @@ Precisam de resposta antes da fase indicada.
 | Q7 | ~~Individual ou sistêmica~~ **Respondida (14/10):** não vira regra nem campo. Só se identifica depois de investigação e conversa; fica como observação no feedback. | 2 |
 | Q8 | ~~Prazos~~ **Respondida (18/10):** entram o prazo de análise de causa (2 dias úteis; crítica no mesmo dia), o prazo de feedback (5 dias úteis; crítica 1 dia útil) e a contenção. Vencido um prazo, é avisado o **líder direto de quem era responsável pela etapa**. | 3 |
 | Q9 | ~~Contenção da NC crítica~~ **Respondida (18/10):** entra, com prazo de 24 h; vencida, segue a mesma regra de aviso da Q8. | 3 |
-| Q10 | ~~Participantes do feedback~~ **Respondida (18/10):** escolhidos de uma lista limitada a quem tem relação com a NC (perfis da Qualidade, envolvidos e os gestores deles). Participantes obrigatórios, escolhidos entre os envolvidos na NC: perfis da Qualidade, o colaborador analisado, o líder direto dele e, na NC crítica, a cadeia até a Diretoria (ex.: só Qualidade e colaborador, ou Qualidade, colaborador e líder). Resumo da conversa obrigatório. Posicionamento do colaborador: a Qualidade decide se cabe e aciona um botão "+" que libera o campo para o próprio colaborador escrever. | 4 |
+| Q10 | ~~Participantes do feedback~~ **Respondida (18/10):** escolhidos de uma lista limitada a quem tem relação com a NC (perfis da Qualidade, envolvidos e os gestores deles). Participantes **opcionais por enquanto** (revisto em 19/10: a empresa tem uma pessoa na Qualidade e o gestor ou outra pessoa pode acompanhar), escolhidos na lista de usuários ativos. Resumo da conversa obrigatório. Posicionamento do colaborador: a Qualidade decide se cabe e aciona um botão "+" que libera o campo para o próprio colaborador escrever. | 4 |
 | Q11 | ~~Verificação de 30 dias~~ **Respondida (18/10):** vale só para NC com plano de ação. O resultado leva a NC ao status **Não eficaz**; dali a Qualidade decide se ela segue como **Reaberta** (novo plano) ou **Escalada** para revisão. | 5 |
 
 ## Fases
@@ -113,8 +113,12 @@ O servidor deixou de recalcular a medida em TypeScript: o painel de feedback e o
 
 ### Fase 4: feedback completo (item 5.2 e etapa 4 do documento)
 
-- [ ] 4.1 Feedback registra participantes (Q10), posicionamento do colaborador (escuta) e resumo da conversa, além dos campos atuais.
-- [ ] 4.2 Detalhe, PDF e CSV mostram os campos novos.
+- [x] 4.1 Feedback registra participantes (Q10, opcionais), resumo da conversa (obrigatório) e a liberação do posicionamento; o colaborador escreve o posicionamento no aceite, se quiser.
+- [x] 4.2 Detalhe e PDF da NC mostram os campos novos. O CSV fica como está (formato simples fechado no plano de relatórios).
+- [x] 4.3 Evidência obrigatória na validação (N3).
+- [x] 4.4 Medida só é aprovada com o feedback da NC aplicado (N5); a reprovação continua possível.
+
+**Status (19/10):** implementada no PR da Fase 4. Migração `20261019140000_feedback_completo.sql` (aditiva): colunas de resumo e posicionamento em `nc_feedbacks`, tabela `nc_feedback_participantes` e as RPCs `registrar_feedback_v6`, `aceitar_nc_v5`, `validar_nc_com_workflow_v5` e `decidir_medida_v2`, todas delegando às versões anteriores. Cenários conferidos no Postgres local: validação recusada sem evidência; feedback recusado sem resumo ou com participante inválido; posicionamento gravado no aceite só quando liberado (sem liberação, o aceite é recusado e a NC não muda); medida da 3ª NC recusada antes do feedback e aprovada depois. **Aplicada no Supabase em 19/10**, com autorização; os mesmos cenários foram repetidos lá em transação desfeita, sem deixar dados.
 
 ### Fase 5: verificação de eficácia (etapas 8 e 9 do documento)
 

@@ -37,7 +37,12 @@ export async function gerarPdfNc(id: number) {
   if (feedback) {
     writer.line("Causa raiz", feedback.causa_raiz); writer.line("Ação combinada", feedback.acao_combinada);
     writer.line("Responsável pela ação", feedback.responsavel_acao_nome ?? "Não informado"); writer.line("Prazo da ação", dataBr(feedback.prazo_acao, "Não informado"));
-    writer.line("Combinado", feedback.combinado); writer.line("Prazo do aceite", dataHoraBr(feedback.prazo_aceite));
+    writer.line("Combinado", feedback.combinado);
+    if (feedback.resumo_conversa) writer.line("Resumo da conversa", feedback.resumo_conversa);
+    const participantes = (feedback.participantes ?? []) as Array<{ nome: string }>;
+    if (participantes.length) writer.line("Participantes", participantes.map((pessoa) => pessoa.nome).join(", "));
+    if (feedback.posicionamento_colaborador) writer.line("Posicionamento do colaborador", feedback.posicionamento_colaborador);
+    writer.line("Prazo do aceite", dataHoraBr(feedback.prazo_aceite));
     writer.line("Situação do aceite", ROTULO_ACEITE[situacaoDoAceite(nc)] || "-");
   } else writer.line("Registro", nc.feedback);
   const admin = createAdminClient();

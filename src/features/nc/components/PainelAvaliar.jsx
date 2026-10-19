@@ -11,7 +11,10 @@ import { AJUDA_TIPO_NC, ORIGENS_NC, TIPOS_NC, validarClassificacao } from "../..
  * Exibido para o ADM quando a NC está aberta.
  * `bloqueado` evita uma corrida entre upload de evidência e mudança de status.
  */
-export default function PainelAvaliar({ nc, aoConcluir, bloqueado = false }) {
+const CAMPOS_CLASSIFICACAO = new Set(["origem", "tipo_nc", "procedimento", "procedimento_url"]);
+
+/** `semEvidencia`: a NC ainda não tem evidência da abertura, exigida para validar (Fase 4 do processo). */
+export default function PainelAvaliar({ nc, aoConcluir, bloqueado = false, semEvidencia = false }) {
   const [decisao, setDecisao] = useState(null);
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -27,6 +30,10 @@ export default function PainelAvaliar({ nc, aoConcluir, bloqueado = false }) {
   async function confirmarValidar() {
     if (bloqueado) return;
     setErro("");
+    if (semEvidencia) {
+      setErro("Anexe ao menos uma evidência em \"Evidências da abertura\" antes de validar a NC.");
+      return;
+    }
     const checagem = validarClassificacao(classificacao);
     if (checagem.erro) {
       setErrosCampo({ [checagem.erro.campo]: checagem.erro.mensagem });
@@ -38,7 +45,7 @@ export default function PainelAvaliar({ nc, aoConcluir, bloqueado = false }) {
       const atualizada = await avaliarNc(nc.id, "validar", undefined, checagem.valor);
       aoConcluir(atualizada);
     } catch (e) {
-      if (e instanceof ErroApi && e.campo) {
+      if (e instanceof ErroApi && e.campo && CAMPOS_CLASSIFICACAO.has(e.campo)) {
         setErrosCampo({ [e.campo]: e.message });
         document.getElementById(`avaliar-${e.campo}`)?.focus();
       } else {
@@ -79,13 +86,22 @@ export default function PainelAvaliar({ nc, aoConcluir, bloqueado = false }) {
           Esta NC ainda não foi avaliada. Ela é procedente?
         </p>
         <p className="texto-xs texto-suave mb-3">
-          Ao validar, ela seguirá diretamente para feedback e ficará disponível
-          ao colaborador analisado e ao supervisor direto.
+          Ao validar, ela seguirá para a análise de causa e o feedback e ficará disponível
+          ao colaborador analisado e ao supervisor direto. Para validar, é preciso ter ao
+          menos uma evidência anexada em "Evidências da abertura".
         </p>
 
         {bloqueado && (
           <div className="sg-alerta sg-alerta--info mb-3">
             Aguarde o envio da evidência terminar antes de avaliar esta NC.
+          </div>
+        )}
+        {semEvidencia && decisao !== "invalidar" && (
+          <div className="sg-alerta sg-alerta--atencao mb-3" role="status">
+            <div>
+              <strong>Falta a evidência.</strong> Para validar, anexe ao menos um arquivo em "Evidências da abertura".
+              A invalidação continua possível sem evidência.
+            </div>
           </div>
         )}
         {erro && <MensagemErro mensagem={erro} />}

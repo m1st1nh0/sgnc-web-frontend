@@ -20,6 +20,8 @@ const IDS_CAMPOS = {
   responsavel_acao: "feedback-responsavel",
   prazo_acao: "feedback-prazo",
   combinado: "feedback-combinado",
+  resumo_conversa: "feedback-resumo",
+  participantes: "feedback-participantes",
 };
 const FORMATOS_ANEXO = ".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xlsx";
 const ROTULO_ACEITE = {
@@ -42,6 +44,7 @@ function validar(campos) {
   if (!campos.prazo_acao) erros.prazo_acao = "Informe o prazo da ação.";
   else if (campos.prazo_acao < hojeEmSaoPaulo()) erros.prazo_acao = "O prazo da ação não pode ser anterior a hoje.";
   if (!campos.combinado.trim()) erros.combinado = "Informe o que foi combinado com o colaborador.";
+  if (!campos.resumo_conversa.trim()) erros.resumo_conversa = "Resuma a conversa com o colaborador.";
   return erros;
 }
 
@@ -106,7 +109,9 @@ export default function PainelFeedback({ nc, aoConcluir }) {
   const causaDaAnalise = nc.analise_causa || "";
   const [campos, setCampos] = useState({
     causa_raiz: causaDaAnalise, acao_combinada: "", responsavel_acao_id: "", prazo_acao: "", combinado: "",
+    resumo_conversa: "", participantes: [], liberar_posicionamento: false,
   });
+  const [participanteEscolhido, setParticipanteEscolhido] = useState("");
   const [usuarios, setUsuarios] = useState([]);
   const [arquivos, setArquivos] = useState([]);
   const [errosCampo, setErrosCampo] = useState({});
@@ -122,6 +127,12 @@ export default function PainelFeedback({ nc, aoConcluir }) {
     setCampos((atuais) => ({ ...atuais, [campo]: valor }));
     const chaveErro = campo === "responsavel_acao_id" ? "responsavel_acao" : campo;
     if (errosCampo[chaveErro]) setErrosCampo((atuais) => ({ ...atuais, [chaveErro]: undefined }));
+  }
+
+  function adicionarParticipante() {
+    if (!participanteEscolhido || campos.participantes.includes(participanteEscolhido)) return;
+    alterar("participantes", [...campos.participantes, participanteEscolhido]);
+    setParticipanteEscolhido("");
   }
 
   function mostrarErros(erros, mensagemTopo) {
@@ -247,6 +258,64 @@ export default function PainelFeedback({ nc, aoConcluir }) {
           helper="O que ficou acordado com o colaborador."
           maxLength={4000}
         />
+
+        <CampoTextoArea
+          id={IDS_CAMPOS.resumo_conversa}
+          rotulo="Resumo da conversa"
+          obrigatorio
+          rows={3}
+          value={campos.resumo_conversa}
+          onChange={(e) => alterar("resumo_conversa", e.target.value)}
+          erro={errosCampo.resumo_conversa}
+          helper="Como foi a conversa de feedback. Se a causa parecer sistêmica, registre a observação aqui."
+          maxLength={4000}
+        />
+
+        <div className="mb-3">
+          <label className="sg-label" htmlFor={IDS_CAMPOS.participantes}>Participantes (opcional)</label>
+          <div className="d-flex gap-2">
+            <select
+              id={IDS_CAMPOS.participantes}
+              className={`form-select sg-input${errosCampo.participantes ? " is-invalid" : ""}`}
+              value={participanteEscolhido}
+              onChange={(e) => setParticipanteEscolhido(e.target.value)}
+            >
+              <option value="">Quem participou da conversa</option>
+              {usuarios.filter((pessoa) => !campos.participantes.includes(pessoa.id)).map((pessoa) => (
+                <option key={pessoa.id} value={pessoa.id}>{pessoa.nome}{pessoa.setor ? ` (${pessoa.setor})` : ""}</option>
+              ))}
+            </select>
+            <Botao variante="secundario" tamanho="sm" disabled={!participanteEscolhido} onClick={adicionarParticipante}>Adicionar</Botao>
+          </div>
+          {errosCampo.participantes && <div className="invalid-feedback d-block">{errosCampo.participantes}</div>}
+          {campos.participantes.length > 0 && (
+            <ul className="list-unstyled d-flex flex-wrap gap-2 mt-2 mb-0">
+              {campos.participantes.map((id) => (
+                <li key={id} className="sg-badge sg-badge--claro">
+                  {usuarios.find((pessoa) => pessoa.id === id)?.nome || "Usuário"}{" "}
+                  <button type="button" className="btn btn-link btn-sm p-0 ms-1" aria-label="Remover participante"
+                    onClick={() => alterar("participantes", campos.participantes.filter((item) => item !== id))}>×</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="mb-3">
+          {campos.liberar_posicionamento ? (
+            <div className="sg-alerta sg-alerta--info mb-0">
+              <div>
+                <strong>Posicionamento do colaborador liberado.</strong> No aceite, o colaborador poderá registrar o
+                que pensa sobre a NC (opcional para ele).{" "}
+                <button type="button" className="btn btn-link btn-sm p-0" onClick={() => alterar("liberar_posicionamento", false)}>Desfazer</button>
+              </div>
+            </div>
+          ) : (
+            <Botao variante="secundario" tamanho="sm" onClick={() => alterar("liberar_posicionamento", true)}>
+              + Posicionamento do colaborador
+            </Botao>
+          )}
+        </div>
 
         <Form.Group className="mb-3">
           <Form.Label className="sg-label" htmlFor="feedback-anexos">Anexos (opcional)</Form.Label>
