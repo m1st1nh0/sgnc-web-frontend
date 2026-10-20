@@ -157,7 +157,10 @@ function durations(nc: Record<string, unknown>) {
   else if (["validada", "aguardando_analise", "aguardando_feedback"].includes(status)) {
     currentStart = validado ?? (nc.enviado_em as string | null) ?? criado;
   } else if (status === "aguardando_aceite" || status === "nao_respondida") currentStart = feedback ?? validado ?? criado;
-  else if (status === "em_plano_acao") currentStart = aceito ?? (nc.critica_marcada_em as string | null) ?? criado;
+  else if (status === "em_verificacao") currentStart = (nc.verificacao_inicio as string | null) ?? criado;
+  else if (status === "nao_eficaz") currentStart = (nc.verificacao_registrada_em as string | null) ?? criado;
+  else if (status === "escalada") currentStart = (nc.escalada_em as string | null) ?? criado;
+  else if (status === "em_plano_acao" || status === "reaberta") currentStart = aceito ?? (nc.critica_marcada_em as string | null) ?? criado;
   return {
     criacao_ate_validacao_segundos: secondsBetween(criado, validado),
     validacao_ate_feedback_segundos: secondsBetween(validado, feedback),
@@ -315,7 +318,7 @@ export async function listarNcsDaPessoa(
   const status = options.status?.trim() || null;
   const inicio = options.inicio?.trim() || null;
   const fim = options.fim?.trim() || null;
-  const validStatuses = ["aberta", "aguardando_feedback", "aguardando_analise", "validada", "aguardando_aceite", "nao_respondida", "em_plano_acao", "concluida", "invalidada"];
+  const validStatuses = ["aberta", "aguardando_feedback", "aguardando_analise", "validada", "aguardando_aceite", "nao_respondida", "em_plano_acao", "concluida", "invalidada", "em_verificacao", "nao_eficaz", "reaberta", "escalada"];
   if (status && !validStatuses.includes(status)) throw new ApiError("O status selecionado é inválido.", 422);
   const isDate = (value: string | null) => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
   if ((inicio || fim) && (!isDate(inicio) || !isDate(fim))) throw new ApiError("Informe o período completo para filtrar as NCs.", 422);
@@ -656,7 +659,8 @@ export async function aceitarNc(id: number, input: { texto_aceite?: unknown; pos
   // v5 = v4 (aceita NC "Não respondida", D11, marcando fora do prazo) + posicionamento opcional, se liberado.
   const posicionamento = String(input.posicionamento ?? "").trim();
   if (posicionamento.length > 4000) throw new ApiError("O posicionamento deve ter no máximo 4.000 caracteres.", 422, "posicionamento");
-  await rpcTransition("aceitar_nc_v5", { p_nc_id: id, p_colaborador_id: user.id, p_texto_aceite: texto, p_posicionamento: posicionamento || null });
+  // v6 (Fase 5): NC com plano aberto pela Qualidade segue para o plano depois do aceite.
+  await rpcTransition("aceitar_nc_v6", { p_nc_id: id, p_colaborador_id: user.id, p_texto_aceite: texto, p_posicionamento: posicionamento || null });
   return buscarNc(id, user);
 }
 

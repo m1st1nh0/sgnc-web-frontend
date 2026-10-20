@@ -41,6 +41,9 @@ const STATUS = [
   ["aguardando_aceite", "Aguardando aceite"],
   ["nao_respondida", "Não respondida"],
   ["em_plano_acao", "Em plano de ação"],
+  ["em_verificacao", "Em verificação"],
+  ["nao_eficaz", "Não eficaz"],
+  ["escalada", "Escalada"],
   ["concluida", "Concluída"],
   ["invalidada", "Invalidada"],
 ];
@@ -49,6 +52,7 @@ const STATUS_RAW_LABEL = {
   ...STATUS_LABEL,
   validada: "Aguardando feedback",
   aguardando_analise: "Aguardando feedback",
+  reaberta: "Reaberta",
 };
 const CORES_STATUS = {
   aberta: CORES_GRAFICO.amarelo,
@@ -56,6 +60,9 @@ const CORES_STATUS = {
   aguardando_aceite: CORES_GRAFICO.violeta,
   nao_respondida: CORES_GRAFICO.vermelho,
   em_plano_acao: CORES_GRAFICO.vermelho,
+  em_verificacao: CORES_GRAFICO.violeta,
+  nao_eficaz: CORES_GRAFICO.vermelho,
+  escalada: CORES_GRAFICO.laranja,
   concluida: CORES_GRAFICO.verde,
   invalidada: CORES_GRAFICO.vermelho,
 };

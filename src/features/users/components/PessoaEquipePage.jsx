@@ -25,6 +25,10 @@ const STATUS = {
   aguardando_aceite: "Aguardando aceite",
   nao_respondida: "Não respondida",
   em_plano_acao: "Em plano de ação",
+  reaberta: "Reaberta",
+  em_verificacao: "Em verificação",
+  nao_eficaz: "Não eficaz",
+  escalada: "Escalada",
   concluida: "Concluída",
   invalidada: "Invalidada",
 };

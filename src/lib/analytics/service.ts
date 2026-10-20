@@ -8,22 +8,26 @@ import { buildNcReadScopeFilter, buildNcTeamScopeFilter } from "@/lib/permission
 import { listarPessoasAbaixo, validarAcessoPessoa } from "@/lib/permissions/team-scope";
 import { ehQualidade } from "@/lib/auth/papeis";
 
-const ACTIVE = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "validada", "aguardando_analise"]);
-const COUNTABLE = new Set(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "concluida"]);
-const STATUS_ORDER = ["aberta", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "concluida", "invalidada"];
+const ACTIVE = new Set(["aberta", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "validada", "aguardando_analise", "em_verificacao", "nao_eficaz", "reaberta", "escalada"]);
+const COUNTABLE = new Set(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "concluida", "em_verificacao", "nao_eficaz", "reaberta", "escalada"]);
+const STATUS_ORDER = ["aberta", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "em_verificacao", "nao_eficaz", "escalada", "concluida", "invalidada"];
 const FILTER_STATUS_ALIASES: Record<string, string[]> = {
   aberta: ["aberta"],
   aguardando_feedback: ["aguardando_feedback", "aguardando_analise", "validada"],
   aguardando_aceite: ["aguardando_aceite"],
   nao_respondida: ["nao_respondida"],
-  em_plano_acao: ["em_plano_acao"],
+  em_plano_acao: ["em_plano_acao", "reaberta"],
+  em_verificacao: ["em_verificacao"],
+  nao_eficaz: ["nao_eficaz"],
+  escalada: ["escalada"],
   concluida: ["concluida"],
   invalidada: ["invalidada"],
 };
 type Row = Record<string, any>;
 
 const isoDate = (value: unknown) => String(value ?? "").slice(0, 10) || null;
-const canonicalStatus = (value: unknown) => ["validada", "aguardando_analise"].includes(String(value)) ? "aguardando_feedback" : String(value ?? "");
+// "Reaberta" é uma nova rodada do plano: entra nos números como "Em plano de ação".
+const canonicalStatus = (value: unknown) => ["validada", "aguardando_analise"].includes(String(value)) ? "aguardando_feedback" : String(value) === "reaberta" ? "em_plano_acao" : String(value ?? "");
 const seconds = (start: unknown, end: unknown) => {
   if (!start || !end) return null;
   const result = Math.floor((Date.parse(String(end)) - Date.parse(String(start))) / 1000);

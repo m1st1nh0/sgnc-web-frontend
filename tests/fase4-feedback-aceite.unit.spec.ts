@@ -63,7 +63,9 @@ test("4.10: códigos da RPC viram erro com campo para a interface", () => {
   expect(read("supabase/migrations/20261019120000_prazos_analise_feedback_contencao.sql"))
     .toContain("RETURN public.registrar_feedback_v4(p_nc_id, p_responsavel_id, coalesce(v_nc.analise_causa, p_causa_raiz),");
   // Aceite v5 = v4 (prazo, "Não respondida", fora do prazo) + posicionamento liberado.
-  expect(service).toContain('rpcTransition("aceitar_nc_v5"');
+  // Processo, Fase 5: v6 (plano aberto pela Qualidade segue para o plano), sobre a v5.
+  expect(service).toContain('rpcTransition("aceitar_nc_v6"');
+  expect(read("supabase/migrations/20261020120000_verificacao_eficacia.sql")).toContain("FUNCTION public.aceitar_nc_v6(");
   expect(read("supabase/migrations/20261019140000_feedback_completo.sql"))
     .toContain("v_resultado := public.aceitar_nc_v4(p_nc_id, p_colaborador_id, p_texto_aceite);");
   expect(service).not.toContain("aplicar_feedback_nc_v3");
@@ -101,9 +103,12 @@ test("4.6: backfill não inventa causa raiz", () => {
 });
 
 test("4.5c/D14: Não respondida e Em plano de ação contam para reincidência, no banco e no servidor", () => {
-  expect([...STATUS_CONTAM_OCORRENCIA]).toEqual(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "concluida"]);
+  // Processo, Fase 5: os status da verificação de eficácia também são NC validada.
+  expect([...STATUS_CONTAM_OCORRENCIA]).toEqual(["validada", "aguardando_analise", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "concluida", "em_verificacao", "nao_eficaz", "reaberta", "escalada"]);
   const lista = migracao.slice(migracao.indexOf("and anterior.status in ("), migracao.indexOf("and anterior.data >="));
-  for (const status of STATUS_CONTAM_OCORRENCIA) expect(lista).toContain(`'${status}'::public.status_nc`);
+  for (const status of STATUS_CONTAM_OCORRENCIA.slice(0, 7)) expect(lista).toContain(`'${status}'::public.status_nc`);
+  const ciclo = readFileSync("supabase/migrations/20261020120000_verificacao_eficacia.sql", "utf8");
+  for (const status of STATUS_CONTAM_OCORRENCIA) expect(ciclo).toContain(`'${status}'::public.status_nc`);
   expect(lista).not.toContain("'aberta'");
   expect(lista).not.toContain("'invalidada'");
 });
@@ -111,7 +116,9 @@ test("4.5c/D14: Não respondida e Em plano de ação contam para reincidência, 
 test("4.5c: Não respondida continua visível para colaborador e liderança e pode ser marcada como crítica", () => {
   expect(SUPERVISOR_VISIBLE_NC_STATUSES).toContain("nao_respondida");
   expect(STATUS_PERMITEM_MARCAR_CRITICA).toContain("nao_respondida");
-  expect(read("src/lib/nc/plano-acao.ts")).toContain('"definir_nc_critica_v2"');
+  // v3 (Fase 5) delega à v2 e só preserva o plano aberto pela Qualidade.
+  expect(read("src/lib/nc/plano-acao.ts")).toContain('"definir_nc_critica_v3"');
+  expect(read("supabase/migrations/20261020120000_verificacao_eficacia.sql")).toContain("RETURN public.definir_nc_critica_v2(p_nc_id, p_usuario_id, p_critica, p_motivo);");
   expect(read("src/lib/nc/service.ts")).toContain('"aguardando_aceite", "nao_respondida", "em_plano_acao"');
 });
 

@@ -45,6 +45,15 @@ export async function gerarPdfNc(id: number) {
     writer.line("Prazo do aceite", dataHoraBr(feedback.prazo_aceite));
     writer.line("Situação do aceite", ROTULO_ACEITE[situacaoDoAceite(nc)] || "-");
   } else writer.line("Registro", nc.feedback);
+  // Fase 5 do processo: verificação de eficácia e escalonamento.
+  if (nc.verificacao_inicio || nc.escalada_para) {
+    writer.heading("Verificação de eficácia");
+    if (nc.verificacao_inicio) writer.line("Janela", `${dataBr(nc.verificacao_inicio)} a ${dataBr(nc.verificacao_ate)}`);
+    writer.line("Resultado", nc.verificacao_resultado === "eficaz" ? "Eficaz" : nc.verificacao_resultado === "nao_eficaz" ? "Não eficaz" : "Aguardando");
+    if (nc.verificacao_observacao) writer.line("Observação", nc.verificacao_observacao);
+    if (nc.escalada_motivo) writer.line("Escalada", nc.escalada_motivo);
+    if (nc.escalonamento_parecer) writer.line("Parecer do gestor", nc.escalonamento_parecer);
+  }
   const admin = createAdminClient();
   const { eventos: history } = await obterTimeline(id);
   writer.heading("Andamento");

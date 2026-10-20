@@ -122,10 +122,16 @@ O servidor deixou de recalcular a medida em TypeScript: o painel de feedback e o
 
 ### Fase 5: verificação de eficácia (etapas 8 e 9 do documento)
 
-- [ ] 5.1 Valores novos de status, em migração própria: `em_verificacao`, `reaberta` e `escalada`, conforme Q11.
-- [ ] 5.2 Conclusão do plano abre a janela de 30 dias. Resultado eficaz ou não eficaz; nova NC da mesma causa na janela sugere "não eficaz".
-- [ ] 5.3 RPCs de reabertura e escalonamento, com histórico e notificações.
-- [ ] 5.4 Ação do plano vencida sem execução é sinalizada ao responsável do departamento (gestor da área).
+- [x] 5.1 Valores novos de status, em migração própria: `em_verificacao`, `nao_eficaz`, `reaberta` e `escalada`.
+- [x] 5.2 Conclusão do plano abre a janela de 30 dias ("Em verificação"). A Qualidade registra eficaz (NC concluída) ou não eficaz (com motivo); nova NC do colaborador com a mesma causa na janela gera aviso sugerindo "não eficaz"; no 30º dia a Qualidade é avisada.
+- [x] 5.3 Não eficaz: a Qualidade reabre (nova rodada do plano, que volta à verificação) ou escala ao gestor do departamento do colaborador, que registra o parecer e encerra a NC. Histórico e avisos em cada passo.
+- [x] 5.4 Ação do plano vencida sem execução: aviso ao responsável pela execução e ao líder direto dele.
+- [x] 5.5 N1: plano de ação em NC não crítica, aberto pela Qualidade depois da validação e antes da conclusão.
+- [x] 5.6 N4: desfecho da avaliação de justa causa (desligado ou mantido), só pela Qualidade.
+
+**Decisões de 19/10:** janela de 30 dias a partir da conclusão do plano; a Qualidade registra o resultado (pode registrar antes do 30º dia); eficaz conclui; reaberta volta ao plano e à verificação; escalada vai ao gestor (responsável) do departamento do colaborador; plano em NC não crítica a qualquer momento depois da validação, se ela não estiver concluída; desfecho desligado ou mantido, só pela Qualidade; ação vencida avisa o responsável e o líder direto. Ideia registrada para depois: dar ao plano de ação uma estrutura própria (separada da NC).
+
+**Status (19/10):** implementada no PR da Fase 5. Migrações `20261020110000_enum_verificacao_eficacia.sql` e `20261020120000_verificacao_eficacia.sql`. Cenários conferidos no Postgres local: plano aberto só depois da validação e só pela Qualidade sem conflito; aceite leva a NC com plano para "Em plano de ação"; marcar e desmarcar a crítica preserva o plano aberto; aviso de ação vencida ao responsável e ao líder; conclusão exige acompanhamento (na rodada reaberta, um novo); não eficaz exige motivo; reabrir inicia a rodada 2; nova NC da mesma causa conta como ocorrência e gera o alerta; escalar exige gestor no departamento e só ele registra o parecer; desfecho só uma vez. **Aplicadas no Supabase em 19/10**, com autorização; o fluxo completo (plano em NC leve, aceite, conclusão, não eficaz, reabertura, segunda rodada e escalada) foi repetido lá em transação desfeita, sem deixar dados.
 
 ### Fase 6: indicadores de efetividade (item 9 do documento)
 

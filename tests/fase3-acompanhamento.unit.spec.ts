@@ -18,8 +18,10 @@ test("3.6: status → etapa atual na trilha Aberta → Avaliação → Feedback 
 });
 
 test("3.6: NC crítica ganha a etapa Plano de ação entre Aceite e Concluída", () => {
-  expect(situacoes({ status: "aguardando_feedback", critica: true })).toEqual(["abertura:feita", "avaliacao:feita", "feedback:atual", "aceite:pendente", "plano_acao:pendente", "concluida:pendente"]);
-  expect(situacoes({ status: "em_plano_acao", critica: true })).toEqual(["abertura:feita", "avaliacao:feita", "feedback:feita", "aceite:feita", "plano_acao:atual", "concluida:pendente"]);
+  // Processo, Fase 5: depois do plano vem a verificação de eficácia de 30 dias.
+  expect(situacoes({ status: "aguardando_feedback", critica: true })).toEqual(["abertura:feita", "avaliacao:feita", "feedback:atual", "aceite:pendente", "plano_acao:pendente", "verificacao:pendente", "concluida:pendente"]);
+  expect(situacoes({ status: "em_plano_acao", critica: true })).toEqual(["abertura:feita", "avaliacao:feita", "feedback:feita", "aceite:feita", "plano_acao:atual", "verificacao:pendente", "concluida:pendente"]);
+  // NC crítica concluída antes da Fase 5 (sem verificação registrada) mantém a trilha antiga.
   expect(situacoes({ status: "concluida", critica: true })).toHaveLength(6);
 });
 
