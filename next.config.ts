@@ -10,6 +10,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Mantém as telas visitadas montadas (React Activity): trocar de módulo preserva o que foi preenchido.
+  cacheComponents: true,
   async rewrites() {
     // Compatibility for tabs opened before the API rename; remove after cutover UAT.
     return [{ source: "/api/legacy/:path*", destination: "/api/:path*" }];

@@ -211,6 +211,17 @@ export default function AbrirNcPage() {
       } catch {
         // Sem armazenamento, o detalhe abre sem a confirmação única.
       }
+      // A tela fica montada entre módulos; limpa para a próxima abertura não herdar esta NC.
+      setChamado("");
+      setColaboradorId("");
+      setBuscaColaborador("");
+      setCriticidade("Baixa");
+      setDescricao("");
+      setCausas([]);
+      setCausaPendente("");
+      setArquivosEvidencias([]);
+      setErrosCampo({});
+      setAvisoCausa("");
       router.push(`/nc/${nc.id}`);
     } catch (e) {
       if (e instanceof ErroApi && e.campo && IDS_CAMPOS[e.campo]) {
