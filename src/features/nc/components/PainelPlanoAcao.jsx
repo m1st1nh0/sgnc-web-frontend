@@ -18,6 +18,7 @@ import { formatarData, formatarDataHora } from "../../../lib/utils/formato.js";
 import Botao from "../../../components/ui/Botao.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
+import { limparRascunho, useRascunho } from "../../../lib/utils/rascunho.js";
 
 const ETAPAS = [
   ["planejamento", "Planejamento"],
@@ -68,30 +69,34 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
   const [enviando, setEnviando] = useState("");
-  const [motivoCritica, setMotivoCritica] = useState("");
-  const [alterandoCritica, setAlterandoCritica] = useState(false);
-  const [form, setForm] = useState(formularioDoPlano(null));
-  const [registro, setRegistro] = useState("");
-  const [verificacao, setVerificacao] = useState("");
+  const [motivoCritica, setMotivoCritica] = useRascunho(`plano-nc:${nc.id}`, "motivoCritica", "");
+  const [alterandoCritica, setAlterandoCritica] = useRascunho(`plano-nc:${nc.id}`, "alterandoCritica", false);
+  const [form, setForm, definirBaseForm] = useRascunho(`plano-nc:${nc.id}`, "form", formularioDoPlano(null));
+  const [registro, setRegistro] = useRascunho(`plano-nc:${nc.id}`, "registro", "");
+  const [verificacao, setVerificacao] = useRascunho(`plano-nc:${nc.id}`, "verificacao", "");
   // Fase 5 do processo: plano em NC não crítica, verificação de eficácia e escalonamento.
-  const [motivoPlano, setMotivoPlano] = useState("");
-  const [abrindoPlano, setAbrindoPlano] = useState(false);
-  const [resultado, setResultado] = useState("");
-  const [observacao, setObservacao] = useState("");
-  const [decisao, setDecisao] = useState("");
-  const [motivoDecisao, setMotivoDecisao] = useState("");
-  const [parecer, setParecer] = useState("");
+  const [motivoPlano, setMotivoPlano] = useRascunho(`plano-nc:${nc.id}`, "motivoPlano", "");
+  const [abrindoPlano, setAbrindoPlano] = useRascunho(`plano-nc:${nc.id}`, "abrindoPlano", false);
+  const [resultado, setResultado] = useRascunho(`plano-nc:${nc.id}`, "resultado", "");
+  const [observacao, setObservacao] = useRascunho(`plano-nc:${nc.id}`, "observacao", "");
+  const [decisao, setDecisao] = useRascunho(`plano-nc:${nc.id}`, "decisao", "");
+  const [motivoDecisao, setMotivoDecisao] = useRascunho(`plano-nc:${nc.id}`, "motivoDecisao", "");
+  const [parecer, setParecer] = useRascunho(`plano-nc:${nc.id}`, "parecer", "");
   const [pessoas, setPessoas] = useState([]);
 
   function aplicar(resposta) {
     setDados(resposta);
-    setForm(formularioDoPlano(resposta.plano));
+    definirBaseForm(formularioDoPlano(resposta.plano));
   }
 
   useEffect(() => {
     let ativo = true;
     obterPlanoAcao(nc.id)
-      .then((resposta) => { if (ativo) aplicar(resposta); })
+      .then((resposta) => {
+        if (!ativo) return;
+        setDados(resposta);
+        definirBaseForm(formularioDoPlano(resposta.plano));
+      })
       .catch((e) => {
         if (!ativo) return;
         // Sem permissão de leitura: o painel simplesmente não aparece.
@@ -100,7 +105,7 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
       })
       .finally(() => { if (ativo) setCarregando(false); });
     return () => { ativo = false; };
-  }, [nc.id, nc.status, nc.critica]);
+  }, [nc.id, nc.status, nc.critica, definirBaseForm]);
 
   const podeAlimentar = !!dados?.permissoes?.alimentar_plano;
   useEffect(() => {
@@ -113,7 +118,10 @@ export default function PainelPlanoAcao({ nc, aoAlterarNc }) {
     setSucesso("");
     setEnviando(chave);
     try {
-      aplicar(await acao());
+      const resposta = await acao();
+      // Salvo no servidor: o rascunho deste painel deixa de valer.
+      limparRascunho(`plano-nc:${nc.id}`);
+      aplicar(resposta);
       setSucesso(mensagemSucesso);
       if (alteraNc) await aoAlterarNc?.();
       return true;

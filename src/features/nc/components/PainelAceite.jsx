@@ -6,6 +6,7 @@ import { ErroApi } from "../../../lib/api/client/api.js";
 import Botao from "../../../components/ui/Botao.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import { formatarPrazo } from "../../../lib/utils/formato.js";
+import { limparRascunho, useRascunho } from "../../../lib/utils/rascunho.js";
 
 const FRASE_ESPERADA = "Li e concordo com a não conformidade e com o feedback aplicado";
 
@@ -17,10 +18,10 @@ const FRASE_ESPERADA = "Li e concordo com a não conformidade e com o feedback a
 export default function PainelAceite({ nc, aoConcluir }) {
   const prazo = nc.feedback_estruturado?.prazo_aceite;
   const naoRespondida = nc.status === "nao_respondida";
-  const [texto, setTexto] = useState("");
+  const [texto, setTexto] = useRascunho(`aceite-nc:${nc.id}`, "texto", "");
   // Fase 4 do processo: a Qualidade pode liberar o posicionamento do colaborador (opcional para ele).
   const posicionamentoLiberado = nc.feedback_estruturado?.posicionamento_liberado === true;
-  const [posicionamento, setPosicionamento] = useState("");
+  const [posicionamento, setPosicionamento] = useRascunho(`aceite-nc:${nc.id}`, "posicionamento", "");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -29,6 +30,7 @@ export default function PainelAceite({ nc, aoConcluir }) {
     setEnviando(true);
     try {
       const atualizada = await aceitarNc(nc.id, texto, posicionamentoLiberado ? posicionamento : "");
+      limparRascunho(`aceite-nc:${nc.id}`);
       aoConcluir(atualizada);
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível registrar o aceite.");

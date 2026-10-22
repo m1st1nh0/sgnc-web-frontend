@@ -18,6 +18,7 @@ import {
   listarCausasGestao,
   listarSolicitacoesCausa,
 } from "@/features/nc/client/ncService.js";
+import { useRascunho } from "../../../lib/utils/rascunho.js";
 
 function mensagemErro(error) {
   return error?.message || "Não foi possível carregar a governança de causas.";
@@ -28,13 +29,13 @@ export default function CausasPage() {
   const [catalogo, setCatalogo] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [solicitacaoEmDecisao, setSolicitacaoEmDecisao] = useState(null);
-  const [causasExistentes, setCausasExistentes] = useState({});
-  const [motivosRejeicao, setMotivosRejeicao] = useState({});
+  const [causasExistentes, setCausasExistentes] = useRascunho("causas", "causasExistentes", {});
+  const [motivosRejeicao, setMotivosRejeicao] = useRascunho("causas", "motivosRejeicao", {});
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
-  const [novaCausa, setNovaCausa] = useState("");
-  const [causaEditando, setCausaEditando] = useState(null);
-  const [descricaoEditando, setDescricaoEditando] = useState("");
+  const [novaCausa, setNovaCausa] = useRascunho("causas", "novaCausa", "");
+  const [causaEditando, setCausaEditando] = useRascunho("causas", "causaEditando", null);
+  const [descricaoEditando, setDescricaoEditando] = useRascunho("causas", "descricaoEditando", "");
   const [salvandoCatalogo, setSalvandoCatalogo] = useState(false);
   const [causaEmAtualizacao, setCausaEmAtualizacao] = useState(null);
   const [causaParaExcluir, setCausaParaExcluir] = useState(null);

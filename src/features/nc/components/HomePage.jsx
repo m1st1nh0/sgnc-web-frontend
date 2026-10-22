@@ -21,6 +21,7 @@ import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
 import { formatarData } from "../../../lib/utils/formato.js";
 import EtapasNc from "./EtapasNc.jsx";
 import HistoricoNc from "./HistoricoNc.jsx";
+import { useRascunho } from "../../../lib/utils/rascunho.js";
 
 const STATUS_EM_ANDAMENTO = [
   "aguardando_feedback",
@@ -60,9 +61,9 @@ export default function HomePage() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [atualizando, setAtualizando] = useState(false);
-  const [abaAtiva, setAbaAtiva] = useState("todas");
-  const [filtroCardAtivo, setFiltroCardAtivo] = useState(null);
-  const [termoBusca, setTermoBusca] = useState("");
+  const [abaAtiva, setAbaAtiva] = useRascunho("inicio", "abaAtiva", "todas");
+  const [filtroCardAtivo, setFiltroCardAtivo] = useRascunho("inicio", "filtroCardAtivo", null);
+  const [termoBusca, setTermoBusca] = useRascunho("inicio", "termoBusca", "");
   const [selecionadaId, setSelecionadaId] = useState(null);
 
   async function carregar() {

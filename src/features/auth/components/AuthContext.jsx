@@ -1,11 +1,14 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { logoutAction } from "@/app/actions/auth";
 import { EVENTO_SESSAO_EXPIRADA } from "../../../lib/api/client/api.js";
+import { limparTodosRascunhos, prepararRascunhos } from "../../../lib/utils/rascunho.js";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children, initialUser }) {
   const [usuario, setUsuario] = useState(initialUser ?? null);
+  // Antes dos filhos restaurarem rascunhos: os de outro usuário nesta aba são descartados.
+  useState(() => prepararRascunhos(initialUser?.id));
 
   useEffect(() => {
     function encerrarSessaoExpirada() {
@@ -20,6 +23,7 @@ export function AuthProvider({ children, initialUser }) {
   }, []);
 
   async function sair(senhaAlterada = false) {
+    limparTodosRascunhos();
     await logoutAction(senhaAlterada);
   }
 

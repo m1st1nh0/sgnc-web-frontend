@@ -19,6 +19,7 @@ import { useOnboarding } from "../../onboarding/components/OnboardingContext.jsx
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { ehQualidade } from "../../../lib/auth/papeis.js";
 import { focarPrimeiroErro, resumoErros } from "../client/errosFormulario.js";
+import { useRascunho } from "../../../lib/utils/rascunho.js";
 
 const IDS_CAMPOS = {
   colaborador: "busca-colaborador",
@@ -62,12 +63,12 @@ export default function AbrirNcPage() {
   const { concluirEtapa } = useOnboarding();
   const { usuario } = useAuth();
 
-  const [chamado, setChamado] = useState("");
-  const [colaboradorId, setColaboradorId] = useState("");
-  const [criticidade, setCriticidade] = useState("Baixa");
-  const [descricao, setDescricao] = useState("");
-  const [causas, setCausas] = useState([]);
-  const [causaPendente, setCausaPendente] = useState("");
+  const [chamado, setChamado] = useRascunho("abrir-nc", "chamado", "");
+  const [colaboradorId, setColaboradorId] = useRascunho("abrir-nc", "colaboradorId", "");
+  const [criticidade, setCriticidade] = useRascunho("abrir-nc", "criticidade", "Baixa");
+  const [descricao, setDescricao] = useRascunho("abrir-nc", "descricao", "");
+  const [causas, setCausas] = useRascunho("abrir-nc", "causas", []);
+  const [causaPendente, setCausaPendente] = useRascunho("abrir-nc", "causaPendente", "");
   const [usuarios, setUsuarios] = useState([]);
   const [causasConhecidas, setCausasConhecidas] = useState([]);
   const [carregandoDados, setCarregandoDados] = useState(true);
@@ -76,7 +77,7 @@ export default function AbrirNcPage() {
   const [avisoCausa, setAvisoCausa] = useState("");
   const [errosCampo, setErrosCampo] = useState({});
   const [arquivosEvidencias, setArquivosEvidencias] = useState([]);
-  const [buscaColaborador, setBuscaColaborador] = useState("");
+  const [buscaColaborador, setBuscaColaborador] = useRascunho("abrir-nc", "buscaColaborador", "");
   const [etapaEnvio, setEtapaEnvio] = useState("");
   const [previewArquivo, setPreviewArquivo] = useState(null);
 

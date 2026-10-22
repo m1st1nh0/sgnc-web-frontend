@@ -26,6 +26,7 @@ import CampoTextoArea from "../../../components/ui/CampoTextoArea.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import { ehQualidade } from "../../../lib/auth/papeis.js";
+import { limparRascunho, useRascunho } from "../../../lib/utils/rascunho.js";
 
 const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
 
@@ -34,11 +35,11 @@ export default function EditarNcPage() {
   const router = useRouter();
   const { usuario } = useAuth();
 
-  const [chamado, setChamado] = useState("");
-  const [colaboradorId, setColaboradorId] = useState("");
-  const [criticidade, setCriticidade] = useState("Baixa");
-  const [descricao, setDescricao] = useState("");
-  const [causas, setCausas] = useState([]);
+  const [chamado, setChamado, baseChamado] = useRascunho(`editar-nc:${id}`, "chamado", "");
+  const [colaboradorId, setColaboradorId, baseColaboradorId] = useRascunho(`editar-nc:${id}`, "colaboradorId", "");
+  const [criticidade, setCriticidade, baseCriticidade] = useRascunho(`editar-nc:${id}`, "criticidade", "Baixa");
+  const [descricao, setDescricao, baseDescricao] = useRascunho(`editar-nc:${id}`, "descricao", "");
+  const [causas, setCausas, baseCausas] = useRascunho(`editar-nc:${id}`, "causas", []);
 
   const [usuarios, setUsuarios] = useState([]);
   const [causasConhecidas, setCausasConhecidas] = useState([]);
@@ -48,7 +49,7 @@ export default function EditarNcPage() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
   const [errosCampo, setErrosCampo] = useState({});
-  const [causaPendente, setCausaPendente] = useState("");
+  const [causaPendente, setCausaPendente] = useRascunho(`editar-nc:${id}`, "causaPendente", "");
 
   useEffect(() => {
     async function carregar() {
@@ -70,11 +71,11 @@ export default function EditarNcPage() {
           return;
         }
 
-        setChamado(nc.chamado ?? "");
-        setColaboradorId(nc.colaborador_id ?? "");
-        setCriticidade(nc.criticidade ?? "Baixa");
-        setDescricao(nc.descricao ?? "");
-        setCausas(nc.causas ?? []);
+        baseChamado(nc.chamado ?? "");
+        baseColaboradorId(nc.colaborador_id ?? "");
+        baseCriticidade(nc.criticidade ?? "Baixa");
+        baseDescricao(nc.descricao ?? "");
+        baseCausas(nc.causas ?? []);
         setUsuarios(listaUsuarios);
         setCausasConhecidas(listaCausas);
       } catch (e) {
@@ -84,7 +85,7 @@ export default function EditarNcPage() {
       }
     }
     carregar();
-  }, [id, usuario]);
+  }, [id, usuario, baseChamado, baseColaboradorId, baseCriticidade, baseDescricao, baseCausas]);
 
   useEffect(() => {
     // Causas cadastradas em Gestão de causas (outra aba) aparecem ao voltar para o formulário.
@@ -133,6 +134,7 @@ export default function EditarNcPage() {
         descricao,
         causas,
       });
+      limparRascunho(`editar-nc:${id}`);
       router.push(`/nc/${id}`);
     } catch (e) {
       if (e instanceof ErroApi && e.campo && IDS_CAMPOS[e.campo]) {

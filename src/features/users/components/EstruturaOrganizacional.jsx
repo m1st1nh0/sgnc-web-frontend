@@ -11,6 +11,7 @@ import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import { ErroApi } from "../../../lib/api/client/api.js";
 import { NOME_PAPEL } from "../../../lib/auth/papeis.js";
 import { caminhoDepartamento, temCicloDepartamento } from "../../../lib/estrutura/departamentos.js";
+import { limparRascunho, useRascunho } from "../../../lib/utils/rascunho.js";
 import { listarEstrutura, listarLiderancas, salvarCargo, salvarDepartamento } from "../client/usuarioService.js";
 
 function contarPessoas(total) {
@@ -30,8 +31,8 @@ export default function EstruturaOrganizacional() {
   const [erro, setErro] = useState("");
   const [mostrarInativos, setMostrarInativos] = useState(false);
   // Formulário aberto: { tipo: "departamento" | "cargo", item?: existente }.
-  const [formulario, setFormulario] = useState(null);
-  const [aberto, setAberto] = useState(false);
+  const [formulario, setFormulario] = useRascunho("estrutura", "formulario", null);
+  const [aberto, setAberto] = useRascunho("estrutura", "aberto", false);
 
   async function carregar() {
     const [dados, lideres] = await Promise.all([listarEstrutura(), listarLiderancas()]);
@@ -79,6 +80,12 @@ export default function EstruturaOrganizacional() {
   function abrir(dados) {
     setFormulario(dados);
     setAberto(true);
+  }
+
+  // Cancelar ou salvar descarta o que foi digitado no modal.
+  function fechar() {
+    setAberto(false);
+    limparRascunho("estrutura");
   }
 
   async function alternarAtivo(tipo, item) {
@@ -183,16 +190,16 @@ export default function EstruturaOrganizacional() {
         )}
       </section>
 
-      <Modal show={aberto} onHide={() => setAberto(false)} centered>
+      <Modal show={aberto} onHide={fechar} centered>
         {formulario && (
           <FormularioEstrutura
             key={`${formulario.tipo}-${formulario.item?.id ?? "novo"}`}
             formulario={formulario}
             departamentos={estrutura.departamentos}
             liderancas={liderancas}
-            aoFechar={() => setAberto(false)}
+            aoFechar={fechar}
             aoSalvar={async () => {
-              setAberto(false);
+              fechar();
               await carregar();
             }}
           />
@@ -205,11 +212,12 @@ export default function EstruturaOrganizacional() {
 function FormularioEstrutura({ formulario, departamentos, liderancas, aoFechar, aoSalvar }) {
   const { tipo, item } = formulario;
   const ehDepartamento = tipo === "departamento";
-  const [nome, setNome] = useState(item?.nome ?? "");
-  const [paiId, setPaiId] = useState(item?.departamento_pai_id ?? "");
-  const [responsavelId, setResponsavelId] = useState(item?.responsavel_id ?? "");
-  const [departamentoId, setDepartamentoId] = useState(item?.departamento_id ?? "");
-  const [lideranca, setLideranca] = useState(item?.lideranca ?? false);
+  const escopo = `estrutura:form:${tipo}:${item?.id ?? "novo"}`;
+  const [nome, setNome] = useRascunho(escopo, "nome", item?.nome ?? "");
+  const [paiId, setPaiId] = useRascunho(escopo, "paiId", item?.departamento_pai_id ?? "");
+  const [responsavelId, setResponsavelId] = useRascunho(escopo, "responsavelId", item?.responsavel_id ?? "");
+  const [departamentoId, setDepartamentoId] = useRascunho(escopo, "departamentoId", item?.departamento_id ?? "");
+  const [lideranca, setLideranca] = useRascunho(escopo, "lideranca", item?.lideranca ?? false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
