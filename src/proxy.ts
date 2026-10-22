@@ -17,6 +17,13 @@ const contentSecurityPolicy = (nonce: string) =>
     "upgrade-insecure-requests",
   ].join("; ");
 
+// Páginas que exigem sessão (grupo (app) e troca de senha). Rota nova autenticada entra aqui.
+const ROTAS_AUTENTICADAS = ["abrir-nc", "causas", "equipe", "insights", "medidas", "minhas-ncs", "nc", "relatorios", "trocar-senha", "usuarios"];
+
+function exigeSessao(pathname: string) {
+  return pathname === "/" || ROTAS_AUTENTICADAS.includes(pathname.split("/")[1]);
+}
+
 export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const csp = contentSecurityPolicy(nonce);
@@ -48,7 +55,15 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+  // Com cacheComponents a página começa a ser transmitida antes do layout checar a sessão,
+  // e o redirect() dele vira navegação no cliente; quem não tem sessão sai daqui com 307.
+  if (!data?.claims && exigeSessao(request.nextUrl.pathname)) {
+    const redirect = NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    redirect.headers.set("Content-Security-Policy", csp);
+    return redirect;
+  }
   response.headers.set("Content-Security-Policy", csp);
   return response;
 }
