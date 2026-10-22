@@ -12,6 +12,8 @@ export class ApiError extends Error {
 }
 
 export function apiErrorResponse(error: unknown) {
+  // Interrupções do próprio Next (prerender no build, redirect) carregam `digest` e não são erro da API.
+  if (error instanceof Error && typeof (error as { digest?: unknown }).digest === "string") throw error;
   if (error instanceof ApiError) {
     if (error.status >= 500) {
       const requestId = randomUUID();

@@ -13,6 +13,7 @@ import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
 import CampoTextoArea from "../../../components/ui/CampoTextoArea.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
+import { limparRascunho, useRascunho } from "../../../lib/utils/rascunho.js";
 
 const IDS_CAMPOS = {
   causa_raiz: "feedback-causa-raiz",
@@ -107,11 +108,11 @@ function HistoricoReincidencia({ ncId, orientativa = false }) {
 export default function PainelFeedback({ nc, aoConcluir }) {
   // Com análise de causa registrada (Fase 3), a causa raiz vem dela e não é editada aqui.
   const causaDaAnalise = nc.analise_causa || "";
-  const [campos, setCampos] = useState({
+  const [campos, setCampos] = useRascunho(`feedback-nc:${nc.id}`, "campos", {
     causa_raiz: causaDaAnalise, acao_combinada: "", responsavel_acao_id: "", prazo_acao: "", combinado: "",
     resumo_conversa: "", participantes: [], liberar_posicionamento: false,
   });
-  const [participanteEscolhido, setParticipanteEscolhido] = useState("");
+  const [participanteEscolhido, setParticipanteEscolhido] = useRascunho(`feedback-nc:${nc.id}`, "participanteEscolhido", "");
   const [usuarios, setUsuarios] = useState([]);
   const [arquivos, setArquivos] = useState([]);
   const [errosCampo, setErrosCampo] = useState({});
@@ -163,6 +164,7 @@ export default function PainelFeedback({ nc, aoConcluir }) {
           aviso = `${falhas} de ${arquivos.length} anexo(s) do feedback não puderam ser enviados. O feedback foi registrado normalmente.`;
         }
       }
+      limparRascunho(`feedback-nc:${nc.id}`);
       aoConcluir(atualizada, aviso);
     } catch (e) {
       if (e instanceof ErroApi && e.campo && IDS_CAMPOS[e.campo]) {

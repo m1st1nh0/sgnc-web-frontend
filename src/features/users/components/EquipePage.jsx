@@ -15,6 +15,7 @@ import { ehAdminSistema, ehQualidade, NOME_PAPEL } from "../../../lib/auth/papei
 import GestaoEquipes from "./GestaoEquipes.jsx";
 import EstruturaOrganizacional from "./EstruturaOrganizacional.jsx";
 import UsuariosPage from "./UsuariosPage.jsx";
+import { useRascunho } from "../../../lib/utils/rascunho.js";
 
 const ROTULOS_PAPEL = { ...NOME_PAPEL, supervisor: "Liderança" };
 
@@ -39,8 +40,8 @@ export default function EquipePage({ abaInicial }) {
     window.history.replaceState(null, "", valor === "equipes" ? "/equipe" : `/equipe?aba=${valor}`);
   }
   const [pessoas, setPessoas] = useState([]);
-  const [busca, setBusca] = useState("");
-  const [incluirInativos, setIncluirInativos] = useState(true);
+  const [busca, setBusca] = useRascunho("equipe-acessos", "busca", "");
+  const [incluirInativos, setIncluirInativos] = useRascunho("equipe-acessos", "incluirInativos", true);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 

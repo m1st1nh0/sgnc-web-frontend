@@ -16,6 +16,7 @@ import { NOME_PAPEL } from "../../../lib/auth/papeis.js";
 import { formatarDataHora } from "../../../lib/utils/formato.js";
 import { caminhoDepartamento } from "../../../lib/estrutura/departamentos.js";
 import { alterarEquipe, alterarPosicao, listarEquipe, listarEstrutura, listarHistoricoEquipe, listarLiderancas } from "../client/usuarioService.js";
+import { useRascunho } from "../../../lib/utils/rascunho.js";
 
 const SEM_LIDERANCA = "__sem_lideranca__";
 const FILTROS_PAPEL = [["", "Todos"], ["supervisor", "Supervisor"], ["funcionario", "Colaborador"]];
@@ -55,9 +56,9 @@ export default function GestaoEquipes() {
   const [erro, setErro] = useState("");
   // Confirmação de mudança aparece na linha da pessoa alterada, não no topo da página.
   const [alterado, setAlterado] = useState(null);
-  const [busca, setBusca] = useState("");
-  const [filtroPapel, setFiltroPapel] = useState("");
-  const [filtroDepartamento, setFiltroDepartamento] = useState("");
+  const [busca, setBusca] = useRascunho("equipes", "busca", "");
+  const [filtroPapel, setFiltroPapel] = useRascunho("equipes", "filtroPapel", "");
+  const [filtroDepartamento, setFiltroDepartamento] = useRascunho("equipes", "filtroDepartamento", "");
   const [estrutura, setEstrutura] = useState({ departamentos: [], cargos: [] });
   // Lideranças recolhidas na árvore; por padrão tudo aberto.
   const [recolhidos, setRecolhidos] = useState(() => new Set());

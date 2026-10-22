@@ -7,6 +7,9 @@ import "../redesign.css";
 const publicSans = Public_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--fonte-public-sans", display: "swap" });
 const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["500"], variable: "--fonte-plex-mono", display: "swap" });
 
+// Rotas autenticadas e dinâmicas: a navegação pode esperar o servidor, como antes do cacheComponents.
+export const instant = false;
+
 export const metadata = {
   title: "SGNC | Arquem Sistemas",
   description: "Sistema de gestão de não conformidades",

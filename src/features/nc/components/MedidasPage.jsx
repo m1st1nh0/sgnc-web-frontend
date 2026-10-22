@@ -17,6 +17,7 @@ import CampoTextoArea from "../../../components/ui/CampoTextoArea.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
+import { limparRascunho, useRascunho } from "../../../lib/utils/rascunho.js";
 
 function hojeEmSaoPaulo() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
@@ -24,14 +25,14 @@ function hojeEmSaoPaulo() {
 
 /** Uma medida com as ações da etapa atual; as ações não aparecem para o próprio colaborador (D19). */
 function CartaoMedida({ medida, aoAlterar }) {
-  const [modo, setModo] = useState(null); // "aprovar" | "reprovar" | "aplicar"
-  const [motivo, setMotivo] = useState("");
-  const [tipo, setTipo] = useState(medida.tipo);
+  const [modo, setModo] = useRascunho(`medida:${medida.id}`, "modo", null); // "aprovar" | "reprovar" | "aplicar"
+  const [motivo, setMotivo] = useRascunho(`medida:${medida.id}`, "motivo", "");
+  const [tipo, setTipo] = useRascunho(`medida:${medida.id}`, "tipo", medida.tipo);
   const tipoSugerido = medida.tipo_sugerido || medida.tipo;
   const trocouTipo = tipo !== tipoSugerido;
-  const [data, setData] = useState(hojeEmSaoPaulo());
-  const [dias, setDias] = useState("");
-  const [observacao, setObservacao] = useState("");
+  const [data, setData] = useRascunho(`medida:${medida.id}`, "data", hojeEmSaoPaulo());
+  const [dias, setDias] = useRascunho(`medida:${medida.id}`, "dias", "");
+  const [observacao, setObservacao] = useRascunho(`medida:${medida.id}`, "observacao", "");
   const [arquivo, setArquivo] = useState(null);
 
   function selecionarArquivo(event) {
@@ -43,8 +44,8 @@ function CartaoMedida({ medida, aoAlterar }) {
   }
   const [errosCampo, setErrosCampo] = useState({});
   // N4 (Fase 5 do processo): desfecho da avaliação de justa causa.
-  const [desfecho, setDesfecho] = useState("");
-  const [obsDesfecho, setObsDesfecho] = useState("");
+  const [desfecho, setDesfecho] = useRascunho(`medida:${medida.id}`, "desfecho", "");
+  const [obsDesfecho, setObsDesfecho] = useRascunho(`medida:${medida.id}`, "obsDesfecho", "");
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
   const situacao = situacaoDaMedida(medida.status);
@@ -57,6 +58,7 @@ function CartaoMedida({ medida, aoAlterar }) {
     setEnviando(true);
     try {
       await acao();
+      limparRascunho(`medida:${medida.id}`);
       setModo(null);
       aoAlterar();
     } catch (e) {

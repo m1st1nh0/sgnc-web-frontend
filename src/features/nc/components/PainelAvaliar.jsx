@@ -6,6 +6,7 @@ import { ErroApi } from "../../../lib/api/client/api.js";
 import Botao from "../../../components/ui/Botao.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import { AJUDA_TIPO_NC, ORIGENS_NC, TIPOS_NC, validarClassificacao } from "../../../lib/nc/classificacao.js";
+import { limparRascunho, useRascunho } from "../../../lib/utils/rascunho.js";
 
 /**
  * Exibido para o ADM quando a NC está aberta.
@@ -15,12 +16,12 @@ const CAMPOS_CLASSIFICACAO = new Set(["origem", "tipo_nc", "procedimento", "proc
 
 /** `semEvidencia`: a NC ainda não tem evidência da abertura, exigida para validar (Fase 4 do processo). */
 export default function PainelAvaliar({ nc, aoConcluir, bloqueado = false, semEvidencia = false }) {
-  const [decisao, setDecisao] = useState(null);
-  const [motivo, setMotivo] = useState("");
+  const [decisao, setDecisao] = useRascunho(`avaliar-nc:${nc.id}`, "decisao", null);
+  const [motivo, setMotivo] = useRascunho(`avaliar-nc:${nc.id}`, "motivo", "");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
   // Classificação feita pela Qualidade na validação (origem obrigatória; procedimento e link opcionais).
-  const [classificacao, setClassificacao] = useState({ origem: "", tipo_nc: "cobranca", procedimento: "", procedimento_url: "" });
+  const [classificacao, setClassificacao] = useRascunho(`avaliar-nc:${nc.id}`, "classificacao", { origem: "", tipo_nc: "cobranca", procedimento: "", procedimento_url: "" });
   const [errosCampo, setErrosCampo] = useState({});
   const alterar = (campo) => (e) => {
     setClassificacao((atual) => ({ ...atual, [campo]: e.target.value }));
@@ -43,6 +44,7 @@ export default function PainelAvaliar({ nc, aoConcluir, bloqueado = false, semEv
     setEnviando(true);
     try {
       const atualizada = await avaliarNc(nc.id, "validar", undefined, checagem.valor);
+      limparRascunho(`avaliar-nc:${nc.id}`);
       aoConcluir(atualizada);
     } catch (e) {
       if (e instanceof ErroApi && e.campo && CAMPOS_CLASSIFICACAO.has(e.campo)) {
@@ -66,6 +68,7 @@ export default function PainelAvaliar({ nc, aoConcluir, bloqueado = false, semEv
     setEnviando(true);
     try {
       const atualizada = await avaliarNc(nc.id, "invalidar", motivo);
+      limparRascunho(`avaliar-nc:${nc.id}`);
       aoConcluir(atualizada);
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível invalidar a NC.");

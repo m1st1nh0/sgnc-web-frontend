@@ -16,6 +16,7 @@ import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { ErroApi } from "../../../lib/api/client/api.js";
 import { comRetorno } from "../../../lib/utils/retorno.js";
 import { infoDoStatus } from "../client/statusNc.js";
+import { useRascunho } from "../../../lib/utils/rascunho.js";
 
 // Filtra por etapa: status legados equivalentes aparecem uma única vez.
 const STATUS = ["aberta", "aguardando_feedback", "aguardando_aceite", "nao_respondida", "em_plano_acao", "reaberta", "em_verificacao", "nao_eficaz", "escalada", "concluida", "invalidada", "validada"]
@@ -44,10 +45,10 @@ export default function MinhasNcsPage() {
   const [ncs, setNcs] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  const [status, setStatus] = useState("todos");
-  const [periodo, setPeriodo] = useState("30");
-  const [busca, setBusca] = useState("");
-  const [origem, setOrigem] = useState("abertas");
+  const [status, setStatus] = useRascunho("minhas-ncs", "status", "todos");
+  const [periodo, setPeriodo] = useRascunho("minhas-ncs", "periodo", "30");
+  const [busca, setBusca] = useRascunho("minhas-ncs", "busca", "");
+  const [origem, setOrigem] = useRascunho("minhas-ncs", "origem", "abertas");
   const [pessoas, setPessoas] = useState([]);
 
   useEffect(() => {
