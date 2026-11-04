@@ -89,3 +89,36 @@ test("R1: PDF com emoji, texto longo e várias páginas gera rodapé em todas", 
   const doc = await PDFDocument.load(bytes);
   expect(doc.getPageCount()).toBeGreaterThan(1);
 });
+
+test("R1: texto longo encurta sem cortar palavra e sem sobrar espaço", async () => {
+  const { encurtar } = await import("../src/lib/reports/pdf");
+  expect(encurtar("Apontou horas a mais", 40)).toBe("Apontou horas a mais");
+  expect(encurtar("Linha um\nlinha dois   com   espaços")).toBe("Linha um linha dois com espaços");
+  expect(encurtar("Colaborador lançou horas fora do padrão combinado na reunião", 30)).toBe("Colaborador lançou horas fora...");
+  // Palavra única e enorme: corta no limite, sem deixar a célula ilegível.
+  expect(encurtar("a".repeat(50), 10)).toBe(`${"a".repeat(10)}...`);
+  expect(encurtar(null)).toBe("");
+});
+
+test("R1: chamado e erros apontados aparecem no PDF, no Excel e no CSV", () => {
+  const resumo = readFileSync("src/lib/reports/resumo-pdf.ts", "utf8");
+  const planilhas = readFileSync("src/lib/reports/planilhas.ts", "utf8");
+  // Resumo gerencial: as duas colunas na lista de NCs, com a descrição encurtada.
+  expect(resumo).toContain('{ titulo: "Chamado"');
+  expect(resumo).toContain('{ titulo: "Erros apontados"');
+  expect(resumo).toContain("encurtar(comoTextoSimples(nc.descricao, nc.descricao_formato), 160)");
+  // Relatório da NC: chamado no resumo e a descrição sob o título novo.
+  expect(service).toContain('writer.line("Chamado", nc.chamado)');
+  expect(service).toContain('writer.heading("Erros apontados")');
+  // Relato com imagens no meio sai como texto nos relatórios ([imagem] no lugar da figura).
+  expect(service).toContain("comoTextoSimples(nc.descricao, nc.descricao_formato)");
+  expect(planilhas).toContain("comoTextoSimples(nc.descricao, nc.descricao_formato)");
+  // Planilhas: coluna no CSV simples e na aba de NCs do Excel.
+  expect(planilhas).toContain('"Chamado", "Causa", "Erros apontados"');
+  expect(planilhas).toContain('{ titulo: "Erros apontados", largura: 50, tipo: "textoLongo" }');
+  // Campo lido do banco para os dois.
+  expect(readFileSync("src/lib/reports/dados.ts", "utf8")).toContain("chamado, descricao, descricao_formato");
+  // Lista na tela de relatórios.
+  expect(readFileSync("src/features/reports/components/RelatoriosPage.jsx", "utf8")).toContain('<th scope="col">Erros apontados</th>');
+  expect(readFileSync("src/lib/analytics/drilldown.ts", "utf8")).toContain("chamado, descricao, descricao_formato");
+});

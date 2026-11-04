@@ -6,19 +6,16 @@ import { ApiError } from "@/lib/api/error";
 import { buscarNc } from "@/lib/nc/service";
 import { podeAnexarAoFeedback, podeAnexarEvidencia, podeExcluirEvidencia } from "@/lib/permissions/nc";
 import { createAdminClient } from "@/lib/supabase/admin";
+// Mesmas regras que o formulário aplica antes de enviar (formatos e 15 MB).
+import { EXTENSOES_ANEXO, MENSAGEM_FORMATO, TAMANHO_MAXIMO_ANEXO, extensaoDoArquivo } from "@/lib/nc/anexos";
 
 const BUCKET = "evidencias";
-const MAX_SIZE = 15 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "pdf", "doc", "docx", "xlsx"]);
-
 
 function validateFile(file: File) {
-  const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : "";
-  if (!extension || !ALLOWED_EXTENSIONS.has(extension)) {
-    throw new ApiError(`Tipo de arquivo não permitido. Aceitos: ${[...ALLOWED_EXTENSIONS].sort().map((item) => `.${item}`).join(", ")}`);
-  }
+  const extension = extensaoDoArquivo(file.name);
+  if (!extension || !EXTENSOES_ANEXO.includes(extension)) throw new ApiError(MENSAGEM_FORMATO);
   if (file.size === 0) throw new ApiError("O arquivo está vazio.", 422);
-  if (file.size > MAX_SIZE) throw new ApiError("Arquivo maior que 15 MB.");
+  if (file.size > TAMANHO_MAXIMO_ANEXO) throw new ApiError("Arquivo maior que 15 MB.");
 }
 
 export async function listarEvidencias(ncId: number) {
@@ -30,6 +27,22 @@ export async function listarEvidencias(ncId: number) {
     const { data: signed } = await admin.storage.from(BUCKET).createSignedUrl(evidence.caminho_storage, 600);
     return { ...evidence, url_temporaria: signed?.signedUrl ?? null };
   }));
+}
+
+/**
+ * Endereço temporário do arquivo de uma evidência desta NC, depois da mesma
+ * checagem de acesso da NC. Usado pela rota que serve as imagens do relato.
+ */
+export async function urlDaEvidencia(ncId: number, evidenciaId: number) {
+  await buscarNc(ncId);
+  if (!Number.isInteger(ncId) || !Number.isInteger(evidenciaId)) throw new ApiError("Evidência não encontrada.", 404);
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("evidencias").select("caminho_storage")
+    .eq("id", evidenciaId).eq("nc_id", ncId).maybeSingle();
+  if (error || !data) throw new ApiError("Evidência não encontrada.", 404);
+  const { data: assinada } = await admin.storage.from(BUCKET).createSignedUrl(data.caminho_storage, 600);
+  if (!assinada?.signedUrl) throw new ApiError("Não foi possível abrir a evidência.", 500);
+  return assinada.signedUrl;
 }
 
 export async function anexarEvidencia(ncId: number, formData: FormData) {
@@ -63,8 +76,12 @@ export async function anexarEvidencia(ncId: number, formData: FormData) {
     upsert: false,
   });
   if (uploadError) throw new ApiError("Não foi possível enviar a evidência.", 500);
+  // Imagem inserida no meio do relato: fica marcada para não se confundir com
+  // os anexos soltos da abertura (o texto a referencia pelo id).
+  const noRelato = String(formData.get("no_relato") ?? "") === "1";
   const { data, error } = await admin.from("evidencias").insert({
     nc_id: ncId, caminho_storage: path, nome_original: file.name, enviado_por: user.id, feedback_id: feedbackId,
+    no_relato: noRelato,
   }).select("*").single();
   if (error || !data) {
     await admin.storage.from(BUCKET).remove([path]);

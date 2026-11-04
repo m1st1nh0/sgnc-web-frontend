@@ -28,12 +28,12 @@ const dados: DadosPlanilha = {
   agora,
 };
 
-test("R3: CSV simples tem 15 colunas, ordem de ação, líder, medida e link", () => {
+test("R3: CSV simples tem 16 colunas, ordem de ação, líder, medida e link", () => {
   const linhas = montarCsvSimples(dados).replace(/^﻿/, "").split("\r\n");
-  expect(CABECALHO_CSV_SIMPLES).toHaveLength(15);
+  expect(CABECALHO_CSV_SIMPLES).toHaveLength(16);
   expect(linhas[0]).toBe(CABECALHO_CSV_SIMPLES.map((titulo) => `"${titulo}"`).join(";"));
   expect(linhas.slice(1).map((linha) => linha.split(";")[0])).toEqual(['"11"', '"12"', '"5"']);
-  expect(linhas[1]).toBe('"11";"10/10/2026";"Aguardando aceite";"3";"teste funcionário";"Suporte";"Supervisor Suporte";"Baixa";"1232";"Apontamento de horas incoerente";"3ª";"13/10/2026 18:00";"Aguardando aceite";"";"https://sgnc.example/nc/11"');
+  expect(linhas[1]).toBe('"11";"10/10/2026";"Aguardando aceite";"3";"teste funcionário";"Suporte";"Supervisor Suporte";"Baixa";"1232";"Apontamento de horas incoerente";"Teste";"3ª";"13/10/2026 18:00";"Aguardando aceite";"";"https://sgnc.example/nc/11"');
   expect(linhas[2]).toContain('"\'=1+1"');
   expect(linhas[2]).toContain('"Advertência (passível de medida)"');
   expect(linhas[3]).toContain('"Aceito no prazo"');

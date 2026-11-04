@@ -20,10 +20,18 @@ assert.match(abertura, /A busca apenas filtra os resultados/);
 assert.doesNotMatch(abertura, /<option value="">Selecione/);
 assert.match(abertura, /PreviewImagem/);
 assert.match(abertura, /URL\.createObjectURL/);
-assert.match(abertura, /Visualizar/);
 assert.match(abertura, /await Promise\.all/);
-assert.match(abertura, /type="file"\s+multiple\s+accept=\{FORMATOS_EVIDENCIA\}/);
-assert.match(abertura, /\[\.\.\.atuais, \.\.\.novosArquivos\]/);
+// Seleção, arrastar e colar ficam na área de anexos compartilhada, que também
+// deduplica os arquivos e valida formato e tamanho antes do envio.
+assert.match(abertura, /<AreaAnexos/);
+assert.match(abertura, /aoVisualizar=\{setPreviewArquivo\}/);
+const areaAnexos = readFileSync("src/components/ui/AreaAnexos.jsx", "utf8");
+const regrasAnexos = readFileSync("src/lib/nc/anexos.js", "utf8");
+assert.match(areaAnexos, /type="file"\s+multiple=\{multiple\}\s+accept=\{accept\}/);
+assert.match(areaAnexos, /Visualizar/);
+assert.match(areaAnexos, /onDrop=\{aoSoltar\}/);
+assert.match(areaAnexos, /onPaste=\{aoColar\}/);
+assert.match(regrasAnexos, /export function juntarAnexos/);
 assert.match(abertura, /Evidências<\/dt><dd>\{arquivosEvidencias\.length\}/);
 assert.match(abertura, /Revise antes de abrir/);
 assert.match(abertura, /Enviando .* evidência/);

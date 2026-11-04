@@ -16,6 +16,7 @@ import { SUPERVISOR_VISIBLE_NC_STATUSES } from "@/lib/permissions/nc-scope";
 import { ehQualidade } from "@/lib/auth/papeis";
 import { situacaoDoAceite } from "@/lib/nc/reincidencia";
 import { ROTULO_ACEITE, dataBr, dataHoraBr, periodoBr, plural, rotuloSituacaoMedida, rotuloStatus, rotuloTipoMedida } from "./formato";
+import { comoTextoSimples } from "@/lib/nc/texto-rico";
 
 type Row = Record<string, any>;
 
@@ -26,7 +27,7 @@ export async function gerarPdfNc(id: number) {
   const nc = await buscarNc(id) as Row;
   const writer = await pdfWriter("Relatório de Não Conformidade", `NC #${id}`);
   writer.heading("Resumo"); writer.line("Status", rotuloStatus(nc.status)); writer.line("Criticidade", nc.criticidade); writer.line("Data", dataBr(nc.data)); writer.line("Chamado", nc.chamado); writer.line("Colaborador", nc.colaborador); writer.line("Setor", nc.setor);
-  writer.heading("Descrição"); writer.line("Registro", nc.descricao);
+  writer.heading("Erros apontados"); writer.line("Registro", comoTextoSimples(nc.descricao, nc.descricao_formato));
   writer.heading("Causas"); writer.line("Relacionadas", (nc.causas ?? []).join(" | ") || "Nenhuma");
   if (nc.origem) {
     writer.heading("Classificação"); writer.line("Origem", ORIGENS_NC[nc.origem as keyof typeof ORIGENS_NC] ?? nc.origem); writer.line("Tipo", TIPOS_NC[nc.tipo_nc as keyof typeof TIPOS_NC] ?? nc.tipo_nc);

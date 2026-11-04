@@ -44,7 +44,7 @@ export async function ultimosFeedbacks(ncIds: number[]) {
   return result;
 }
 
-const CAMPOS_NC = "id, data, status, colaborador_id, colaborador, setor, criticidade, critica, chamado, descricao, criado_em, enviado_em, validado_em, feedback_aplicado_em, aceito_em, aceito_fora_prazo, decidido_em";
+const CAMPOS_NC = "id, data, status, colaborador_id, colaborador, setor, criticidade, critica, chamado, descricao, descricao_formato, criado_em, enviado_em, validado_em, feedback_aplicado_em, aceito_em, aceito_fora_prazo, decidido_em";
 
 export type Recorte = Awaited<ReturnType<typeof carregarRecorte>>;
 

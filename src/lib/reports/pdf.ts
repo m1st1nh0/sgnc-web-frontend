@@ -51,6 +51,15 @@ export function splitText(text: string, font: PDFFont, size: number, maxWidth: n
   return lines.length ? lines : ["-"];
 }
 
+/** Encurta o texto para caber numa célula de tabela, sem cortar palavra pela metade. */
+export function encurtar(texto: unknown, limite = 180) {
+  const limpo = String(texto ?? "").replace(/\s+/g, " ").trim();
+  if (limpo.length <= limite) return limpo;
+  const corte = limpo.slice(0, limite);
+  const espaco = corte.lastIndexOf(" ");
+  return `${(espaco > limite * 0.6 ? corte.slice(0, espaco) : corte).trimEnd()}...`;
+}
+
 export type Coluna = { titulo: string; largura: number; alinhar?: "esquerda" | "direita" };
 export type Cartao = { rotulo: string; valor: string; detalhe?: string; comparacao?: string };
 export type Barra = { rotulo: string; valor: number; cor?: RGB };

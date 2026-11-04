@@ -76,6 +76,8 @@ Esqueceu a senha ou a conta está bloqueada? Fale com o Administrador do sistema
 
 No computador, a seta ao lado do logotipo recolhe ou expande o menu, e o sistema lembra a sua escolha.
 
+- **Abas internas:** cada módulo que você abre vira uma aba acima do conteúdo. A aba ativa fica destacada; clicar numa aba devolve a tela exatamente como você deixou (filtros, busca e página). O **×** fecha a aba, e o sistema leva você para a aba seguinte. As abas voltam depois de recarregar a página, e você navega entre elas pelo teclado (Tab para chegar à barra, setas ← → para passar de aba, Home e End para as pontas). Telas de detalhe, como a de uma NC, abrem dentro da aba de onde você veio. Se houver um formulário preenchido e não enviado, o sistema pede confirmação antes de fechar a aba.
+
 ### O painel inicial
 
 O painel mostra:
@@ -129,7 +131,7 @@ Qualquer perfil pode abrir uma NC sobre qualquer colaborador ativo.
    - escolha a **criticidade**;
    - escreva a **descrição** do fato;
    - selecione uma ou mais **causas** da lista.
-4. **Evidências** (opcional): anexe imagens, PDF, Word ou Excel, com até 15 MB cada. Antes de enviar, você pode pré-visualizar o arquivo.
+4. **Evidências** (opcional): anexe imagens, PDF, Word ou Excel, com até 15 MB cada. Há três formas de anexar: selecionar no campo, **arrastar** os arquivos até a área de anexos ou **colar** uma imagem da área de transferência com **Ctrl+V** (prático para prints de tela). O mesmo arquivo não entra duas vezes, e formato ou tamanho fora do permitido aparecem com a explicação na hora. Antes de enviar, você pode pré-visualizar o arquivo.
 5. Confira o resumo em **"Revise antes de abrir"** e confirme.
 
 Depois de abrir, a tela mostra a confirmação e o próximo passo ("a Qualidade avalia"). Você acompanha a NC pelo detalhe ou por **Minhas NCs**.
