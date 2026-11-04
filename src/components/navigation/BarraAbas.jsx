@@ -86,9 +86,9 @@ export default function BarraAbas({ modulos, usuarioId }) {
     const passos = { ArrowRight: 1, ArrowLeft: -1, Home: "inicio", End: "fim" };
     const acao = passos[evento.key];
     if (acao === undefined) return;
-    const focaveis = Array.from(listaRef.current?.querySelectorAll(".sg-aba__link") ?? []);
+    const focaveis = Array.from(listaRef.current?.querySelectorAll(".sg-barra-abas__link") ?? []);
     if (!focaveis.length) return;
-    const atual = focaveis.indexOf(document.activeElement?.closest(".sg-aba__link"));
+    const atual = focaveis.indexOf(document.activeElement?.closest(".sg-barra-abas__link"));
     let proximo;
     if (acao === "inicio") proximo = 0;
     else if (acao === "fim") proximo = focaveis.length - 1;
@@ -101,19 +101,19 @@ export default function BarraAbas({ modulos, usuarioId }) {
 
   return (
     <>
-      <nav className="sg-abas" aria-label="Abas abertas">
-        <ul className="sg-abas__lista" ref={listaRef} onKeyDown={aoTeclar}>
+      <nav className="sg-barra-abas" aria-label="Abas abertas">
+        <ul className="sg-barra-abas__lista" ref={listaRef} onKeyDown={aoTeclar}>
           {abas.map((aba) => {
             const atual = aba.href === ativa;
             return (
-              <li key={aba.href} className={`sg-aba${atual ? " is-active" : ""}`}>
-                <Link href={aba.url} className="sg-aba__link" aria-current={atual ? "page" : undefined}>
+              <li key={aba.href} className={`sg-barra-abas__aba${atual ? " is-active" : ""}`}>
+                <Link href={aba.url} className="sg-barra-abas__link" aria-current={atual ? "page" : undefined}>
                   <Icon name={aba.icon} />
                   <span>{aba.label}</span>
                 </Link>
                 <button
                   type="button"
-                  className="sg-aba__fechar"
+                  className="sg-barra-abas__fechar"
                   onClick={() => pedirFechamento(aba)}
                   aria-label={`Fechar aba ${aba.label}`}
                   title={`Fechar aba ${aba.label}`}

@@ -97,14 +97,16 @@ test("abas: barra acessível, com aba atual anunciada e navegação por teclado"
 
 test("abas: a barra tem estilo próprio, foco visível e cabe no celular", () => {
   const css = readFileSync("src/redesign.css", "utf8");
+  // Prefixo próprio: .sg-abas já é das pílulas de sub-abas das telas e não pode ser redefinida aqui.
+  expect(css).not.toMatch(/\n\.sg-abas \{ position: sticky/);
   // Fica no topo do conteúdo e rola na horizontal quando há muitas abas.
-  expect(css).toContain(".sg-abas {");
-  expect(css).toMatch(/\.sg-abas\s*\{[^}]*position: sticky/);
-  expect(css).toMatch(/\.sg-abas__lista\s*\{[^}]*overflow-x: auto/);
+  expect(css).toContain(".sg-barra-abas {");
+  expect(css).toMatch(/\.sg-barra-abas\s*\{[^}]*position: sticky/);
+  expect(css).toMatch(/\.sg-barra-abas__lista\s*\{[^}]*overflow-x: auto/);
   // Alvo de toque e indicação da aba ativa.
-  expect(css).toMatch(/\.sg-aba__link\s*\{[^}]*min-height: 40px/);
-  expect(css).toMatch(/\.sg-aba\.is-active\s*\{[^}]*box-shadow: inset 0 3px 0/);
-  expect(css).toContain(".sg-aba__link:focus-visible, .sg-aba__fechar:focus-visible");
+  expect(css).toMatch(/\.sg-barra-abas__link\s*\{[^}]*min-height: 40px/);
+  expect(css).toMatch(/\.sg-barra-abas__aba\.is-active\s*\{[^}]*box-shadow: inset 0 3px 0/);
+  expect(css).toContain(".sg-barra-abas__link:focus-visible, .sg-barra-abas__fechar:focus-visible");
   // No celular a barra desce para baixo da barra fixa e as abas estreitam.
-  expect(css).toMatch(/@media \(max-width: 600px\) \{\s*\.sg-abas \{ top: 56px; \}/);
+  expect(css).toMatch(/@media \(max-width: 600px\) \{\s*\.sg-barra-abas \{ top: 56px; \}/);
 });

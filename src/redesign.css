@@ -3012,16 +3012,17 @@ textarea:focus-visible {
 .sg-tag-sugestao:focus-visible { outline: 3px solid #287c82; outline-offset: -3px; }
 
 /* ==========================================================================
-   Abas internas dos módulos (barra acima do conteúdo)
+   Abas internas dos módulos (barra acima do conteúdo).
+   Prefixo próprio: .sg-abas já é das pílulas de sub-abas das telas.
    ========================================================================== */
-.sg-abas {
+.sg-barra-abas {
   position: sticky;
   z-index: 1020;
   top: 0;
   background: var(--fundo-card);
   border-bottom: 1px solid var(--borda);
 }
-.sg-abas__lista {
+.sg-barra-abas__lista {
   display: flex;
   align-items: stretch;
   gap: 4px;
@@ -3033,7 +3034,7 @@ textarea:focus-visible {
   scrollbar-width: thin;
   overscroll-behavior-x: contain;
 }
-.sg-aba {
+.sg-barra-abas__aba {
   display: flex;
   min-width: 0;
   max-width: 260px;
@@ -3043,7 +3044,7 @@ textarea:focus-visible {
   border-bottom: 0;
   border-radius: 8px 8px 0 0;
 }
-.sg-aba__link {
+.sg-barra-abas__link {
   display: flex;
   min-width: 0;
   min-height: 40px;
@@ -3055,19 +3056,19 @@ textarea:focus-visible {
   font-weight: 500;
   text-decoration: none;
 }
-.sg-aba__link span {
+.sg-barra-abas__link span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.sg-aba__link svg { width: 16px; height: 16px; flex: 0 0 16px; }
-.sg-aba:hover { background: var(--fundo-hover); }
-.sg-aba.is-active {
+.sg-barra-abas__link svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.sg-barra-abas__aba:hover { background: var(--fundo-hover); }
+.sg-barra-abas__aba.is-active {
   background: var(--fundo-card);
   box-shadow: inset 0 3px 0 var(--cor-norma);
 }
-.sg-aba.is-active .sg-aba__link { color: var(--texto-primario); font-weight: 600; }
-.sg-aba__fechar {
+.sg-barra-abas__aba.is-active .sg-barra-abas__link { color: var(--texto-primario); font-weight: 600; }
+.sg-barra-abas__fechar {
   display: grid;
   width: 32px;
   height: 32px;
@@ -3081,16 +3082,16 @@ textarea:focus-visible {
   border-radius: 6px;
   cursor: pointer;
 }
-.sg-aba__fechar:hover { color: var(--cor-desvio); background: var(--erro-fundo); }
-.sg-aba__fechar svg { width: 14px; height: 14px; }
-.sg-aba__link:focus-visible, .sg-aba__fechar:focus-visible {
+.sg-barra-abas__fechar:hover { color: var(--cor-desvio); background: var(--erro-fundo); }
+.sg-barra-abas__fechar svg { width: 14px; height: 14px; }
+.sg-barra-abas__link:focus-visible, .sg-barra-abas__fechar:focus-visible {
   outline: 3px solid var(--cor-norma);
   outline-offset: -2px;
   border-radius: 6px;
 }
 @media (max-width: 600px) {
-  .sg-abas { top: 56px; }
-  .sg-aba { max-width: 180px; }
+  .sg-barra-abas { top: 56px; }
+  .sg-barra-abas__aba { max-width: 180px; }
 }
 
 /* ==========================================================================
