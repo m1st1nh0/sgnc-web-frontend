@@ -15,6 +15,7 @@ Entrega única (as cinco etapas do plano saíram no mesmo PR, por decisão do re
 - `src/lib/utils/abas.js`: regra pura das abas (qual módulo responde por uma rota, abrir, normalizar, fechar, escopos de rascunho, leitura/gravação no `localStorage`). Testável sem navegador.
 - `src/components/navigation/BarraAbas.jsx`: a barra, renderizada pelo `AppNavigation` dentro do `<main>`.
 - `src/components/navigation/icones.jsx`: os ícones saíram do `AppNavigation` para serem usados também pelas abas.
+- Visual (decisão de 04/11/2026, versão V1 das três estudadas): a aba ativa se funde com a faixa em vez de flutuar como caixa; as inativas não têm borda, só um fio entre vizinhas, que some em volta da ativa; o × aparece na ativa, no hover e com foco de teclado; o excesso ganha contador "+N" e setas, que só aparecem quando a lista não cabe. A faixa tem 39px.
 - Cada aba guarda **a última URL visitada no módulo**. Como filtros, busca e paginação ficam na query string, voltar para a aba devolve o contexto sem estado extra.
 - As abas são gravadas por usuário (`sgnc-abas:<id>`) e restauradas no carregamento; na restauração, aba de módulo inexistente, sem permissão ou com URL de outro módulo é descartada. Limite de 12 abas.
 - Fechar a aba ativa leva para a seguinte (ou a anterior, se era a última); sem abas restantes, volta para `/`.

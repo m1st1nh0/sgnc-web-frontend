@@ -83,6 +83,19 @@ test("abas: fechamento de formulário com rascunho é confirmado pelos escopos c
   expect(barra).toContain("ModalConfirmacao");
 });
 
+test("abas: excesso de abas tem contador e setas, só quando não cabem", () => {
+  const barra = readFileSync("src/components/navigation/BarraAbas.jsx", "utf8");
+  expect(barra).toContain("medirTransbordo");
+  expect(barra).toContain("ResizeObserver");
+  expect(barra).toContain("{(transbordo.inicio || transbordo.fim) &&");
+  expect(barra).toContain('aria-label="Mostrar abas anteriores"');
+  expect(barra).toContain('aria-label="Mostrar próximas abas"');
+  expect(barra).toContain("disabled={!transbordo.inicio}");
+  const css = readFileSync("src/redesign.css", "utf8");
+  expect(css).toContain(".sg-barra-abas__rolar:disabled");
+  expect(css).toContain(".sg-barra-abas__rolar:focus-visible");
+});
+
 test("abas: barra acessível, com aba atual anunciada e navegação por teclado", () => {
   const barra = readFileSync("src/components/navigation/BarraAbas.jsx", "utf8");
   expect(barra).toContain('aria-label="Abas abertas"');
@@ -103,9 +116,16 @@ test("abas: a barra tem estilo próprio, foco visível e cabe no celular", () =>
   expect(css).toContain(".sg-barra-abas {");
   expect(css).toMatch(/\.sg-barra-abas\s*\{[^}]*position: sticky/);
   expect(css).toMatch(/\.sg-barra-abas__lista\s*\{[^}]*overflow-x: auto/);
-  // Alvo de toque e indicação da aba ativa.
-  expect(css).toMatch(/\.sg-barra-abas__link\s*\{[^}]*min-height: 40px/);
-  expect(css).toMatch(/\.sg-barra-abas__aba\.is-active\s*\{[^}]*box-shadow: inset 0 3px 0/);
+  // Altura da faixa e indicação da aba ativa.
+  expect(css).toMatch(/\.sg-barra-abas\s*\{[^}]*height: 39px/);
+  expect(css).toMatch(/\.sg-barra-abas__aba\.is-active\s*\{[^}]*box-shadow: inset 0 2px 0/);
+  // A ativa encosta na borda de baixo em vez de flutuar como caixa.
+  expect(css).toMatch(/\.sg-barra-abas__aba\.is-active\s*\{[^}]*margin-bottom: -1px/);
+  // Inativa sem caixa: só um fio entre vizinhas, que some em volta da ativa.
+  expect(css).toContain(".sg-barra-abas__aba + .sg-barra-abas__aba::before");
+  expect(css).toContain(".sg-barra-abas__aba.is-active + .sg-barra-abas__aba::before");
+  // O fechar aparece na ativa, no hover e com foco de teclado.
+  expect(css).toContain(".sg-barra-abas__fechar:focus-visible { opacity: 1; }");
   expect(css).toContain(".sg-barra-abas__link:focus-visible, .sg-barra-abas__fechar:focus-visible");
   // No celular a barra desce para baixo da barra fixa e as abas estreitam.
   expect(css).toMatch(/@media \(max-width: 600px\) \{\s*\.sg-barra-abas \{ top: 56px; \}/);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -26,6 +26,8 @@ export default function BarraAbas({ modulos, usuarioId }) {
   const [ultimoModulo, setUltimoModulo] = useState(null);
   const [restaurado, setRestaurado] = useState(false);
   const [aFechar, setAFechar] = useState(null);
+  // Excesso: quantas abas estão fora da área visível e para que lado dá para rolar.
+  const [transbordo, setTransbordo] = useState({ ocultas: 0, inicio: false, fim: false });
   const listaRef = useRef(null);
 
   const urlAtual = useMemo(() => {
@@ -68,6 +70,37 @@ export default function BarraAbas({ modulos, usuarioId }) {
   useEffect(() => {
     listaRef.current?.querySelector("[aria-current='page']")?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [ativa, abas.length]);
+
+  // Conta as abas que não cabem, para mostrar o "+N" e habilitar as setas.
+  const medirTransbordo = useCallback(() => {
+    const lista = listaRef.current;
+    if (!lista) return;
+    const inicio = lista.scrollLeft;
+    const fim = inicio + lista.clientWidth;
+    let ocultas = 0;
+    for (const item of lista.children) {
+      if (item.offsetLeft < inicio - 1 || item.offsetLeft + item.offsetWidth > fim + 1) ocultas += 1;
+    }
+    setTransbordo({ ocultas, inicio: inicio > 1, fim: fim < lista.scrollWidth - 1 });
+  }, []);
+
+  useEffect(() => {
+    const lista = listaRef.current;
+    if (!lista) return undefined;
+    medirTransbordo();
+    lista.addEventListener("scroll", medirTransbordo, { passive: true });
+    const observador = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(medirTransbordo);
+    observador?.observe(lista);
+    return () => {
+      lista.removeEventListener("scroll", medirTransbordo);
+      observador?.disconnect();
+    };
+  }, [medirTransbordo, abas]);
+
+  function rolar(sentido) {
+    const lista = listaRef.current;
+    if (lista) lista.scrollBy({ left: sentido * Math.max(160, lista.clientWidth * 0.7) });
+  }
 
   function concluirFechamento(href) {
     const resultado = fecharAba(abas, href, ativa);
@@ -124,6 +157,19 @@ export default function BarraAbas({ modulos, usuarioId }) {
             );
           })}
         </ul>
+        {(transbordo.inicio || transbordo.fim) && (
+          <div className="sg-barra-abas__transbordo">
+            {transbordo.ocultas > 0 && (
+              <span className="sg-barra-abas__contador" aria-label={`${transbordo.ocultas} aba(s) fora da vista`}>+{transbordo.ocultas}</span>
+            )}
+            <button type="button" className="sg-barra-abas__rolar" onClick={() => rolar(-1)} disabled={!transbordo.inicio} aria-label="Mostrar abas anteriores">
+              <Icon name="left" />
+            </button>
+            <button type="button" className="sg-barra-abas__rolar" onClick={() => rolar(1)} disabled={!transbordo.fim} aria-label="Mostrar próximas abas">
+              <Icon name="right" />
+            </button>
+          </div>
+        )}
       </nav>
       <ModalConfirmacao
         visivel={!!aFechar}

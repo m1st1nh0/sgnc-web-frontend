@@ -3014,43 +3014,80 @@ textarea:focus-visible {
 /* ==========================================================================
    Abas internas dos módulos (barra acima do conteúdo).
    Prefixo próprio: .sg-abas já é das pílulas de sub-abas das telas.
+
+   A aba ativa se funde com a faixa (mesmo fundo do conteúdo, encostando na
+   borda de baixo), e as inativas não têm caixa: ficam separadas por um fio,
+   que some em volta da ativa. O fechar só aparece na ativa, no hover e com
+   foco de teclado, para a barra não virar um campo de minado de ×.
    ========================================================================== */
 .sg-barra-abas {
+  --abas-faixa: #e8ebe8;
+  --abas-fio: #c8d0ca;
   position: sticky;
   z-index: 1020;
   top: 0;
-  background: var(--fundo-card);
+  display: flex;
+  align-items: flex-end;
+  height: 39px;
+  padding-right: 10px;
+  background: var(--abas-faixa);
   border-bottom: 1px solid var(--borda);
 }
 .sg-barra-abas__lista {
   display: flex;
-  align-items: stretch;
-  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  align-items: flex-end;
   margin: 0;
-  padding: 6px 12px 0;
+  padding: 0 0 0 10px;
   overflow-x: auto;
   overflow-y: hidden;
   list-style: none;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
 }
+.sg-barra-abas__lista::-webkit-scrollbar { display: none; }
 .sg-barra-abas__aba {
+  position: relative;
   display: flex;
   min-width: 0;
-  max-width: 260px;
+  max-width: 230px;
+  height: 31px;
+  flex: 0 0 auto;
   align-items: center;
-  background: var(--cor-nevoa);
-  border: 1px solid var(--borda);
-  border-bottom: 0;
+  background: transparent;
+  border: 0;
   border-radius: 8px 8px 0 0;
+  transition: background 120ms ease, height 120ms ease;
 }
+/* Fio entre abas vizinhas, no lugar da borda de cada uma. */
+.sg-barra-abas__aba + .sg-barra-abas__aba::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: -1px;
+  width: 1px;
+  background: var(--abas-fio);
+  content: "";
+}
+.sg-barra-abas__aba:hover { background: #dfe4e0; }
+.sg-barra-abas__aba.is-active {
+  height: 39px;
+  margin-bottom: -1px;
+  background: var(--fundo-card);
+  box-shadow: inset 0 2px 0 var(--cor-norma);
+}
+.sg-barra-abas__aba.is-active:hover { background: var(--fundo-card); }
+.sg-barra-abas__aba.is-active::before,
+.sg-barra-abas__aba.is-active + .sg-barra-abas__aba::before { background: transparent; }
 .sg-barra-abas__link {
   display: flex;
   min-width: 0;
-  min-height: 40px;
+  height: 100%;
   align-items: center;
   gap: 8px;
-  padding: 0 4px 0 12px;
+  padding: 0 6px 0 13px;
   color: var(--texto-secundario);
   font-size: .8125rem;
   font-weight: 500;
@@ -3061,37 +3098,73 @@ textarea:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.sg-barra-abas__link svg { width: 16px; height: 16px; flex: 0 0 16px; }
-.sg-barra-abas__aba:hover { background: var(--fundo-hover); }
-.sg-barra-abas__aba.is-active {
-  background: var(--fundo-card);
-  box-shadow: inset 0 3px 0 var(--cor-norma);
-}
+.sg-barra-abas__link svg { width: 15px; height: 15px; flex: 0 0 15px; }
 .sg-barra-abas__aba.is-active .sg-barra-abas__link { color: var(--texto-primario); font-weight: 600; }
 .sg-barra-abas__fechar {
   display: grid;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
   place-items: center;
-  margin-right: 4px;
+  margin-right: 6px;
   padding: 0;
   color: var(--texto-suave);
   background: transparent;
   border: 0;
-  border-radius: 6px;
+  border-radius: 5px;
+  opacity: 0;
   cursor: pointer;
+  transition: opacity 120ms ease;
 }
+.sg-barra-abas__aba:hover .sg-barra-abas__fechar,
+.sg-barra-abas__aba.is-active .sg-barra-abas__fechar,
+.sg-barra-abas__fechar:focus-visible { opacity: 1; }
 .sg-barra-abas__fechar:hover { color: var(--cor-desvio); background: var(--erro-fundo); }
-.sg-barra-abas__fechar svg { width: 14px; height: 14px; }
+.sg-barra-abas__fechar svg { width: 12px; height: 12px; }
 .sg-barra-abas__link:focus-visible, .sg-barra-abas__fechar:focus-visible {
   outline: 3px solid var(--cor-norma);
   outline-offset: -2px;
   border-radius: 6px;
 }
+/* Excesso de abas: contador e setas, só quando a lista não cabe. */
+.sg-barra-abas__transbordo {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  padding-bottom: 5px;
+  padding-left: 8px;
+}
+.sg-barra-abas__contador {
+  margin-right: 3px;
+  color: var(--texto-secundario);
+  font-size: .71875rem;
+  font-weight: 600;
+}
+.sg-barra-abas__rolar {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  place-items: center;
+  padding: 0;
+  color: var(--texto-secundario);
+  background: #f8faf8;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.sg-barra-abas__rolar:hover:not(:disabled) { color: var(--texto-primario); background: var(--fundo-card); }
+.sg-barra-abas__rolar:disabled { opacity: .45; cursor: default; }
+.sg-barra-abas__rolar:focus-visible { outline: 3px solid var(--cor-norma); outline-offset: 1px; }
+.sg-barra-abas__rolar svg { width: 13px; height: 13px; }
 @media (max-width: 600px) {
   .sg-barra-abas { top: 56px; }
-  .sg-barra-abas__aba { max-width: 180px; }
+  .sg-barra-abas__aba { max-width: 170px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sg-barra-abas__lista { scroll-behavior: auto; }
+  .sg-barra-abas__aba, .sg-barra-abas__fechar { transition: none; }
 }
 
 /* ==========================================================================
