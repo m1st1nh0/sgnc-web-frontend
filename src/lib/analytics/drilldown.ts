@@ -173,7 +173,7 @@ export async function listarNcsDoIndicador(params: URLSearchParams) {
   }
 
   let query = admin.from("nao_conformidades").select(
-    "id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, criado_em, atualizado_em, validado_em, feedback_aplicado_em, aceito_em, decidido_em, enviado_em",
+    "id, data, status, colaborador_id, colaborador, setor, criticidade, chamado, descricao, criado_em, atualizado_em, validado_em, feedback_aplicado_em, aceito_em, decidido_em, enviado_em",
     { count: "exact" },
   );
   if (teamIds !== null) {

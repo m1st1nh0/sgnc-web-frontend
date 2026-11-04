@@ -2788,8 +2788,9 @@ textarea:focus-visible {
 .sg-detalhe-nc__descricao p { max-width: 72ch; margin: 0; color: #344054; font-size: .9375rem; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
 .sg-detalhe-nc__descricao--erro .sg-detalhe-nc__rotulo, .sg-detalhe-nc__descricao--erro p { color: var(--erro); }
 .sg-detalhe-nc__rotulo { color: var(--texto-suave); font-size: .75rem; font-weight: 600; }
-.sg-detalhe-nc__anexar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.sg-detalhe-nc__anexar .form-control { flex: 1 1 200px; min-height: 44px; }
+.sg-detalhe-nc__anexar { display: grid; gap: 8px; justify-items: start; }
+.sg-detalhe-nc__anexar .sg-area-anexos { width: 100%; }
+.sg-detalhe-nc__anexar .form-control { min-height: 44px; }
 .sg-dados--duas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .sg-etapas-bloco .sg-secao-titulo { font-size: 1rem; }
 @media (max-width: 1099.98px) {
@@ -3009,3 +3010,147 @@ textarea:focus-visible {
 .sg-tag-sugestoes { max-height: 300px; }
 .sg-tag-sugestao { min-height: 44px; }
 .sg-tag-sugestao:focus-visible { outline: 3px solid #287c82; outline-offset: -3px; }
+
+/* ==========================================================================
+   Abas internas dos módulos (barra acima do conteúdo)
+   ========================================================================== */
+.sg-abas {
+  position: sticky;
+  z-index: 1020;
+  top: 0;
+  background: var(--fundo-card);
+  border-bottom: 1px solid var(--borda);
+}
+.sg-abas__lista {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  margin: 0;
+  padding: 6px 12px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  list-style: none;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+}
+.sg-aba {
+  display: flex;
+  min-width: 0;
+  max-width: 260px;
+  align-items: center;
+  background: var(--cor-nevoa);
+  border: 1px solid var(--borda);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+}
+.sg-aba__link {
+  display: flex;
+  min-width: 0;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 0 12px;
+  color: var(--texto-secundario);
+  font-size: .8125rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.sg-aba__link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sg-aba__link svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.sg-aba:hover { background: var(--fundo-hover); }
+.sg-aba.is-active {
+  background: var(--fundo-card);
+  box-shadow: inset 0 3px 0 var(--cor-norma);
+}
+.sg-aba.is-active .sg-aba__link { color: var(--texto-primario); font-weight: 600; }
+.sg-aba__fechar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  margin-right: 4px;
+  padding: 0;
+  color: var(--texto-suave);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.sg-aba__fechar:hover { color: var(--cor-desvio); background: var(--erro-fundo); }
+.sg-aba__fechar svg { width: 14px; height: 14px; }
+.sg-aba__link:focus-visible, .sg-aba__fechar:focus-visible {
+  outline: 3px solid var(--cor-norma);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+@media (max-width: 600px) {
+  .sg-abas { top: 56px; }
+  .sg-aba { max-width: 180px; }
+}
+
+/* ==========================================================================
+   Área de anexos: seleção, arrastar e colar
+   ========================================================================== */
+.sg-area-anexos { display: grid; gap: 4px; }
+.sg-area-anexos__zona {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  background: var(--cor-nevoa);
+  border: 1px dashed var(--borda-forte);
+  border-radius: 10px;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.sg-area-anexos__zona:focus-visible { outline: 3px solid var(--cor-norma); outline-offset: 2px; }
+.sg-area-anexos__zona.is-arrastando { background: var(--info-fundo); border-color: var(--cor-norma); border-style: solid; }
+.sg-area-anexos__zona.is-desabilitada { opacity: .6; }
+.sg-area-anexos__chamada { margin: 0; color: var(--texto-secundario); font-size: .8125rem; }
+.sg-area-anexos__chamada kbd {
+  padding: 1px 5px;
+  /* O Bootstrap deixa o kbd branco sobre fundo escuro; aqui o fundo é claro. */
+  color: var(--texto-primario);
+  background: var(--fundo-card);
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  font-family: var(--fonte-plex-mono, monospace);
+  font-size: .75rem;
+}
+.sg-area-anexos__campo { background: var(--fundo-card); }
+.sg-area-anexos__estado:empty { display: none; }
+.sg-area-anexos__estado { margin: 0; color: var(--texto-suave); font-size: .8125rem; }
+.sg-arquivos-selecionados span:has(.sg-area-anexos__miniatura) {
+  display: grid;
+  align-items: center;
+  gap: 0 10px;
+  grid-template-areas: "mini nome" "mini tamanho";
+  grid-template-columns: auto minmax(0, 1fr);
+}
+.sg-arquivos-selecionados span:has(.sg-area-anexos__miniatura) strong { grid-area: nome; }
+.sg-arquivos-selecionados span:has(.sg-area-anexos__miniatura) small { grid-area: tamanho; }
+.sg-area-anexos__miniatura {
+  width: 44px;
+  height: 44px;
+  grid-area: mini;
+  object-fit: cover;
+  background: var(--fundo-card);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+}
+@media (max-width: 600px) {
+  .sg-area-anexos__zona { padding: 12px; }
+}
+
+/* Célula de texto longo nas tabelas de relatório (ex.: erros apontados). */
+.sg-tabela__texto-longo {
+  max-width: 320px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}

@@ -6,19 +6,16 @@ import { ApiError } from "@/lib/api/error";
 import { buscarNc } from "@/lib/nc/service";
 import { podeAnexarAoFeedback, podeAnexarEvidencia, podeExcluirEvidencia } from "@/lib/permissions/nc";
 import { createAdminClient } from "@/lib/supabase/admin";
+// Mesmas regras que o formulário aplica antes de enviar (formatos e 15 MB).
+import { EXTENSOES_ANEXO, MENSAGEM_FORMATO, TAMANHO_MAXIMO_ANEXO, extensaoDoArquivo } from "@/lib/nc/anexos";
 
 const BUCKET = "evidencias";
-const MAX_SIZE = 15 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "pdf", "doc", "docx", "xlsx"]);
-
 
 function validateFile(file: File) {
-  const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : "";
-  if (!extension || !ALLOWED_EXTENSIONS.has(extension)) {
-    throw new ApiError(`Tipo de arquivo não permitido. Aceitos: ${[...ALLOWED_EXTENSIONS].sort().map((item) => `.${item}`).join(", ")}`);
-  }
+  const extension = extensaoDoArquivo(file.name);
+  if (!extension || !EXTENSOES_ANEXO.includes(extension)) throw new ApiError(MENSAGEM_FORMATO);
   if (file.size === 0) throw new ApiError("O arquivo está vazio.", 422);
-  if (file.size > MAX_SIZE) throw new ApiError("Arquivo maior que 15 MB.");
+  if (file.size > TAMANHO_MAXIMO_ANEXO) throw new ApiError("Arquivo maior que 15 MB.");
 }
 
 export async function listarEvidencias(ncId: number) {

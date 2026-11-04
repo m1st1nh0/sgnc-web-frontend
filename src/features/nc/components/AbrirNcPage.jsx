@@ -12,6 +12,7 @@ import { abrirNc, listarCausasConhecidas, anexarEvidencia, solicitarCausa } from
 import Botao from "../../../components/ui/Botao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
 import CampoTextoArea from "../../../components/ui/CampoTextoArea.jsx";
+import AreaAnexos from "../../../components/ui/AreaAnexos.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
@@ -29,8 +30,6 @@ const IDS_CAMPOS = {
 };
 
 const OPCOES_CRITICIDADE = ["Baixa", "Média", "Alta"];
-const FORMATOS_EVIDENCIA =
-  ".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xlsx";
 const EXPLICACOES_CRITICIDADE = {
   Baixa: "Baixo impacto e sem interrupção relevante da operação.",
   Média: "Impacto perceptível, retrabalho ou risco moderado para a operação.",
@@ -51,11 +50,6 @@ function PreviewImagem({ arquivo, aoFechar }) {
       <img src={url} alt={`Pré-visualização de ${arquivo.name}`} />
     </div>
   );
-}
-
-function formatarTamanho(bytes) {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
 }
 
 export default function AbrirNcPage() {
@@ -140,27 +134,9 @@ export default function AbrirNcPage() {
     );
   }, [buscaColaborador, usuarios]);
 
-  function removerArquivo(indice) {
-    const removido = arquivosEvidencias[indice];
-    if (removido === previewArquivo) setPreviewArquivo(null);
-    setArquivosEvidencias((atuais) => atuais.filter((_, i) => i !== indice));
-  }
-
-  function selecionarArquivos(evento) {
-    const novosArquivos = Array.from(evento.target.files || []);
-    setArquivosEvidencias((atuais) => {
-      const arquivosUnicos = new Map(
-        [...atuais, ...novosArquivos].map((arquivo) => [
-          `${arquivo.name}-${arquivo.size}-${arquivo.lastModified}`,
-          arquivo,
-        ])
-      );
-      return Array.from(arquivosUnicos.values());
-    });
-    setPreviewArquivo(
-      novosArquivos.find((arquivo) => arquivo.type.startsWith("image/")) || null
-    );
-    evento.target.value = "";
+  function alterarEvidencias(novos) {
+    if (previewArquivo && !novos.includes(previewArquivo)) setPreviewArquivo(null);
+    setArquivosEvidencias(novos);
   }
 
   async function aoEnviar(evento) {
@@ -418,39 +394,15 @@ export default function AbrirNcPage() {
                   className="mb-3"
                 />
 
-                <Form.Group className="mb-1">
-                  <Form.Label className="sg-label" htmlFor="evidencias-abertura">Arquivos</Form.Label>
-                  <Form.Control
-                    id="evidencias-abertura"
-                    type="file"
-                    multiple
-                    accept={FORMATOS_EVIDENCIA}
-                    className="sg-input"
-                    onChange={selecionarArquivos}
-                  />
-                  <Form.Text className="sg-helper">
-                    Selecione vários arquivos de uma vez ou faça novas seleções para acrescentar evidências.
-                  </Form.Text>
-                </Form.Group>
-                {arquivosEvidencias.length > 0 && (
-                  <ul className="sg-arquivos-selecionados mt-3 mb-0">
-                    {arquivosEvidencias.map((arquivo, indice) => (
-                      <li key={`${arquivo.name}-${arquivo.lastModified}`}>
-                        <span><strong>{arquivo.name}</strong><small>{formatarTamanho(arquivo.size)}</small></span>
-                        <div className="d-flex gap-2">
-                          {arquivo.type.startsWith("image/") && (
-                            <button className="sg-acao-arquivo sg-acao-arquivo--preview" type="button" onClick={() => setPreviewArquivo(arquivo)} disabled={enviando}>
-                              Visualizar
-                            </button>
-                          )}
-                          <button className="sg-acao-arquivo sg-acao-arquivo--remover" type="button" onClick={() => removerArquivo(indice)} disabled={enviando}>
-                            Remover
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <AreaAnexos
+                  id="evidencias-abertura"
+                  rotulo="Arquivos"
+                  ajuda="Imagens, PDFs ou planilhas de até 15 MB cada. Você pode arrastar, colar ou selecionar quantas vezes quiser."
+                  arquivos={arquivosEvidencias}
+                  aoMudar={alterarEvidencias}
+                  disabled={enviando}
+                  aoVisualizar={setPreviewArquivo}
+                />
 
                 {previewArquivo && (
                   <PreviewImagem arquivo={previewArquivo} aoFechar={() => setPreviewArquivo(null)} />

@@ -107,6 +107,7 @@ assert.match(home, /listarEquipe/);
 const detalhes = readFileSync("src/features/nc/components/DetalhesNcPage.jsx", "utf8");
 assert.match(detalhes, /Tentar novamente/);
 assert.match(detalhes, /bloqueado=\{enviandoArquivo\}/);
-assert.match(detalhes, /await anexarEvidencia/);
+// O anexo da NC agora aceita vários arquivos de uma vez (arrastar/colar/selecionar).
+assert.match(detalhes, /anexarEvidencia\(id, arquivo\)/);
 
 console.log("PR05 ROLE-AWARE UX TESTS PASSED");

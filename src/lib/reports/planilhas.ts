@@ -30,8 +30,8 @@ function medidasDaNc(dados: DadosPlanilha, ncId: number, causaId?: number) {
 }
 const descreverMedidas = (medidas: Row[]) => medidas.map((medida) => `${rotuloTipoMedida(medida.tipo)} (${rotuloSituacaoMedida(medida.status).toLocaleLowerCase("pt-BR")})`).join("; ");
 
-/** CSV simples (proposta C): 15 colunas para o dia a dia, na ordem de ação. */
-export const CABECALHO_CSV_SIMPLES = ["NC", "Aberta em", "Etapa atual", "Dias na etapa", "Colaborador", "Setor", "Líder direto", "Criticidade", "Chamado", "Causa", "Ocorrência em 12 meses", "Prazo do aceite", "Situação do aceite", "Medida sugerida", "Link"];
+/** CSV simples (proposta C): 16 colunas para o dia a dia, na ordem de ação. */
+export const CABECALHO_CSV_SIMPLES = ["NC", "Aberta em", "Etapa atual", "Dias na etapa", "Colaborador", "Setor", "Líder direto", "Criticidade", "Chamado", "Causa", "Erros apontados", "Ocorrência em 12 meses", "Prazo do aceite", "Situação do aceite", "Medida sugerida", "Link"];
 
 export function montarCsvSimples(dados: DadosPlanilha) {
   const agora = dados.agora ?? new Date();
@@ -42,7 +42,7 @@ export function montarCsvSimples(dados: DadosPlanilha) {
     linhas.push([
       nc.id, dataBr(nc.data || nc.criado_em, ""), rotuloStatus(nc.status), diasNaEtapa(nc, agora) ?? "",
       nc.colaborador, nc.setor, dados.lideres.get(nc.colaborador_id) ?? "", nc.criticidade, nc.chamado,
-      causas.map((causa) => causa.descricao).join("; "), causas.map((causa) => ordinal(causa.ocorrencia_numero)).filter(Boolean).join("; "),
+      causas.map((causa) => causa.descricao).join("; "), nc.descricao ?? "", causas.map((causa) => ordinal(causa.ocorrencia_numero)).filter(Boolean).join("; "),
       feedback ? dataHoraBr(feedback.prazo_aceite, "") : "", ROTULO_ACEITE[situacaoDoAceite(nc)],
       descreverMedidas(medidasDaNc(dados, nc.id)), link(dados.origem, nc.id),
     ].map(csvCell).join(";"));
@@ -61,7 +61,7 @@ export function montarAbas(dados: DadosPlanilha): Aba[] {
       { titulo: "NC", largura: 7, tipo: "numero" }, { titulo: "Aberta em", largura: 11, tipo: "data" }, { titulo: "Etapa atual", largura: 21 },
       { titulo: "Dias na etapa", largura: 9, tipo: "numero" }, { titulo: "Criticidade", largura: 11 }, { titulo: "Crítica", largura: 8 },
       { titulo: "Colaborador", largura: 24 }, { titulo: "Setor", largura: 16 }, { titulo: "Líder direto", largura: 22 }, { titulo: "Chamado", largura: 11 },
-      { titulo: "Causas", largura: 34 }, { titulo: "Reincidente", largura: 11 }, { titulo: "Descrição", largura: 50, tipo: "textoLongo" },
+      { titulo: "Causas", largura: 34 }, { titulo: "Reincidente", largura: 11 }, { titulo: "Erros apontados", largura: 50, tipo: "textoLongo" },
       { titulo: "Criada em", largura: 16, tipo: "dataHora" }, { titulo: "Validada em", largura: 16, tipo: "dataHora" }, { titulo: "Feedback enviado em", largura: 16, tipo: "dataHora" }, { titulo: "Aceita em", largura: 16, tipo: "dataHora" },
       { titulo: "Abertura até validação", largura: 12, tipo: "duracao" }, { titulo: "Validação até feedback", largura: 12, tipo: "duracao" }, { titulo: "Feedback até aceite", largura: 12, tipo: "duracao" }, { titulo: "Ciclo total", largura: 12, tipo: "duracao" },
       { titulo: "Prazo do aceite", largura: 16, tipo: "dataHora" }, { titulo: "Situação do aceite", largura: 20 }, { titulo: "Link", largura: 40 },
@@ -156,6 +156,7 @@ export function montarAbas(dados: DadosPlanilha): Aba[] {
       ...(leia ? [["Gerado por", leia.geradoPor], ["Gerado em", leia.geradoEm], ["Período", leia.periodo], ["Escopo", leia.escopo], ["Filtros", leia.filtros]] : []),
       ["Horários", "Todos no horário de Brasília."],
       ["Durações", "Formato [h]:mm (horas corridas). Somam e fazem média direto no Excel."],
+      ["Erros apontados", "A descrição do que foi apontado na NC, como registrada na abertura."],
       ["NCs", "Uma linha por NC aberta no período, na ordem de ação: Não respondida, Aguardando aceite, Aguardando avaliação, Aguardando feedback, Em plano de ação, Concluída, Invalidada."],
       ["Causas", "Uma linha por causa de cada NC. Ocorrência em 12 meses conta o mesmo colaborador com a mesma causa; a partir da 4ª o sistema sugere medida disciplinar."],
       ["Feedback", "Último feedback registrado em cada NC."],

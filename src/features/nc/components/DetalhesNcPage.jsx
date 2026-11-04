@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Modal from "react-bootstrap/Modal";
-import Form from "react-bootstrap/Form";
 
 import PainelAvaliar from "./PainelAvaliar.jsx";
 import PainelFeedback from "./PainelFeedback.jsx";
@@ -34,6 +33,7 @@ import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import ModalVisualizarEvidencia from "../../../components/ui/ModalVisualizarEvidencia.jsx";
+import AreaAnexos from "../../../components/ui/AreaAnexos.jsx";
 import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
 import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
@@ -79,7 +79,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
   const [carregandoEvidencias, setCarregandoEvidencias] = useState(false);
   const [erroEvidencias, setErroEvidencias] = useState("");
   const [mensagemEvidencia, setMensagemEvidencia] = useState("");
-  const [arquivoNovo, setArquivoNovo] = useState(null);
+  const [arquivosNovos, setArquivosNovos] = useState([]);
   const [enviandoArquivo, setEnviandoArquivo] = useState(false);
   const [falhaUpload, setFalhaUpload] = useState(false);
   const [confirmarExclusaoEvidencia, setConfirmarExclusaoEvidencia] =
@@ -217,28 +217,40 @@ export default function DetalhesNcPage({ retorno = "/" }) {
     }
   }
 
-  function selecionarArquivo(evento) {
-    setArquivoNovo(evento.target.files?.[0] || null);
+  function selecionarArquivos(novos) {
+    setArquivosNovos(novos);
     setFalhaUpload(false);
     setErroEvidencias("");
     setMensagemEvidencia("");
   }
 
   async function enviarEvidencia() {
-    if (!arquivoNovo || !id || enviandoArquivo) return;
+    if (!arquivosNovos.length || !id || enviandoArquivo) return;
     setEnviandoArquivo(true);
     setFalhaUpload(false);
     setErroEvidencias("");
     setMensagemEvidencia("");
     try {
-      await anexarEvidencia(id, arquivoNovo);
-      setArquivoNovo(null);
+      // Um por um: a falha de um anexo não impede os demais.
+      const resultados = await Promise.allSettled(arquivosNovos.map((arquivo) => anexarEvidencia(id, arquivo)));
+      const falhas = resultados.filter((resultado) => resultado.status === "rejected");
+      const enviados = resultados.length - falhas.length;
+      setArquivosNovos(falhas.length ? arquivosNovos.filter((_, i) => resultados[i].status === "rejected") : []);
       await carregarEvidencias();
-      setMensagemEvidencia("Evidência anexada com sucesso.");
-      if (usuario?.papel === "funcionario") {
-        await concluirEtapa("checklist_evidencias", "checklist", {
-          nc_id: id,
-        });
+      if (falhas.length) {
+        setFalhaUpload(true);
+        const motivo = falhas[0].reason;
+        setErroEvidencias(
+          `${falhas.length} de ${resultados.length} evidência(s) não puderam ser anexadas. ${motivo instanceof ErroApi ? motivo.message : "Tente novamente."}`
+        );
+      }
+      if (enviados > 0) {
+        setMensagemEvidencia(enviados > 1 ? `${enviados} evidências anexadas com sucesso.` : "Evidência anexada com sucesso.");
+        if (usuario?.papel === "funcionario") {
+          await concluirEtapa("checklist_evidencias", "checklist", {
+            nc_id: id,
+          });
+        }
       }
     } catch (e) {
       setFalhaUpload(true);
@@ -537,22 +549,22 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                     {nc.status === "aberta" &&
                       (ehAdm || ehAutor || ehColaboradorDaNc) && (
                         <div className="sg-detalhe-nc__anexar">
-                          <Form.Control
-                            type="file"
-                            size="sm"
-                            className="sg-input"
-                            aria-label="Selecionar arquivo de evidência"
+                          <AreaAnexos
+                            id="evidencia-nova"
+                            rotulo="Anexar evidências"
+                            ajuda="Arraste, cole (Ctrl+V) ou selecione. Imagens, PDFs ou planilhas de até 15 MB cada."
+                            arquivos={arquivosNovos}
+                            aoMudar={selecionarArquivos}
                             disabled={enviandoArquivo}
-                            onChange={selecionarArquivo}
                           />
                           <Botao
                             variante={falhaUpload ? "secundario" : "primario"}
                             tamanho="sm"
                             carregando={enviandoArquivo}
-                            disabled={!arquivoNovo || enviandoArquivo}
+                            disabled={!arquivosNovos.length || enviandoArquivo}
                             onClick={enviarEvidencia}
                           >
-                            {falhaUpload ? "Tentar novamente" : "Anexar"}
+                            {falhaUpload ? "Tentar novamente" : `Anexar${arquivosNovos.length > 1 ? ` ${arquivosNovos.length} arquivos` : ""}`}
                           </Botao>
                         </div>
                       )}

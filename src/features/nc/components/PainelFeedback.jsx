@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import Form from "react-bootstrap/Form";
 import Link from "next/link";
 
 import { aplicarFeedback, anexarEvidencia, obterReincidencia } from "../client/ncService.js";
@@ -13,6 +12,7 @@ import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
 import CampoTextoArea from "../../../components/ui/CampoTextoArea.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
+import AreaAnexos from "../../../components/ui/AreaAnexos.jsx";
 import { limparRascunho, useRascunho } from "../../../lib/utils/rascunho.js";
 
 const IDS_CAMPOS = {
@@ -24,7 +24,6 @@ const IDS_CAMPOS = {
   resumo_conversa: "feedback-resumo",
   participantes: "feedback-participantes",
 };
-const FORMATOS_ANEXO = ".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xlsx";
 const ROTULO_ACEITE = {
   aguardando: "aguardando aceite",
   no_prazo: "aceito no prazo",
@@ -319,21 +318,16 @@ export default function PainelFeedback({ nc, aoConcluir }) {
           )}
         </div>
 
-        <Form.Group className="mb-3">
-          <Form.Label className="sg-label" htmlFor="feedback-anexos">Anexos (opcional)</Form.Label>
-          <Form.Control
+        <div className="mb-3">
+          <AreaAnexos
             id="feedback-anexos"
-            type="file"
-            multiple
-            accept={FORMATOS_ANEXO}
-            className="sg-input"
+            rotulo="Anexos (opcional)"
+            ajuda="Evidências da conversa ou do combinado, se houver. Imagens, PDFs ou planilhas de até 15 MB cada."
+            arquivos={arquivos}
+            aoMudar={setArquivos}
             disabled={enviando}
-            onChange={(e) => setArquivos(Array.from(e.target.files || []))}
           />
-          <Form.Text className="sg-helper">
-            {arquivos.length ? `${arquivos.length} arquivo(s) selecionado(s).` : "Evidências da conversa ou do combinado, se houver."}
-          </Form.Text>
-        </Form.Group>
+        </div>
 
         <Botao variante="primario" carregando={enviando} onClick={confirmar}>
           {enviando ? etapa : "Registrar feedback"}

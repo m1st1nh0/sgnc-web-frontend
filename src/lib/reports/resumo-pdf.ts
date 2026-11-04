@@ -1,5 +1,5 @@
 /** Relatório gerencial em PDF (propostas A + B): página 1 com o resumo executivo, depois o detalhe do período. */
-import { COR, pdfWriter } from "./pdf";
+import { COR, encurtar, pdfWriter } from "./pdf";
 import { ROTULO_ACEITE, dataBr, dataHoraBr, duracao, periodoBr, plural, rotuloSituacaoMedida, rotuloStatus, rotuloTipoMedida } from "./formato";
 import { comparacao, type ItemAtencao } from "./regras";
 import { situacaoDoAceite } from "@/lib/nc/reincidencia";
@@ -41,6 +41,7 @@ const COMO_LER: Array<[string, string]> = [
   ["Tempos", "Tempo corrido de cada etapa, contando as NCs que terminaram a etapa dentro do período. A mediana é o valor do meio: metade das NCs levou menos que isso."],
   ["Reincidência", "Mesmo colaborador e mesma causa mais de uma vez nos últimos 12 meses. A partir da 4ª ocorrência o sistema sugere medida disciplinar, que a Qualidade aprova ou reprova."],
   ["Pessoas", "Qualidade e Adm veem a empresa toda; supervisores veem só a própria equipe."],
+  ["Erros apontados", "A descrição do que foi apontado na NC. Na lista o texto é encurtado; a versão completa está na planilha e no relatório da NC."],
 ];
 
 export async function escreverResumo(dados: DadosResumo) {
@@ -151,13 +152,13 @@ export async function escreverResumo(dados: DadosResumo) {
   );
 
   // Página 5+: lista das NCs.
-  w.secao("NCs do período", "As que pedem ação primeiro; depois as mais recentes.");
+  w.secao("NCs do período", "As que pedem ação primeiro; depois as mais recentes. O chamado e os erros apontados vêm do registro da abertura.");
   w.tabela(
-    [{ titulo: "NC", largura: 0.7 }, { titulo: "Aberta em", largura: 1.4 }, { titulo: "Colaborador", largura: 2.4 }, { titulo: "Setor", largura: 1.6 }, { titulo: "Causa", largura: 2.8 }, { titulo: "Etapa", largura: 2 }, { titulo: "Aceite", largura: 2 }],
+    [{ titulo: "NC", largura: 0.6 }, { titulo: "Chamado", largura: 1.1 }, { titulo: "Aberta em", largura: 1.2 }, { titulo: "Colaborador", largura: 2 }, { titulo: "Setor", largura: 1.3 }, { titulo: "Causa", largura: 2.2 }, { titulo: "Erros apontados", largura: 3.4 }, { titulo: "Etapa", largura: 1.7 }, { titulo: "Aceite", largura: 1.7 }],
     dados.ncs.slice(0, LIMITE_LISTA).map((nc) => {
       const aceite = nc.status === "aguardando_aceite" && nc.prazo_aceite ? `até ${dataHoraBr(nc.prazo_aceite)}` : ROTULO_ACEITE[situacaoDoAceite(nc)] || "-";
       const causas = (dados.causas.get(nc.id) ?? []).map((causa) => `${causa.descricao}${Number(causa.ocorrencia_numero) > 1 ? ` (${causa.ocorrencia_numero}ª)` : ""}`).join("; ");
-      return [`#${nc.id}`, dataBr(nc.data || nc.criado_em), nc.colaborador || "-", nc.setor || "-", causas || "-", rotuloStatus(nc.status), aceite];
+      return [`#${nc.id}`, nc.chamado || "-", dataBr(nc.data || nc.criado_em), nc.colaborador || "-", nc.setor || "-", causas || "-", encurtar(nc.descricao, 160) || "-", rotuloStatus(nc.status), aceite];
     }),
     { vazio: "Nenhuma NC no período." },
   );

@@ -471,13 +471,15 @@ export default function RelatoriosPage() {
                   {ncs.items?.length ? (
                     <div className="sg-tabela-caixa">
                       <table className="sg-tabela">
-                        <thead><tr><th scope="col">NC</th><th scope="col">Data</th><th scope="col">Colaborador</th><th scope="col">Setor</th><th scope="col">Status</th><th scope="col">Criticidade</th><th scope="col"><span className="visually-hidden">Abrir</span></th></tr></thead>
+                        <thead><tr><th scope="col">NC</th><th scope="col">Chamado</th><th scope="col">Data</th><th scope="col">Colaborador</th><th scope="col">Setor</th><th scope="col">Erros apontados</th><th scope="col">Status</th><th scope="col">Criticidade</th><th scope="col"><span className="visually-hidden">Abrir</span></th></tr></thead>
                         <tbody>{ncs.items.map((nc) => (
                           <tr key={nc.id}>
                             <th scope="row" className="sg-mono">#{nc.id}</th>
+                            <td className="sg-mono">{nc.chamado || "—"}</td>
                             <td>{DATA(nc.data || nc.criado_em)}</td>
                             <td>{nc.colaborador || "—"}</td>
                             <td>{nc.setor || "—"}</td>
+                            <td className="sg-tabela__texto-longo" title={nc.descricao || undefined}>{nc.descricao || "—"}</td>
                             <td><BadgeStatus status={nc.status} /></td>
                             <td><BadgePrioridade criticidade={nc.criticidade} /></td>
                             <td className="text-end"><Link className="sg-tabela__link" href={comRetorno(`/nc/${nc.id}`, urlAtual)} aria-label={`Abrir NC ${nc.id}`}>Abrir</Link></td>
