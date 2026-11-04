@@ -16,6 +16,8 @@
   --cor-desvio: #b42318;
   --cor-grafite: #344054;
   --cor-nevoa: #f3f5f2;
+  /* Altura da barra de abas internas; o painel grudado se apoia nela. */
+  --abas-altura: 39px;
 
   /* Superfícies e texto */
   --fundo-pagina: var(--cor-nevoa);
@@ -2758,6 +2760,18 @@ textarea:focus-visible {
 .sg-gestao__painel-dados, .sg-gestao__painel-historico { min-width: 0; padding: 22px 28px; }
 .sg-gestao__painel-historico { border-left: 1px solid #e6eae7; }
 .sg-gestao__painel-descricao { margin: 0 0 16px; color: #344054; font-size: .9375rem; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
+/* O painel da NC acompanha a rolagem: a lista ao lado é longa e a NC
+   escolhida tem de continuar à vista. Quando o painel é mais alto que a
+   tela, ele rola por dentro, em vez de cortar o conteúdo. */
+@media (min-width: 1100px) {
+  .sg-gestao__painel {
+    position: sticky;
+    top: calc(var(--abas-altura) + 16px);
+    max-height: calc(100vh - var(--abas-altura) - 32px);
+    overflow: hidden auto;
+    overscroll-behavior: contain;
+  }
+}
 @media (max-width: 1099.98px) {
   .sg-gestao__area { grid-template-columns: minmax(0, 1fr); }
   .sg-gestao__painel { display: none; }
@@ -2815,7 +2829,7 @@ textarea:focus-visible {
 .sg-form-nc__passo { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
 .sg-form-nc__numero { display: grid; width: 32px; height: 32px; flex: none; place-items: center; border-radius: 50%; color: #fff; background: var(--cor-norma); font-size: .875rem; font-weight: 700; }
 .sg-form-nc__linha { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 0 20px; }
-.sg-form-nc__resumo { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 12px; }
+.sg-form-nc__resumo { position: sticky; top: calc(var(--abas-altura) + 16px); display: flex; flex-direction: column; gap: 12px; }
 .sg-form-nc__resumo .sg-btn { display: inline-flex; align-items: center; justify-content: center; }
 .sg-form-nc__revisao { display: flex; flex-direction: column; gap: 10px; margin: 0 0 8px; }
 .sg-form-nc__revisao div { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid #e6eae7; }
@@ -2872,7 +2886,7 @@ textarea:focus-visible {
 
 /* Relatórios (proposta B): filtros laterais, abas e lista do período */
 .sg-relatorio__grade { display: grid; grid-template-columns: minmax(250px, 290px) minmax(0, 1fr); align-items: start; gap: 24px; }
-.sg-relatorio__filtros { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 16px; padding: 22px; }
+.sg-relatorio__filtros { position: sticky; top: calc(var(--abas-altura) + 16px); display: flex; flex-direction: column; gap: 16px; padding: 22px; }
 .sg-relatorio__filtros-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sg-relatorio__form { display: flex; flex-direction: column; gap: 14px; }
 .sg-relatorio__form .form-group, .sg-relatorio__form .mb-3 { margin: 0 !important; }
@@ -2937,7 +2951,7 @@ textarea:focus-visible {
 .sg-insights-pagina__periodo .sg-input { min-width: 160px; }
 .sg-insights-pagina__conteudo { display: flex; flex-direction: column; gap: 32px; }
 .sg-insights-pagina__conteudo .sg-insights { gap: 40px !important; }
-.sg-ancoras { position: sticky; z-index: 5; top: 0; display: flex; gap: 4px; margin: 0 -4px; padding: 6px 4px; overflow-x: auto; background: var(--fundo-pagina); scrollbar-width: thin; }
+.sg-ancoras { position: sticky; z-index: 5; top: var(--abas-altura); display: flex; gap: 4px; margin: 0 -4px; padding: 6px 4px; overflow-x: auto; background: var(--fundo-pagina); scrollbar-width: thin; }
 .sg-ancoras a { display: inline-flex; min-height: 44px; flex: none; align-items: center; padding: 0 14px; border: 1px solid var(--borda); border-radius: 999px; color: #344054; background: #fff; font-size: .8125rem; font-weight: 600; text-decoration: none; }
 .sg-ancoras a:hover { border-color: var(--cor-norma); color: var(--cor-norma); }
 .sg-leitura-faixa { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); align-items: start; gap: 16px 24px; padding: 20px 24px; border-radius: var(--raio-cartao); color: #fff; background: var(--cor-norma); }
@@ -3028,7 +3042,7 @@ textarea:focus-visible {
   top: 0;
   display: flex;
   align-items: flex-end;
-  height: 39px;
+  height: var(--abas-altura);
   padding-right: 10px;
   background: var(--abas-faixa);
   border-bottom: 1px solid var(--borda);
