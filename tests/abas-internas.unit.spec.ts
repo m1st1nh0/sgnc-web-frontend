@@ -117,7 +117,7 @@ test("abas: a barra tem estilo próprio, foco visível e cabe no celular", () =>
   expect(css).toMatch(/\.sg-barra-abas\s*\{[^}]*position: sticky/);
   expect(css).toMatch(/\.sg-barra-abas__lista\s*\{[^}]*overflow-x: auto/);
   // Altura da faixa e indicação da aba ativa.
-  expect(css).toMatch(/\.sg-barra-abas\s*\{[^}]*height: 39px/);
+  expect(css).toMatch(/\.sg-barra-abas\s*\{[^}]*height: var\(--abas-altura\)/);
   expect(css).toMatch(/\.sg-barra-abas__aba\.is-active\s*\{[^}]*box-shadow: inset 0 2px 0/);
   // A ativa encosta na borda de baixo em vez de flutuar como caixa.
   expect(css).toMatch(/\.sg-barra-abas__aba\.is-active\s*\{[^}]*margin-bottom: -1px/);
@@ -129,4 +129,17 @@ test("abas: a barra tem estilo próprio, foco visível e cabe no celular", () =>
   expect(css).toContain(".sg-barra-abas__link:focus-visible, .sg-barra-abas__fechar:focus-visible");
   // No celular a barra desce para baixo da barra fixa e as abas estreitam.
   expect(css).toMatch(/@media \(max-width: 600px\) \{\s*\.sg-barra-abas \{ top: 56px; \}/);
+});
+
+test("abas: painéis grudados se apoiam na altura da barra, sem ficar atrás dela", () => {
+  const css = readFileSync("src/redesign.css", "utf8");
+  // A altura da barra é um token, usado por ela e por quem gruda abaixo dela.
+  expect(css).toContain("--abas-altura: 39px;");
+  expect(css).toMatch(/\.sg-barra-abas\s*\{[^}]*height: var\(--abas-altura\)/);
+  // O painel da NC acompanha a rolagem e rola por dentro quando é mais alto que a tela.
+  expect(css).toMatch(/@media \(min-width: 1100px\) \{\s*\.sg-gestao__painel \{\s*position: sticky;\s*top: calc\(var\(--abas-altura\) \+ 16px\);\s*max-height: calc\(100vh - var\(--abas-altura\) - 32px\);\s*overflow: hidden auto;/);
+  // Os outros grudados (resumo da abertura, filtros de relatórios, âncoras) também.
+  expect(css).toContain(".sg-form-nc__resumo { position: sticky; top: calc(var(--abas-altura) + 16px);");
+  expect(css).toContain(".sg-relatorio__filtros { position: sticky; top: calc(var(--abas-altura) + 16px);");
+  expect(css).toContain(".sg-ancoras { position: sticky; z-index: 5; top: var(--abas-altura);");
 });
