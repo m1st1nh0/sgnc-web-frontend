@@ -2,6 +2,7 @@
 import { COR, encurtar, pdfWriter } from "./pdf";
 import { ROTULO_ACEITE, dataBr, dataHoraBr, duracao, periodoBr, plural, rotuloSituacaoMedida, rotuloStatus, rotuloTipoMedida } from "./formato";
 import { comparacao, type ItemAtencao } from "./regras";
+import { comoTextoSimples } from "@/lib/nc/texto-rico";
 import { situacaoDoAceite } from "@/lib/nc/reincidencia";
 
 type Row = Record<string, any>;
@@ -41,7 +42,7 @@ const COMO_LER: Array<[string, string]> = [
   ["Tempos", "Tempo corrido de cada etapa, contando as NCs que terminaram a etapa dentro do período. A mediana é o valor do meio: metade das NCs levou menos que isso."],
   ["Reincidência", "Mesmo colaborador e mesma causa mais de uma vez nos últimos 12 meses. A partir da 4ª ocorrência o sistema sugere medida disciplinar, que a Qualidade aprova ou reprova."],
   ["Pessoas", "Qualidade e Adm veem a empresa toda; supervisores veem só a própria equipe."],
-  ["Erros apontados", "A descrição do que foi apontado na NC. Na lista o texto é encurtado; a versão completa está na planilha e no relatório da NC."],
+  ["Erros apontados", "A descrição do que foi apontado na NC. Na lista o texto é encurtado e as imagens do relato aparecem como [imagem]; a versão completa está na planilha e no relatório da NC."],
 ];
 
 export async function escreverResumo(dados: DadosResumo) {
@@ -158,7 +159,7 @@ export async function escreverResumo(dados: DadosResumo) {
     dados.ncs.slice(0, LIMITE_LISTA).map((nc) => {
       const aceite = nc.status === "aguardando_aceite" && nc.prazo_aceite ? `até ${dataHoraBr(nc.prazo_aceite)}` : ROTULO_ACEITE[situacaoDoAceite(nc)] || "-";
       const causas = (dados.causas.get(nc.id) ?? []).map((causa) => `${causa.descricao}${Number(causa.ocorrencia_numero) > 1 ? ` (${causa.ocorrencia_numero}ª)` : ""}`).join("; ");
-      return [`#${nc.id}`, nc.chamado || "-", dataBr(nc.data || nc.criado_em), nc.colaborador || "-", nc.setor || "-", causas || "-", encurtar(nc.descricao, 160) || "-", rotuloStatus(nc.status), aceite];
+      return [`#${nc.id}`, nc.chamado || "-", dataBr(nc.data || nc.criado_em), nc.colaborador || "-", nc.setor || "-", causas || "-", encurtar(comoTextoSimples(nc.descricao, nc.descricao_formato), 160) || "-", rotuloStatus(nc.status), aceite];
     }),
     { vazio: "Nenhuma NC no período." },
   );

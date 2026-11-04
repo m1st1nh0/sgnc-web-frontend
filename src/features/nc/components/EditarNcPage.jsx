@@ -15,14 +15,16 @@ const IDS_CAMPOS = {
   descricao: "descricao-nc",
   causas: "campo-causas",
 };
-import { buscarNc, editarNc, listarCausasConhecidas } from "../client/ncService.js";
+import { anexarEvidencia, buscarNc, editarNc, listarCausasConhecidas } from "../client/ncService.js";
 import { listarUsuarios } from "../../users/client/usuarioService.js";
 import { useAuth } from "../../auth/components/AuthContext.jsx";
 import { ErroApi } from "../../../lib/api/client/api.js";
 import Botao from "../../../components/ui/Botao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
 import CampoSelecao from "../../../components/ui/CampoSelecao.jsx";
-import CampoTextoArea from "../../../components/ui/CampoTextoArea.jsx";
+import EditorTextoRico from "../../../components/ui/EditorTextoRico.jsx";
+import { urlDaEvidencia } from "../../../components/ui/TextoRico.jsx";
+import { textoRicoDeTextoSimples, textoRicoTemConteudo } from "../../../lib/nc/texto-rico.js";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import { ehQualidade } from "../../../lib/auth/papeis.js";
@@ -47,6 +49,12 @@ export default function EditarNcPage() {
   const [acesso, setAcesso] = useState(true); // false se não puder editar
 
   const [enviando, setEnviando] = useState(false);
+
+  /** A NC já existe: a imagem colada vira evidência na hora. */
+  async function enviarImagemDoRelato(arquivo) {
+    const evidencia = await anexarEvidencia(id, arquivo, null, { noRelato: true });
+    return evidencia.id;
+  }
   const [erro, setErro] = useState("");
   const [errosCampo, setErrosCampo] = useState({});
   const [causaPendente, setCausaPendente] = useRascunho(`editar-nc:${id}`, "causaPendente", "");
@@ -74,7 +82,8 @@ export default function EditarNcPage() {
         baseChamado(nc.chamado ?? "");
         baseColaboradorId(nc.colaborador_id ?? "");
         baseCriticidade(nc.criticidade ?? "Baixa");
-        baseDescricao(nc.descricao ?? "");
+        // Relato antigo em texto puro vira parágrafos para o editor.
+        baseDescricao(nc.descricao_formato === "html" ? (nc.descricao ?? "") : textoRicoDeTextoSimples(nc.descricao ?? ""));
         baseCausas(nc.causas ?? []);
         setUsuarios(listaUsuarios);
         setCausasConhecidas(listaCausas);
@@ -113,7 +122,7 @@ export default function EditarNcPage() {
     if (!colaboradorId) {
       novosErros.colaborador = "Selecione o colaborador.";
     }
-    if (!descricao.trim()) {
+    if (!textoRicoTemConteudo(descricao)) {
       novosErros.descricao = "Preencha a descrição.";
     }
     if (causaPendente) {
@@ -132,6 +141,7 @@ export default function EditarNcPage() {
         colaborador_id: colaboradorId,
         criticidade,
         descricao,
+        descricao_formato: "html",
         causas,
       });
       limparRascunho(`editar-nc:${id}`);
@@ -249,16 +259,22 @@ export default function EditarNcPage() {
                   </div>
                 </fieldset>
 
-                <CampoTextoArea
-                  rotulo="Descrição"
-                  id={IDS_CAMPOS.descricao}
-                  obrigatorio
-                  rows={5}
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
-                  erro={errosCampo.descricao}
-                  placeholder="Descreva o que aconteceu..."
-                />
+                <Form.Group className="mb-3">
+                  <Form.Label className="sg-label" htmlFor={IDS_CAMPOS.descricao}>
+                    Descrição <span className="text-danger">*</span>
+                  </Form.Label>
+                  <EditorTextoRico
+                    id={IDS_CAMPOS.descricao}
+                    valor={descricao}
+                    aoMudar={setDescricao}
+                    enviarImagem={enviarImagemDoRelato}
+                    urlDaImagem={(idEvidencia) => urlDaEvidencia(id, idEvidencia)}
+                    disabled={enviando}
+                    erro={errosCampo.descricao}
+                    placeholder="Descreva o que aconteceu..."
+                    descricaoAjuda="Cole ou arraste imagens para dentro do texto. Elas entram como evidência desta NC."
+                  />
+                </Form.Group>
 
                 <Form.Group className="mb-0">
                   <Form.Label className="sg-label" htmlFor={IDS_CAMPOS.causas}>Causas</Form.Label>

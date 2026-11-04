@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
@@ -8,11 +8,12 @@ import Form from "react-bootstrap/Form";
 import CampoCausas from "./CampoCausas.jsx";
 import { listarOpcoesNc } from "../../users/client/usuarioService.js";
 import { ErroApi } from "../../../lib/api/client/api.js";
-import { abrirNc, listarCausasConhecidas, anexarEvidencia, solicitarCausa } from "../client/ncService.js";
+import { abrirNc, listarCausasConhecidas, anexarEvidencia, concluirRelato, solicitarCausa } from "../client/ncService.js";
 import Botao from "../../../components/ui/Botao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
-import CampoTextoArea from "../../../components/ui/CampoTextoArea.jsx";
 import AreaAnexos from "../../../components/ui/AreaAnexos.jsx";
+import EditorTextoRico from "../../../components/ui/EditorTextoRico.jsx";
+import { removerEvidenciasPendentes, textoRicoTemConteudo, trocarEvidencias } from "../../../lib/nc/texto-rico.js";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
@@ -61,6 +62,10 @@ export default function AbrirNcPage() {
   const [colaboradorId, setColaboradorId] = useRascunho("abrir-nc", "colaboradorId", "");
   const [criticidade, setCriticidade] = useRascunho("abrir-nc", "criticidade", "Baixa");
   const [descricao, setDescricao] = useRascunho("abrir-nc", "descricao", "");
+  // Imagens coladas no relato antes de a NC existir: ficam aqui com id
+  // negativo e viram evidência logo depois da abertura.
+  const imagensDoRelato = useRef(new Map());
+  const proximoIdTemporario = useRef(-1);
   const [causas, setCausas] = useRascunho("abrir-nc", "causas", []);
   const [causaPendente, setCausaPendente] = useRascunho("abrir-nc", "causaPendente", "");
   const [usuarios, setUsuarios] = useState([]);
@@ -134,6 +139,17 @@ export default function AbrirNcPage() {
     );
   }, [buscaColaborador, usuarios]);
 
+  /** Guarda a imagem colada e devolve um id temporário (negativo). */
+  function guardarImagemDoRelato(arquivo) {
+    const idTemporario = proximoIdTemporario.current;
+    proximoIdTemporario.current -= 1;
+    imagensDoRelato.current.set(idTemporario, { arquivo, url: URL.createObjectURL(arquivo) });
+    return idTemporario;
+  }
+  function urlDaImagemDoRelato(id) {
+    return imagensDoRelato.current.get(id)?.url ?? "";
+  }
+
   function alterarEvidencias(novos) {
     if (previewArquivo && !novos.includes(previewArquivo)) setPreviewArquivo(null);
     setArquivosEvidencias(novos);
@@ -148,7 +164,7 @@ export default function AbrirNcPage() {
     if (!colaboradorId) {
       novosErros.colaborador = "Selecione o colaborador sobre quem é a Não Conformidade.";
     }
-    if (!descricao.trim()) {
+    if (!textoRicoTemConteudo(descricao)) {
       novosErros.descricao = "Descreva o que aconteceu.";
     }
     if (causaPendente) {
@@ -162,13 +178,44 @@ export default function AbrirNcPage() {
     setEnviando(true);
     try {
       setEtapaEnvio("Criando a NC...");
+      // A evidência só pode ser enviada depois que a NC existe: a NC nasce com
+      // o relato sem as imagens pendentes e elas entram no passo seguinte.
+      const pendentes = [...imagensDoRelato.current.entries()].filter(([id]) => descricao.includes(`data-evidencia="${id}"`));
       const nc = await abrirNc({
         chamado: chamado || null,
         colaborador_id: colaboradorId,
         criticidade,
-        descricao,
+        descricao: pendentes.length ? removerEvidenciasPendentes(descricao) : descricao,
+        descricao_formato: "html",
         causas,
       });
+
+      if (pendentes.length) {
+        setEtapaEnvio(`Enviando ${pendentes.length} imagem(ns) do relato...`);
+        const mapa = new Map();
+        let falhasRelato = 0;
+        for (const [idTemporario, item] of pendentes) {
+          try {
+            const evidencia = await anexarEvidencia(nc.id, item.arquivo, null, { noRelato: true });
+            mapa.set(idTemporario, evidencia.id);
+          } catch {
+            falhasRelato += 1;
+          }
+        }
+        if (mapa.size) {
+          try {
+            await concluirRelato(nc.id, removerEvidenciasPendentes(trocarEvidencias(descricao, mapa)));
+          } catch {
+            falhasRelato = pendentes.length;
+          }
+        }
+        if (falhasRelato > 0) {
+          sessionStorage.setItem(
+            `sgnc-nc-${nc.id}-relato-warning`,
+            `${falhasRelato} de ${pendentes.length} imagem(ns) do relato não puderam ser enviadas. O texto foi salvo; anexe-as na seção Evidências.`
+          );
+        }
+      }
 
       if (arquivosEvidencias.length > 0) {
         setEtapaEnvio(`Enviando ${arquivosEvidencias.length} evidência(s)...`);
@@ -194,6 +241,9 @@ export default function AbrirNcPage() {
       setBuscaColaborador("");
       setCriticidade("Baixa");
       setDescricao("");
+      for (const item of imagensDoRelato.current.values()) URL.revokeObjectURL(item.url);
+      imagensDoRelato.current.clear();
+      proximoIdTemporario.current = -1;
       setCausas([]);
       setCausaPendente("");
       setArquivosEvidencias([]);
@@ -340,20 +390,25 @@ export default function AbrirNcPage() {
                   {errosCampo.criticidade && <div className="sg-erro-campo mt-2">{errosCampo.criticidade}</div>}
                 </fieldset>
 
-                <CampoTextoArea
-                  rotulo="Descrição"
-                  id={IDS_CAMPOS.descricao}
-                  obrigatorio
-                  rows={5}
-                  value={descricao}
-                  onChange={(e) => {
-                    setDescricao(e.target.value);
-                    if (errosCampo.descricao) setErrosCampo((atual) => ({ ...atual, descricao: "" }));
-                  }}
-                  erro={errosCampo.descricao}
-                  placeholder="Ex.: Durante o chamado 123, o cadastro foi concluído sem o documento obrigatório, gerando retrabalho..."
-                />
-                <div className="texto-xs texto-suave text-end mb-3">{descricao.trim().length} caracteres</div>
+                <Form.Group className="mb-3">
+                  <Form.Label className="sg-label" htmlFor={IDS_CAMPOS.descricao}>
+                    Descrição <span className="text-danger">*</span>
+                  </Form.Label>
+                  <EditorTextoRico
+                    id={IDS_CAMPOS.descricao}
+                    valor={descricao}
+                    aoMudar={(html) => {
+                      setDescricao(html);
+                      if (errosCampo.descricao) setErrosCampo((atual) => ({ ...atual, descricao: "" }));
+                    }}
+                    enviarImagem={guardarImagemDoRelato}
+                    urlDaImagem={urlDaImagemDoRelato}
+                    disabled={enviando}
+                    erro={errosCampo.descricao}
+                    placeholder="Ex.: Durante o chamado 123, o cadastro foi concluído sem o documento obrigatório, gerando retrabalho..."
+                    descricaoAjuda="Informe fatos observáveis. As imagens coladas aqui ficam no meio do relato e também entram como evidência da NC."
+                  />
+                </Form.Group>
 
                 <Form.Group className="mb-0">
                   <Form.Label className="sg-label" htmlFor={IDS_CAMPOS.causas}>Causas</Form.Label>

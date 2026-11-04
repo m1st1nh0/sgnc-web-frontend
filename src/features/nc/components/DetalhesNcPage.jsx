@@ -34,6 +34,7 @@ import EstadoVazio from "../../../components/ui/EstadoVazio.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import ModalVisualizarEvidencia from "../../../components/ui/ModalVisualizarEvidencia.jsx";
 import AreaAnexos from "../../../components/ui/AreaAnexos.jsx";
+import TextoRico from "../../../components/ui/TextoRico.jsx";
 import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
 import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
@@ -107,6 +108,13 @@ export default function DetalhesNcPage({ retorno = "/" }) {
     try {
       aviso = sessionStorage.getItem(chave);
       if (aviso) sessionStorage.removeItem(chave);
+      // Imagens do relato que não subiram na abertura.
+      const chaveRelato = `sgnc-nc-${id}-relato-warning`;
+      const avisoRelato = sessionStorage.getItem(chaveRelato);
+      if (avisoRelato) {
+        sessionStorage.removeItem(chaveRelato);
+        aviso = aviso ? `${aviso} ${avisoRelato}` : avisoRelato;
+      }
       // Confirmação única logo após abrir a NC (gravada pela tela de abertura).
       const chaveRegistrada = `sgnc-nc-${id}-registrada`;
       registrada = sessionStorage.getItem(chaveRegistrada) === "1";
@@ -453,7 +461,7 @@ export default function DetalhesNcPage({ retorno = "/" }) {
                   </dl>
                   <div className="sg-detalhe-nc__descricao">
                     <span className="sg-detalhe-nc__rotulo">Descrição</span>
-                    <p>{nc.descricao || "—"}</p>
+                    <TextoRico valor={nc.descricao} formato={nc.descricao_formato} ncId={id} />
                   </div>
                   {podeVerDetalhesCompletos && nc.motivo_invalidacao && (
                     <div className="sg-detalhe-nc__descricao sg-detalhe-nc__descricao--erro">

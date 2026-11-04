@@ -106,16 +106,19 @@ test("R1: chamado e erros apontados aparecem no PDF, no Excel e no CSV", () => {
   // Resumo gerencial: as duas colunas na lista de NCs, com a descrição encurtada.
   expect(resumo).toContain('{ titulo: "Chamado"');
   expect(resumo).toContain('{ titulo: "Erros apontados"');
-  expect(resumo).toContain("encurtar(nc.descricao, 160)");
+  expect(resumo).toContain("encurtar(comoTextoSimples(nc.descricao, nc.descricao_formato), 160)");
   // Relatório da NC: chamado no resumo e a descrição sob o título novo.
   expect(service).toContain('writer.line("Chamado", nc.chamado)');
   expect(service).toContain('writer.heading("Erros apontados")');
+  // Relato com imagens no meio sai como texto nos relatórios ([imagem] no lugar da figura).
+  expect(service).toContain("comoTextoSimples(nc.descricao, nc.descricao_formato)");
+  expect(planilhas).toContain("comoTextoSimples(nc.descricao, nc.descricao_formato)");
   // Planilhas: coluna no CSV simples e na aba de NCs do Excel.
   expect(planilhas).toContain('"Chamado", "Causa", "Erros apontados"');
   expect(planilhas).toContain('{ titulo: "Erros apontados", largura: 50, tipo: "textoLongo" }');
   // Campo lido do banco para os dois.
-  expect(readFileSync("src/lib/reports/dados.ts", "utf8")).toContain("chamado, descricao");
+  expect(readFileSync("src/lib/reports/dados.ts", "utf8")).toContain("chamado, descricao, descricao_formato");
   // Lista na tela de relatórios.
   expect(readFileSync("src/features/reports/components/RelatoriosPage.jsx", "utf8")).toContain('<th scope="col">Erros apontados</th>');
-  expect(readFileSync("src/lib/analytics/drilldown.ts", "utf8")).toContain("chamado, descricao");
+  expect(readFileSync("src/lib/analytics/drilldown.ts", "utf8")).toContain("chamado, descricao, descricao_formato");
 });

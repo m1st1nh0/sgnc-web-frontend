@@ -7,6 +7,7 @@ import "server-only";
 
 import { ApiError } from "@/lib/api/error";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ErroTextoRico, analisarTextoRico, evidenciasDoTextoRico, textoRicoTemConteudo } from "@/lib/nc/texto-rico";
 import { createClient } from "@/lib/supabase/server";
 import { ehQualidade } from "@/lib/auth/papeis";
 import type { UsuarioAutenticado } from "@/lib/auth/types";
@@ -24,6 +25,7 @@ type NcInput = {
   colaborador_id?: unknown;
   criticidade?: unknown;
   descricao?: unknown;
+  descricao_formato?: unknown;
   causas?: unknown;
 };
 
@@ -84,6 +86,24 @@ function transitionError(result: Record<string, unknown>): never {
   throw new ApiError("Não foi possível concluir a transição da NC.", 500);
 }
 
+/**
+ * Relato em texto rico: validado por lista de permissão antes de gravar.
+ * Imagem sem evidência (inclusive id temporário, que a tela deve trocar pelo
+ * id real) é recusada aqui, não "limpa".
+ */
+function parseDescricao(input: NcInput) {
+  const formato = String(input.descricao_formato ?? "texto");
+  if (formato !== "html") return { descricao: input.descricao ? String(input.descricao).trim() : null, formato: "texto" };
+  const html = String(input.descricao ?? "");
+  try {
+    analisarTextoRico(html);
+  } catch (error) {
+    throw new ApiError(error instanceof ErroTextoRico ? error.message : "O relato não pôde ser lido.", 422, "descricao");
+  }
+  if (!textoRicoTemConteudo(html)) throw new ApiError("Descreva o que aconteceu.", 422, "descricao");
+  return { descricao: html, formato: "html" };
+}
+
 function parseInput(input: NcInput) {
   const causas = Array.isArray(input.causas)
     ? [...new Set(input.causas.map((item) => String(item).trim()).filter(Boolean))]
@@ -93,7 +113,7 @@ function parseInput(input: NcInput) {
     chamado: input.chamado ? String(input.chamado).trim() : null,
     colaborador_id: input.colaborador_id ? String(input.colaborador_id) : null,
     criticidade: String(input.criticidade ?? "Baixa"),
-    descricao: input.descricao ? String(input.descricao).trim() : null,
+    ...parseDescricao(input),
     causas,
   };
 }
@@ -519,7 +539,15 @@ export async function criarNc(input: NcInput) {
   if (error) throw new ApiError("Não foi possível abrir a não conformidade.", 500);
   const result = normalizeRpc(rpcData);
   if (!result.ok) transitionError(result);
+  await gravarFormatoDescricao(Number(result.nc_id), data.formato);
   return buscarNc(Number(result.nc_id), user);
+}
+
+/** O formato do relato não é transição de status: vai por update direto. */
+async function gravarFormatoDescricao(ncId: number, formato: string) {
+  const { error } = await (createAdminClient() as any).from("nao_conformidades")
+    .update({ descricao_formato: formato }).eq("id", ncId);
+  if (error) throw new ApiError("Não foi possível gravar o formato do relato.", 500);
 }
 
 export async function editarNc(id: number, input: NcInput) {
@@ -541,6 +569,45 @@ export async function editarNc(id: number, input: NcInput) {
   if (error) throw new ApiError("Não foi possível editar a NC.", 500);
   const result = normalizeRpc(rpcData);
   if (!result.ok) transitionError(result);
+  await gravarFormatoDescricao(id, data.formato);
+  return buscarNc(id, user);
+}
+
+/**
+ * Fecha o relato da abertura: troca as imagens que ficaram pendentes pelas
+ * evidências já enviadas. É o segundo passo da abertura, porque a evidência
+ * só pode ser enviada depois que a NC existe.
+ *
+ * Só quem abriu a NC (ou a Qualidade), enquanto ela está em "aberta", e só com
+ * imagens que são evidências desta mesma NC.
+ */
+export async function concluirRelato(id: number, input: { descricao?: unknown }) {
+  const user = await requireUser();
+  const nc = await buscarNc(id, user) as Record<string, unknown>;
+  if (nc.status !== "aberta") throw new ApiError("O relato só pode ser completado enquanto a NC está em 'aberta'.", 409);
+  if (String(nc.aberto_por ?? "") !== user.id && !ehQualidade(user.papel)) {
+    throw new ApiError("Somente quem abriu a NC pode completar o relato.", 403);
+  }
+  const html = String(input.descricao ?? "");
+  let ids: number[];
+  try {
+    analisarTextoRico(html);
+    ids = evidenciasDoTextoRico(html);
+  } catch (error) {
+    throw new ApiError(error instanceof ErroTextoRico ? error.message : "O relato não pôde ser lido.", 422, "descricao");
+  }
+  if (!textoRicoTemConteudo(html)) throw new ApiError("Descreva o que aconteceu.", 422, "descricao");
+  const admin = createAdminClient();
+  if (ids.length) {
+    // Toda imagem citada tem de ser evidência desta NC.
+    const { data: evidencias, error: evidenciasError } = await admin.from("evidencias").select("id").eq("nc_id", id).in("id", ids);
+    if (evidenciasError) throw new ApiError("Não foi possível validar as imagens do relato.", 500);
+    const conhecidas = new Set((evidencias ?? []).map((item: { id: number }) => item.id));
+    if (ids.some((item) => !conhecidas.has(item))) throw new ApiError("O relato aponta para uma imagem que não é evidência desta NC.", 422, "descricao");
+  }
+  const { error } = await (admin as any).from("nao_conformidades")
+    .update({ descricao: html, descricao_formato: "html" }).eq("id", id);
+  if (error) throw new ApiError("Não foi possível completar o relato.", 500);
   return buscarNc(id, user);
 }
 

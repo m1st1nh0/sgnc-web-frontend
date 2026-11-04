@@ -1,5 +1,6 @@
 /** Conteúdo das planilhas (propostas C e D): Excel com abas e CSV simples, a partir do recorte já carregado. */
 import { csvCell } from "./csv";
+import { comoTextoSimples } from "@/lib/nc/texto-rico";
 import { ROTULO_ACEITE, dataBr, dataHoraBr, rotuloSituacaoMedida, rotuloStatus, rotuloTipoMedida } from "./formato";
 import { diasNaEtapa, ordenarParaAcao } from "./regras";
 import type { Aba } from "./xlsx";
@@ -42,7 +43,7 @@ export function montarCsvSimples(dados: DadosPlanilha) {
     linhas.push([
       nc.id, dataBr(nc.data || nc.criado_em, ""), rotuloStatus(nc.status), diasNaEtapa(nc, agora) ?? "",
       nc.colaborador, nc.setor, dados.lideres.get(nc.colaborador_id) ?? "", nc.criticidade, nc.chamado,
-      causas.map((causa) => causa.descricao).join("; "), nc.descricao ?? "", causas.map((causa) => ordinal(causa.ocorrencia_numero)).filter(Boolean).join("; "),
+      causas.map((causa) => causa.descricao).join("; "), comoTextoSimples(nc.descricao, nc.descricao_formato), causas.map((causa) => ordinal(causa.ocorrencia_numero)).filter(Boolean).join("; "),
       feedback ? dataHoraBr(feedback.prazo_aceite, "") : "", ROTULO_ACEITE[situacaoDoAceite(nc)],
       descreverMedidas(medidasDaNc(dados, nc.id)), link(dados.origem, nc.id),
     ].map(csvCell).join(";"));
@@ -71,7 +72,7 @@ export function montarAbas(dados: DadosPlanilha): Aba[] {
       return [
         nc.id, nc.data || nc.criado_em?.slice(0, 10), rotuloStatus(nc.status), diasNaEtapa(nc, agora), nc.criticidade, simNao(nc.critica === true),
         nc.colaborador, nc.setor, dados.lideres.get(nc.colaborador_id) ?? "", nc.chamado,
-        causas.map((causa) => causa.descricao).join("; "), simNao(causas.some((causa) => Number(causa.ocorrencia_numero) > 1)), nc.descricao,
+        causas.map((causa) => causa.descricao).join("; "), simNao(causas.some((causa) => Number(causa.ocorrencia_numero) > 1)), comoTextoSimples(nc.descricao, nc.descricao_formato),
         nc.criado_em, nc.validado_em, nc.feedback_aplicado_em, nc.aceito_em,
         segundos(nc.criado_em, nc.validado_em), segundos(nc.validado_em, nc.feedback_aplicado_em), segundos(nc.feedback_aplicado_em, nc.aceito_em), segundos(nc.criado_em, nc.aceito_em),
         dados.feedbacks.get(nc.id)?.prazo_aceite, ROTULO_ACEITE[situacaoDoAceite(nc)], link(dados.origem, nc.id),
@@ -156,7 +157,7 @@ export function montarAbas(dados: DadosPlanilha): Aba[] {
       ...(leia ? [["Gerado por", leia.geradoPor], ["Gerado em", leia.geradoEm], ["Período", leia.periodo], ["Escopo", leia.escopo], ["Filtros", leia.filtros]] : []),
       ["Horários", "Todos no horário de Brasília."],
       ["Durações", "Formato [h]:mm (horas corridas). Somam e fazem média direto no Excel."],
-      ["Erros apontados", "A descrição do que foi apontado na NC, como registrada na abertura."],
+      ["Erros apontados", "A descrição do que foi apontado na NC, como registrada na abertura. Imagens inseridas no meio do relato aparecem como [imagem]; elas ficam na NC e no relatório da NC em PDF."],
       ["NCs", "Uma linha por NC aberta no período, na ordem de ação: Não respondida, Aguardando aceite, Aguardando avaliação, Aguardando feedback, Em plano de ação, Concluída, Invalidada."],
       ["Causas", "Uma linha por causa de cada NC. Ocorrência em 12 meses conta o mesmo colaborador com a mesma causa; a partir da 4ª o sistema sugere medida disciplinar."],
       ["Feedback", "Último feedback registrado em cada NC."],

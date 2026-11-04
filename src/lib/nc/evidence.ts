@@ -29,6 +29,22 @@ export async function listarEvidencias(ncId: number) {
   }));
 }
 
+/**
+ * Endereço temporário do arquivo de uma evidência desta NC, depois da mesma
+ * checagem de acesso da NC. Usado pela rota que serve as imagens do relato.
+ */
+export async function urlDaEvidencia(ncId: number, evidenciaId: number) {
+  await buscarNc(ncId);
+  if (!Number.isInteger(ncId) || !Number.isInteger(evidenciaId)) throw new ApiError("Evidência não encontrada.", 404);
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("evidencias").select("caminho_storage")
+    .eq("id", evidenciaId).eq("nc_id", ncId).maybeSingle();
+  if (error || !data) throw new ApiError("Evidência não encontrada.", 404);
+  const { data: assinada } = await admin.storage.from(BUCKET).createSignedUrl(data.caminho_storage, 600);
+  if (!assinada?.signedUrl) throw new ApiError("Não foi possível abrir a evidência.", 500);
+  return assinada.signedUrl;
+}
+
 export async function anexarEvidencia(ncId: number, formData: FormData) {
   const user = await requireUser();
   const nc = await buscarNc(ncId, user) as Record<string, unknown>;
@@ -60,8 +76,12 @@ export async function anexarEvidencia(ncId: number, formData: FormData) {
     upsert: false,
   });
   if (uploadError) throw new ApiError("Não foi possível enviar a evidência.", 500);
+  // Imagem inserida no meio do relato: fica marcada para não se confundir com
+  // os anexos soltos da abertura (o texto a referencia pelo id).
+  const noRelato = String(formData.get("no_relato") ?? "") === "1";
   const { data, error } = await admin.from("evidencias").insert({
     nc_id: ncId, caminho_storage: path, nome_original: file.name, enviado_por: user.id, feedback_id: feedbackId,
+    no_relato: noRelato,
   }).select("*").single();
   if (error || !data) {
     await admin.storage.from(BUCKET).remove([path]);

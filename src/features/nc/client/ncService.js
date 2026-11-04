@@ -96,11 +96,16 @@ export function listarEvidencias(ncId) {
   return chamarApi(`/nc/${ncId}/evidencias`);
 }
 
-/** Sem `feedbackId`, é evidência da abertura; com ele, anexo do feedback recém-registrado. */
-export function anexarEvidencia(ncId, arquivo, feedbackId = null) {
+/**
+ * Sem `feedbackId`, é evidência da abertura; com ele, anexo do feedback
+ * recém-registrado. `noRelato` marca a imagem que foi inserida no meio do
+ * texto, e não anexada à lista.
+ */
+export function anexarEvidencia(ncId, arquivo, feedbackId = null, { noRelato = false } = {}) {
   const formData = new FormData();
   formData.append("arquivo", arquivo);
   if (feedbackId) formData.append("feedback_id", String(feedbackId));
+  if (noRelato) formData.append("no_relato", "1");
   return chamarApi(`/nc/${ncId}/evidencias`, {
     method: "POST",
     body: formData,
@@ -190,4 +195,9 @@ export function registrarAnaliseCausa(id, analiseCausa) {
 /** Contenção da NC crítica: `{ acao: "designar", responsavel_id }` ou `{ acao: "registrar", descricao }`. */
 export function atualizarContencao(id, dados) {
   return chamarApi(`/nc/${id}/contencao`, { method: "POST", body: dados });
+}
+
+/** Completa o relato da abertura com as imagens que viraram evidência. */
+export function concluirRelato(ncId, descricao) {
+  return chamarApi(`/nc/${ncId}/relato`, { method: "PATCH", body: { descricao } });
 }

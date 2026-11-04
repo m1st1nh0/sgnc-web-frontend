@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import Botao from "../../../components/ui/Botao.jsx";
+import { comoTextoSimples } from "../../../lib/nc/texto-rico.js";
 import BadgeStatus from "../../../components/ui/BadgeStatus.jsx";
 import BadgePrioridade from "../../../components/ui/BadgePrioridade.jsx";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
@@ -479,7 +480,7 @@ export default function RelatoriosPage() {
                             <td>{DATA(nc.data || nc.criado_em)}</td>
                             <td>{nc.colaborador || "—"}</td>
                             <td>{nc.setor || "—"}</td>
-                            <td className="sg-tabela__texto-longo" title={nc.descricao || undefined}>{nc.descricao || "—"}</td>
+                            <td className="sg-tabela__texto-longo" title={comoTextoSimples(nc.descricao, nc.descricao_formato) || undefined}>{comoTextoSimples(nc.descricao, nc.descricao_formato) || "—"}</td>
                             <td><BadgeStatus status={nc.status} /></td>
                             <td><BadgePrioridade criticidade={nc.criticidade} /></td>
                             <td className="text-end"><Link className="sg-tabela__link" href={comRetorno(`/nc/${nc.id}`, urlAtual)} aria-label={`Abrir NC ${nc.id}`}>Abrir</Link></td>
