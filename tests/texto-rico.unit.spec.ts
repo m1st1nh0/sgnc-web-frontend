@@ -4,8 +4,8 @@ import { expect, test } from "@playwright/test";
 import {
   ErroTextoRico, LIMITE_TEXTO_RICO,
   analisarTextoRico, comoTextoSimples, escaparTexto, evidenciasDoTextoRico, evidenciasPendentes,
-  removerEvidenciasPendentes, textoRicoDeTextoSimples, textoRicoTemConteudo, textoRicoValido,
-  textoSimplesDoRico, trocarEvidencias,
+  marcarEvidenciasPendentes, removerEvidenciasPendentes, textoRicoDeTextoSimples, textoRicoTemConteudo,
+  textoRicoValido, textoSimplesDoRico, trocarEvidencias,
 } from "../src/lib/nc/texto-rico.js";
 
 const RELATO = '<p>Durante o chamado 123:</p><img data-evidencia="7" alt="print.png"><p>O cadastro saiu <strong>sem</strong> o documento.</p>';
@@ -117,4 +117,53 @@ test("texto rico: a API valida antes de gravar e confere a dona da imagem", () =
   // Só quem abriu completa o relato, e só enquanto a NC está em "aberta".
   expect(service).toContain("Somente quem abriu a NC pode completar o relato.");
   expect(service).toContain('nc.status !== "aberta"');
+});
+
+
+test("texto rico: imagem colada não bloqueia o envio do formulário (regressão)", () => {
+  // Bug em produção: a tela usava a validação estrita da API, que recusa a
+  // imagem ainda sem evidência. Resultado: qualquer print colado no relato
+  // travava a abertura da NC pedindo "Descreva o que aconteceu".
+  const comPrint = '<p>Direcionamento de fila errada.</p><img data-evidencia="-1" alt="print.png"><p>Impacto: rastreabilidade.</p>';
+  expect(textoRicoTemConteudo(comPrint, { pendentes: true })).toBe(true);
+  // Relato só com a imagem também vale como preenchido.
+  expect(textoRicoTemConteudo('<img data-evidencia="-2">', { pendentes: true })).toBe(true);
+  // A API continua estrita: imagem sem evidência não é gravada.
+  expect(textoRicoTemConteudo(comPrint)).toBe(false);
+  expect(textoRicoValido(comPrint)).toBe(false);
+  expect(() => analisarTextoRico(comPrint)).toThrow(/Imagem sem evidência/);
+  // Nem com `pendentes` entra id zero ou texto no lugar do id.
+  expect(textoRicoValido('<img data-evidencia="0">', { pendentes: true })).toBe(false);
+  expect(() => analisarTextoRico('<img data-evidencia="0">', { pendentes: true })).toThrow(/Imagem sem evidência/);
+  expect(() => analisarTextoRico('<img data-evidencia="abc">', { pendentes: true })).toThrow(/Imagem sem evidência/);
+  // E o resto da lista de permissão continua valendo com a opção ligada.
+  expect(() => analisarTextoRico('<script>alert(1)</script>', { pendentes: true })).toThrow(/não é aceita/);
+});
+
+test("texto rico: a NC nasce com [imagem] no lugar da que ainda não subiu", () => {
+  const comPrint = '<p>Fila errada.</p><img data-evidencia="-1"><p>Fim.</p>';
+  const inicial = marcarEvidenciasPendentes(comPrint);
+  expect(inicial).toBe('<p>Fila errada.</p>[imagem]<p>Fim.</p>');
+  // O texto com que a NC é criada passa na validação estrita da API.
+  expect(textoRicoValido(inicial)).toBe(true);
+  expect(textoRicoTemConteudo(inicial)).toBe(true);
+  // Relato só com print não nasce vazio, que a API recusaria.
+  expect(textoRicoTemConteudo(marcarEvidenciasPendentes('<img data-evidencia="-1">'))).toBe(true);
+  expect(textoRicoTemConteudo(removerEvidenciasPendentes('<img data-evidencia="-1">'))).toBe(false);
+  // Imagem já enviada não é tocada.
+  expect(marcarEvidenciasPendentes('<img data-evidencia="7">')).toBe('<img data-evidencia="7">');
+});
+
+test("texto rico: as telas validam com pendentes e a API sem", () => {
+  const abrir = readFileSync("src/features/nc/components/AbrirNcPage.jsx", "utf8");
+  const editar = readFileSync("src/features/nc/components/EditarNcPage.jsx", "utf8");
+  expect(abrir).toContain("textoRicoTemConteudo(descricao, { pendentes: true })");
+  expect(editar).toContain("textoRicoTemConteudo(descricao, { pendentes: true })");
+  expect(abrir).toContain("descricao: marcarEvidenciasPendentes(descricao)");
+  // Rascunho restaurado perde os arquivos: a imagem órfã vira marcador.
+  expect(abrir).toContain("evidenciasPendentes(descricao).some((id) => !imagensDoRelato.current.has(id))");
+  // A API nunca liga a opção: ela valida sempre no modo estrito.
+  const service = readFileSync("src/lib/nc/service.ts", "utf8");
+  expect(service).not.toMatch(/\{\s*pendentes/);
+  expect(service).toContain("analisarTextoRico(html)");
 });

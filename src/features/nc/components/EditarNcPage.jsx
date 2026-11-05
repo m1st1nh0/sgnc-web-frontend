@@ -122,7 +122,7 @@ export default function EditarNcPage() {
     if (!colaboradorId) {
       novosErros.colaborador = "Selecione o colaborador.";
     }
-    if (!textoRicoTemConteudo(descricao)) {
+    if (!textoRicoTemConteudo(descricao, { pendentes: true })) {
       novosErros.descricao = "Preencha a descrição.";
     }
     if (causaPendente) {
