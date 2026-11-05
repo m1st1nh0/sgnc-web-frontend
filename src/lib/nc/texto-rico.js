@@ -53,7 +53,7 @@ export class ErroTextoRico extends Error {}
 const TOKEN = /<\/?([a-zA-Z][a-zA-Z0-9]*)((?:\s+[^<>]*?)?)\/?>/g;
 const ATRIBUTO = /([a-zA-Z-]+)\s*=\s*"([^"]*)"/g;
 
-function lerAtributos(tag, bruto) {
+function lerAtributos(tag, bruto, pendentes) {
   const permitidos = TAGS_PERMITIDAS[tag];
   const atributos = {};
   const texto = String(bruto ?? "").trim();
@@ -70,7 +70,11 @@ function lerAtributos(tag, bruto) {
   if (semAtributos) throw new ErroTextoRico(`Atributo mal formado em <${tag}>.`);
   if (tag === "img") {
     const id = Number(atributos["data-evidencia"]);
-    if (!Number.isInteger(id) || id <= 0) throw new ErroTextoRico("Imagem sem evidência correspondente.");
+    // Id negativo é a imagem que ainda não virou evidência, enquanto a NC não
+    // existe. A tela aceita (`pendentes`), para não travar o preenchimento; a
+    // API nunca aceita, para não gravar imagem sem evidência.
+    const valido = Number.isInteger(id) && (pendentes ? id !== 0 : id > 0);
+    if (!valido) throw new ErroTextoRico("Imagem sem evidência correspondente.");
     atributos["data-evidencia"] = String(id);
   }
   return atributos;
@@ -79,8 +83,11 @@ function lerAtributos(tag, bruto) {
 /**
  * Lê o HTML e devolve a árvore de nós, ou lança `ErroTextoRico`.
  * Nós: `{ tipo: "texto", texto }` e `{ tipo: "elemento", tag, atributos, filhos }`.
+ *
+ * `pendentes` libera as imagens de id temporário (negativo), que só existem
+ * no formulário aberto. A API chama sem essa opção.
  */
-export function analisarTextoRico(html) {
+export function analisarTextoRico(html, { pendentes = false } = {}) {
   const texto = String(html ?? "");
   if (texto.length > LIMITE_TEXTO_RICO) throw new ErroTextoRico("O texto ficou grande demais. Reduza o conteúdo ou use menos imagens.");
   if (texto.includes("<!--") || texto.includes("<![")) throw new ErroTextoRico("Comentários não são aceitos no texto.");
@@ -107,7 +114,7 @@ export function analisarTextoRico(html) {
       pilha.pop();
       continue;
     }
-    const no = { tipo: "elemento", tag, atributos: lerAtributos(tag, achado[2]), filhos: [] };
+    const no = { tipo: "elemento", tag, atributos: lerAtributos(tag, achado[2], pendentes), filhos: [] };
     if (SO_EM_LISTA.has(tag) && !["ul", "ol"].includes(pilha[pilha.length - 1].tag)) {
       throw new ErroTextoRico("Item de lista fora de uma lista.");
     }
@@ -120,9 +127,9 @@ export function analisarTextoRico(html) {
 }
 
 /** `true` quando o conteúdo passa pela lista de permissão. */
-export function textoRicoValido(html) {
+export function textoRicoValido(html, opcoes) {
   try {
-    analisarTextoRico(html);
+    analisarTextoRico(html, opcoes);
     return true;
   } catch {
     return false;
@@ -170,10 +177,14 @@ export function textoRicoDeTextoSimples(texto) {
   return html || "<p></p>";
 }
 
-/** `true` quando o conteúdo tem alguma coisa além de espaços (imagem conta). */
-export function textoRicoTemConteudo(html) {
+/**
+ * `true` quando o conteúdo tem alguma coisa além de espaços (imagem conta).
+ * A tela chama com `pendentes`, porque na abertura as imagens ainda não viraram
+ * evidência; sem isso, um print colado bloquearia o envio do formulário.
+ */
+export function textoRicoTemConteudo(html, opcoes) {
   try {
-    const nos = analisarTextoRico(html);
+    const nos = analisarTextoRico(html, opcoes);
     let tem = false;
     const visitar = (lista) => {
       for (const no of lista) {
@@ -226,4 +237,14 @@ export function evidenciasPendentes(html) {
 /** Tira do texto as imagens ainda sem evidência real (ids temporários). */
 export function removerEvidenciasPendentes(html) {
   return String(html ?? "").replace(/<img data-evidencia="-\d+"[^>]*>/g, "");
+}
+
+/**
+ * Troca as imagens pendentes por "[imagem]" no texto com que a NC é criada.
+ * A evidência só pode ser enviada depois que a NC existe, então a abertura
+ * grava o relato com o marcador e o passo seguinte põe as imagens no lugar.
+ * Usar marcador em vez de apagar evita que um relato só com print nasça vazio.
+ */
+export function marcarEvidenciasPendentes(html) {
+  return String(html ?? "").replace(/<img data-evidencia="-\d+"[^>]*>/g, "[imagem]");
 }

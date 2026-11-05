@@ -13,7 +13,7 @@ import Botao from "../../../components/ui/Botao.jsx";
 import CampoTexto from "../../../components/ui/CampoTexto.jsx";
 import AreaAnexos from "../../../components/ui/AreaAnexos.jsx";
 import EditorTextoRico from "../../../components/ui/EditorTextoRico.jsx";
-import { removerEvidenciasPendentes, textoRicoTemConteudo, trocarEvidencias } from "../../../lib/nc/texto-rico.js";
+import { evidenciasPendentes, marcarEvidenciasPendentes, removerEvidenciasPendentes, textoRicoTemConteudo, trocarEvidencias } from "../../../lib/nc/texto-rico.js";
 import EstadoCarregamento from "../../../components/ui/EstadoCarregamento.jsx";
 import MensagemErro from "../../../components/ui/MensagemErro.jsx";
 import DicaContextual from "../../onboarding/components/DicaContextual.jsx";
@@ -107,6 +107,19 @@ export default function AbrirNcPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // O rascunho volta do armazenamento sem os arquivos colados: a imagem
+  // pendente que sobrou não tem como ser enviada, então vira "[imagem]".
+  const rascunhoLimpo = useRef(false);
+  useEffect(() => {
+    if (rascunhoLimpo.current || carregandoDados) return;
+    rascunhoLimpo.current = true;
+    if (evidenciasPendentes(descricao).some((id) => !imagensDoRelato.current.has(id))) {
+      setDescricao((atual) => marcarEvidenciasPendentes(atual));
+    }
+    // Uma vez só, assim que o formulário termina de carregar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carregandoDados]);
+
   useEffect(() => {
     // Causas cadastradas em Gestão de causas (outra aba) aparecem ao voltar para o formulário.
     function atualizarCatalogo() {
@@ -164,7 +177,8 @@ export default function AbrirNcPage() {
     if (!colaboradorId) {
       novosErros.colaborador = "Selecione o colaborador sobre quem é a Não Conformidade.";
     }
-    if (!textoRicoTemConteudo(descricao)) {
+    // `pendentes`: a imagem colada só vira evidência depois que a NC existe.
+    if (!textoRicoTemConteudo(descricao, { pendentes: true })) {
       novosErros.descricao = "Descreva o que aconteceu.";
     }
     if (causaPendente) {
@@ -185,7 +199,9 @@ export default function AbrirNcPage() {
         chamado: chamado || null,
         colaborador_id: colaboradorId,
         criticidade,
-        descricao: pendentes.length ? removerEvidenciasPendentes(descricao) : descricao,
+        // Marca toda imagem pendente, inclusive a órfã de um rascunho antigo:
+        // sem isso a API recusaria o relato por imagem sem evidência.
+        descricao: marcarEvidenciasPendentes(descricao),
         descricao_formato: "html",
         causas,
       });
